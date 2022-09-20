@@ -14,10 +14,10 @@
     "noUnusedLocals": true,
     "preserveSymlinks": true,
     "preserveWatchOutput": true,
-    "pretty": true,
+    "pretty": false,
     "sourceMap": true,
     "strict": true,
-    "target": "es2016"
+    "target": "es2020"
   },
   "include": [
     "./src.ts/*.ts"

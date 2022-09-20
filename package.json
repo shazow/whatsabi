@@ -1,0 +1,32 @@
+{
+  "name": "autoabi",
+  "version": "1.0.0",
+  "description": "Guess an ABI from an Ethereum contract address",
+  "main": "lib/index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shazow/autoabi.git"
+  },
+  "keywords": [
+    "ethereum",
+    "evm",
+    "abi"
+  ],
+  "author": "Andrey Petrov <shazow.net>",
+  "license": "MIT",
+  "types": "./lib/index.d.ts",
+  "bugs": {
+    "url": "https://github.com/shazow/autoabi/issues"
+  },
+  "homepage": "https://github.com/shazow/autoabi#readme",
+  "dependencies": {
+    "@ethersproject/asm": "^5.7.0",
+    "ethers": "^5.7.1"
+  }
+}
