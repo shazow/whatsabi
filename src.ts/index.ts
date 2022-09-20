@@ -1,5 +1,7 @@
-import { assemble, disassemble, formatBytecode, parse, SemanticError, SemanticErrorSeverity } from "@ethersproject/asm";
+//import { assemble, disassemble, formatBytecode, parse, SemanticError, SemanticErrorSeverity } from "@ethersproject/asm";
 
-import { Provider, TransactionRequest } from "@ethersproject/abstract-provider";
+//import { Provider, TransactionRequest } from "@ethersproject/abstract-provider";
 
-import { SAMPLE_CODE } from "./sample.ts";
+export function extractABI(code: string): string {
+    return "foo";
+}

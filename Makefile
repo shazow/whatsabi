@@ -4,3 +4,5 @@ build:
 watch:
 	tsc -w
 
+test:
+	jest

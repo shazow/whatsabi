@@ -7,7 +7,7 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -28,5 +28,8 @@
   "dependencies": {
     "@ethersproject/asm": "^5.7.0",
     "ethers": "^5.7.1"
+  },
+  "devDependencies": {
+    "ts-jest": "^29.0.1"
   }
 }
