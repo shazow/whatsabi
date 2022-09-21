@@ -1,12 +1,18 @@
+import { ethers } from "ethers";
 import {describe, expect, test} from '@jest/globals';
 
-import {extractABI} from './index';
+import { extractInternalSignatures} from './index';
 
-import { SAMPLE_CODE } from "./sample";
+import { SAMPLE_CODE, SAMPLE_ABI } from "./sample";
 
 describe('index module', () => {
   test('extractABI', () => {
-    const r = extractABI(SAMPLE_CODE);
-    expect(r).toBe("bar");
+    const expected = SAMPLE_ABI.filter(el => {
+      return el.type === "function";
+    }).map(el => {
+      return ethers.utils.id(ethers.utils.FunctionFragment.from(el).format()).substring(0, 10);
+    });
+    const r = extractInternalSignatures(SAMPLE_CODE);
+    expect(r).toBe(expected);
   });
 });
