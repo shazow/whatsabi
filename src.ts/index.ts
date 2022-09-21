@@ -1,5 +1,4 @@
 import { disassemble, Bytecode, Operation } from "@ethersproject/asm";
-import { ethers } from "ethers";
 
 //import { Provider, TransactionRequest } from "@ethersproject/abstract-provider";
 
@@ -15,26 +14,28 @@ export function extractInternalSignatures(code: string): string[] {
     //             Func       Dest
 
     // JUMPDEST lookup
-    const dests: { [key: string]: Operation } = {}; // hex offset -> op
-    const jumps: { [key: string]: string } = {}; // function hash -> hex offset
+    const dests: { [key: number]: Operation } = {}; // offset -> op
+    const jumps: { [key: string]: number } = {}; // function hash -> offset
+
+    const log: string[] = [];
 
     for (let i = 0; i < prog.length; i++) {
         const op: Operation = prog[i];
 
         if (op.opcode.isValidJumpDest()) {
             // Index destinations
-            dests[ethers.utils.hexlify(op.offset)] = op;
+            dests[op.offset] = op;
             continue;
         }
         if (op.opcode.isJump()) {
             // Check previous opcode to be PUSH4
-            let dest: string;
+            let dest: number;
             let sig: string;
 
             {
                 const prevOp: Operation = prog[i-1];
                 if (prevOp.opcode.isPush() && prevOp.pushValue) {
-                    dest = prevOp.pushValue;
+                    dest = parseInt(prevOp.pushValue, 16);
                 } else continue;
             }
 
@@ -47,18 +48,23 @@ export function extractInternalSignatures(code: string): string[] {
                 } else continue;
             }
 
+            log.push(`${op.offset}  \t${op.opcode.mnemonic}\t${dest}\t${sig}`);
             jumps[sig] = dest;
         }
     }
 
+    console.log(log.join("\n"));
+
     const localDests: string[] = []; 
     for (let [sig, offset] of Object.entries(jumps)) {
-        if (dests[offset] === undefined) continue;
+        if (dests[offset] === undefined) {
+            continue;
+        }
 
         localDests.push(sig);
     }
     console.log("dests", Object.keys(dests));
-    console.log("jumps", Object.keys(jumps));
+    console.log("jumps", Object.entries(jumps));
     console.log("local", localDests);
     return localDests;
 }
