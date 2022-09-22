@@ -1,11 +1,27 @@
+import { ethers } from "ethers";
+
 import { disassemble, Bytecode, Operation } from "@ethersproject/asm";
 
 //import { Provider, TransactionRequest } from "@ethersproject/abstract-provider";
 
-export function extractInternalSignatures(code: string): string[] {
+const COMPARISON_OPS = ["EQ", "LT", "GT"];
+
+export function fragmentsFromABI(abi: any[]): string[] {
+    return abi.filter((el:any) => {
+      if (typeof(el) === "string") return true;
+      return el.type === "function";
+    }).map(el => {
+      return ethers.utils.id(ethers.utils.FunctionFragment.from(el).format()).substring(0, 10);
+    });
+}
+
+export function fragmentsFromCode(code: string): string[] {
     const prog: Bytecode = disassemble(code);
 
     // Find all the JUMPDEST instructions within the contract
+    //
+    // https://github.com/ethereum/solidity/blob/242096695fd3e08cc3ca3f0a7d2e06d09b5277bf/libsolidity/codegen/ContractCompiler.cpp#L333
+    //
     // We're looking for a sequence of opcodes that looks like:
     //
     //  DUP1 PUSH4 0x2E64CEC1 EQ PUSH1 0x37 JUMPI
@@ -27,7 +43,7 @@ export function extractInternalSignatures(code: string): string[] {
             dests[op.offset] = op;
             continue;
         }
-        if (op.opcode.isJump()) {
+        if (op.opcode.mnemonic === "JUMPI") {
             // Check previous opcode to be PUSH4
             let dest: number;
             let sig: string;
@@ -39,7 +55,7 @@ export function extractInternalSignatures(code: string): string[] {
                 } else continue;
             }
 
-            if (prog[i-2].opcode.mnemonic !== "EQ") continue;
+            if (!COMPARISON_OPS.includes(prog[i-2].opcode.mnemonic)) continue;
 
             {
                 const prevOp: Operation = prog[i-3];
@@ -47,6 +63,8 @@ export function extractInternalSignatures(code: string): string[] {
                     sig = prevOp.pushValue;
                 } else continue;
             }
+
+            if (prog[i-4].opcode.mnemonic !== "DUP1") continue;
 
             log.push(`${op.offset}  \t${op.opcode.mnemonic}\t${dest}\t${sig}`);
             jumps[sig] = dest;
