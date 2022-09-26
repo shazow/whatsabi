@@ -3,6 +3,8 @@ import { describe, expect, test } from '@jest/globals';
 import { defaultABILoader, defaultSelectorLookup } from "./loaders";
 import { selectorsFromABI } from "./index";
 
+// TODO: Add fixtures so that tests are runnable offline
+
 describe('loaders module', () => {
   test('defaultABILoader', async () => {
     const abi = await defaultABILoader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");

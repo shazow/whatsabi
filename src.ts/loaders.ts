@@ -1,5 +1,6 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { fetchJson } from "@ethersproject/web";
+import { getDefaultProvider } from "ethers";
 
 
 export async function getCode(provider: Provider, address: string): Promise<string> {
@@ -42,3 +43,4 @@ class Byte4SelectorLookup implements SelectorLookup {
 
 export const defaultABILoader: ABILoader = new EtherscanABILoader();
 export const defaultSelectorLookup: SelectorLookup = new Byte4SelectorLookup();
+export const defaultProvider: Provider = getDefaultProvider();
