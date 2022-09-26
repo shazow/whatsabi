@@ -4,15 +4,16 @@ import { disassemble, Bytecode, Operation } from "@ethersproject/asm";
 
 //import { Provider, TransactionRequest } from "@ethersproject/abstract-provider";
 
-const COMPARISON_OPS = ["EQ", "LT", "GT"];
+export function fragmentsFromABI(abi: any[]): {[key: string]: string} {
+    const r: {[key: string]: string} = {};
 
-export function fragmentsFromABI(abi: any[]): string[] {
-    return abi.filter((el:any) => {
-      if (typeof(el) === "string") return true;
-      return el.type === "function";
-    }).map(el => {
-      return ethers.utils.id(ethers.utils.FunctionFragment.from(el).format()).substring(0, 10);
-    });
+    for (let el of abi) {
+      if (typeof(el) !== "string" && el.type !== "function") continue;
+      const f = ethers.utils.FunctionFragment.from(el).format();
+      r[ethers.utils.id(f).substring(0, 10)] = f;
+    };
+
+    return r;
 }
 
 export function fragmentsFromCode(code: string): string[] {
@@ -29,20 +30,15 @@ export function fragmentsFromCode(code: string): string[] {
     //  80   63            14         57
     //             Func       Dest
 
-    // JUMPDEST lookup
-    const dests: { [key: number]: Operation } = {}; // offset -> op
-    const jumps: { [key: string]: number } = {}; // function hash -> offset
+    const fragments: string[] = []; 
 
-    const log: string[] = [];
+    const logs: string[] = [];
 
     for (let i = 0; i < prog.length; i++) {
         const op: Operation = prog[i];
 
-        if (op.opcode.isValidJumpDest()) {
-            // Index destinations
-            dests[op.offset] = op;
-            continue;
-        }
+        logs.push(`${i} \t${op.offset} \t ${op.opcode.mnemonic}\t ${op.pushValue || ""}`);
+
         if (op.opcode.mnemonic === "JUMPI") {
             // Check previous opcode to be PUSH4
             let dest: number;
@@ -55,7 +51,7 @@ export function fragmentsFromCode(code: string): string[] {
                 } else continue;
             }
 
-            if (!COMPARISON_OPS.includes(prog[i-2].opcode.mnemonic)) continue;
+            if (prog[i-2].opcode.mnemonic !== 'EQ') continue;
 
             {
                 const prevOp: Operation = prog[i-3];
@@ -66,23 +62,17 @@ export function fragmentsFromCode(code: string): string[] {
 
             if (prog[i-4].opcode.mnemonic !== "DUP1") continue;
 
-            log.push(`${op.offset}  \t${op.opcode.mnemonic}\t${dest}\t${sig}`);
-            jumps[sig] = dest;
-        }
-    }
+            const target = prog.getOperation(dest);
+            if (!target || !target.opcode.isValidJumpDest()) {
+                //console.log("XXX", prog[i-1].offset, prog[i-1].pushValue, sig, " => ", dest, target);
+                continue
+            }
 
-    console.log(log.join("\n"));
-
-    const localDests: string[] = []; 
-    for (let [sig, offset] of Object.entries(jumps)) {
-        if (dests[offset] === undefined) {
-            continue;
+            fragments.push(sig);
         }
 
-        localDests.push(sig);
     }
-    console.log("dests", Object.keys(dests));
-    console.log("jumps", Object.entries(jumps));
-    console.log("local", localDests);
-    return localDests;
+
+    console.log("Logs:", logs.join("\n"));
+    return fragments;
 }
