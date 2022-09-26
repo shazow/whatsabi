@@ -4,7 +4,8 @@ import { disassemble, Bytecode, Operation } from "@ethersproject/asm";
 
 //import { Provider, TransactionRequest } from "@ethersproject/abstract-provider";
 
-export function fragmentsFromABI(abi: any[]): {[key: string]: string} {
+// Load function selectors mapping from ABI, parsed using ethers.js
+export function selectorsFromABI(abi: any[]): {[key: string]: string} {
     const r: {[key: string]: string} = {};
 
     for (let el of abi) {
@@ -16,7 +17,8 @@ export function fragmentsFromABI(abi: any[]): {[key: string]: string} {
     return r;
 }
 
-export function fragmentsFromCode(code: string): string[] {
+// Load function selectors from EVM bytecode by parsing JUMPI instructions
+export function selectorsFromBytecode(code: string): string[] {
     const prog: Bytecode = disassemble(code);
 
     // Find all the JUMPDEST instructions within the contract
@@ -32,12 +34,8 @@ export function fragmentsFromCode(code: string): string[] {
 
     const fragments: string[] = []; 
 
-    const logs: string[] = [];
-
     for (let i = 0; i < prog.length; i++) {
         const op: Operation = prog[i];
-
-        logs.push(`${i} \t${op.offset} \t ${op.opcode.mnemonic}\t ${op.pushValue || ""}`);
 
         if (op.opcode.mnemonic === "JUMPI") {
             // Check previous opcode to be PUSH4
@@ -64,7 +62,6 @@ export function fragmentsFromCode(code: string): string[] {
 
             const target = prog.getOperation(dest);
             if (!target || !target.opcode.isValidJumpDest()) {
-                //console.log("XXX", prog[i-1].offset, prog[i-1].pushValue, sig, " => ", dest, target);
                 continue
             }
 
@@ -73,6 +70,5 @@ export function fragmentsFromCode(code: string): string[] {
 
     }
 
-    console.log("Logs:", logs.join("\n"));
     return fragments;
 }
