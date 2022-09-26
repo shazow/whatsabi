@@ -5,6 +5,7 @@ import { disassemble, Bytecode, Operation } from "@ethersproject/asm";
 //import { Provider, TransactionRequest } from "@ethersproject/abstract-provider";
 
 // Load function selectors mapping from ABI, parsed using ethers.js
+// Mapping is selector hash to signature
 export function selectorsFromABI(abi: any[]): {[key: string]: string} {
     const r: {[key: string]: string} = {};
 

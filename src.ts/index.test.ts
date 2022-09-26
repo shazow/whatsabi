@@ -10,7 +10,6 @@ describe('index module', () => {
     const expected = Object.keys(abi);
     expected.sort();
 
-    console.log("Expecting ABI:", abi);
     const r = selectorsFromBytecode(SAMPLE_CODE);
     r.sort();
 
