@@ -2,8 +2,6 @@ import { ethers } from "ethers";
 
 import { disassemble, Bytecode, Operation } from "@ethersproject/asm";
 
-//import { Provider, TransactionRequest } from "@ethersproject/abstract-provider";
-
 // Load function selectors mapping from ABI, parsed using ethers.js
 // Mapping is selector hash to signature
 export function selectorsFromABI(abi: any[]): {[key: string]: string} {
@@ -18,8 +16,13 @@ export function selectorsFromABI(abi: any[]): {[key: string]: string} {
     return r;
 }
 
+// TODO: Implement abiFromBytecode by guessing arguments
+// function abiFromBytecode(code: string): Interface
+
 // Load function selectors from EVM bytecode by parsing JUMPI instructions
 export function selectorsFromBytecode(code: string): string[] {
+    // TODO: Rewrite this with a custom disassembler which can be more
+    // efficient about only indexing the instructions we care about
     const prog: Bytecode = disassemble(code);
 
     // Find all the JUMPDEST instructions within the contract
@@ -68,7 +71,6 @@ export function selectorsFromBytecode(code: string): string[] {
 
             fragments.push(sig);
         }
-
     }
 
     return fragments;
