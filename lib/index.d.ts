@@ -1,1 +1,4 @@
-export declare function hello(who?: string): string;
+export declare function selectorsFromABI(abi: any[]): {
+    [key: string]: string;
+};
+export declare function selectorsFromBytecode(code: string): string[];

@@ -1,6 +1,6 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Guess an ABI from an Ethereum contract address, even if it's unverified",
   "main": "lib/index.js",
   "directories": {
@@ -26,10 +26,10 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "@ethersproject/asm": "^5.7.0",
-    "ethers": "^5.7.1"
+    "@ethersproject/asm": "^5.7",
+    "ethers": "^5.7"
   },
   "devDependencies": {
-    "ts-jest": "^29.0.1"
+    "ts-jest": "^29"
   }
 }
