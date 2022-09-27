@@ -1,7 +1,7 @@
 {
-  "name": "autoabi",
+  "name": "@shazow/whatsabi",
   "version": "1.0.0",
-  "description": "Guess an ABI from an Ethereum contract address",
+  "description": "Guess an ABI from an Ethereum contract address, even if it's unverified",
   "main": "lib/index.js",
   "directories": {
     "lib": "lib"
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shazow/autoabi.git"
+    "url": "git+https://github.com/shazow/whatsabi.git"
   },
   "keywords": [
     "ethereum",
@@ -22,9 +22,9 @@
   "license": "MIT",
   "types": "./lib/index.d.ts",
   "bugs": {
-    "url": "https://github.com/shazow/autoabi/issues"
+    "url": "https://github.com/shazow/whatsabi/issues"
   },
-  "homepage": "https://github.com/shazow/autoabi#readme",
+  "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
     "@ethersproject/asm": "^5.7.0",
     "ethers": "^5.7.1"
