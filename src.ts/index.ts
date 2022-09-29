@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-import { disassemble, Bytecode, Operation } from "@ethersproject/asm";
+import { disassemble, Bytecode, Operation } from "./disasm";
 
 // Load function selectors mapping from ABI, parsed using ethers.js
 // Mapping is selector hash to signature
