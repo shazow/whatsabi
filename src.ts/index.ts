@@ -7,11 +7,11 @@ import { disassemble, Bytecode, Operation } from "@ethersproject/asm";
 export function selectorsFromABI(abi: any[]): {[key: string]: string} {
     const r: {[key: string]: string} = {};
 
-    for (let el of abi) {
+    for (const el of abi) {
       if (typeof(el) !== "string" && el.type !== "function") continue;
       const f = ethers.utils.FunctionFragment.from(el).format();
       r[ethers.utils.id(f).substring(0, 10)] = f;
-    };
+    }
 
     return r;
 }
@@ -74,4 +74,46 @@ export function selectorsFromBytecode(code: string): string[] {
     }
 
     return fragments;
+}
+
+
+// Check whether a JUMPDEST is a payable function.
+//
+// We look for a sequence of instructions that look like:
+// JUMPDEST CALLVALUE DUP1 ISZERO
+//
+// Note: This is not a public function because the interface will likely
+// change, the plan is to expose this metadata through a more comprehensive
+// single-pass parser which returns something resembling (and hopefully
+// compatible to) a full ABI interface.
+function isPayable(prog:Bytecode, jumpdest:number): boolean {
+    let offset = jumpdest;
+
+    // TODO: Write an opcode sequence checking helper
+
+    {
+        const op = prog.getOperation(offset);
+        if (op.opcode.mnemonic !== "JUMPDEST") return false; // Not a valid JUMPDEST
+        offset++;
+    }
+
+    {
+        const op = prog.getOperation(offset);
+        if (op.opcode.mnemonic !== "CALLVALUE") return true;
+        offset++;
+    }
+
+    {
+        const op = prog.getOperation(offset);
+        if (op.opcode.mnemonic !== "DUP1") return true;
+        offset++;
+    }
+
+    {
+        const op = prog.getOperation(offset);
+        if (op.opcode.mnemonic !== "ISZERO") return true;
+        offset++;
+    }
+
+    return false;
 }
