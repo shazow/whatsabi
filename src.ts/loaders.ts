@@ -1,6 +1,5 @@
 import { Provider } from "@ethersproject/abstract-provider";
 import { fetchJson } from "@ethersproject/web";
-import { getDefaultProvider } from "ethers";
 
 
 export async function getCode(provider: Provider, address: string): Promise<string> {
@@ -11,13 +10,13 @@ export interface ABILoader {
   loadABI(address: string): Promise<any[]>;
 }
 
-class EtherscanABILoader implements ABILoader {
-  readonly apiKey?: string;
-  readonly baseURL: string;
+export class EtherscanABILoader implements ABILoader {
+  apiKey?: string;
+  baseURL: string;
 
-  constructor(baseURL?: string, apiKey?: string) {
+  constructor(apiKey?: string) {
     this.apiKey = apiKey;
-    this.baseURL = baseURL || "https://api.etherscan.io/api";
+    this.baseURL = "https://api.etherscan.io/api";
   }
 
   async loadABI(address: string): Promise<any[]> {
@@ -29,11 +28,26 @@ class EtherscanABILoader implements ABILoader {
   }
 }
 
+export class SourcifyABILoader implements ABILoader {
+  baseURL: string;
+
+  constructor() {
+    this.baseURL = "https://repo.sourcify.dev/contracts/full_match/1";
+  }
+
+  async loadABI(address: string): Promise<any[]> {
+    const url = this.baseURL + "/" + address + "/metadata.json";
+    const r = await fetchJson(url);
+    return JSON.parse(r.result);
+  }
+}
+
 export interface SelectorLookup {
   loadSelectors(selector: string): Promise<string[]>;
 }
 
-class Byte4SelectorLookup implements SelectorLookup {
+// https://www.4byte.directory/
+export class Byte4SelectorLookup implements SelectorLookup {
   async loadSelectors(selector: string): Promise<string[]> {
     const url = "https://www.4byte.directory/api/v1/signatures/?hex_signature=" + selector;
     const r = await fetchJson(url);
@@ -41,6 +55,14 @@ class Byte4SelectorLookup implements SelectorLookup {
   }
 }
 
-export const defaultABILoader: ABILoader = new EtherscanABILoader();
-export const defaultSelectorLookup: SelectorLookup = new Byte4SelectorLookup();
-export const defaultProvider: Provider = getDefaultProvider();
+// https://sig.eth.samczsun.com/
+export class SamczunSelectorLookup implements SelectorLookup {
+  async loadSelectors(selector: string): Promise<string[]> {
+    const url = "https://sig.eth.samczsun.com/api/v1/signatures/?function=" + selector;
+    const r = await fetchJson(url);
+    return r.results.map((r: any): string => { return r.text_signature });
+  }
+}
+
+export const defaultABILoader: ABILoader = new SourcifyABILoader();
+export const defaultSelectorLookup: SelectorLookup = new SamczunSelectorLookup();
