@@ -10,6 +10,41 @@ export interface ABILoader {
   loadABI(address: string): Promise<any[]>;
 }
 
+export class MultiABILoader implements ABILoader {
+  loaders: ABILoader[];
+  mode: "any"|"all";
+
+  constructor(loaders: ABILoader[]) {
+    this.loaders = loaders;
+    this.mode = "any"; 
+  }
+
+  async loadABI(address: string): Promise<any[]> {
+    if (this.mode === "any") {
+      return Promise.any(
+        this.loaders.map(
+          loader => loader.loadABI(address)
+        )
+      );
+    }
+
+    let r: { [key: string]: any } = {};
+    await Promise.all(
+      this.loaders.map(
+        loader => loader.loadABI(address)
+      )
+    ).then((results) => results.flat().map((fragment:any) => {
+      // Dedupe results
+      const key = fragment.type + ":" + fragment.name;
+      if (r[key] !== undefined) return;
+      r[key] = fragment;
+    }))
+
+    return Object.values(r);
+  }
+}
+
+
 export class EtherscanABILoader implements ABILoader {
   apiKey?: string;
   baseURL: string;
@@ -90,5 +125,5 @@ export class SamczunSelectorLookup implements SelectorLookup {
   }
 }
 
-export const defaultABILoader: ABILoader = new SourcifyABILoader();
+export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanABILoader()]);
 export const defaultSelectorLookup: SelectorLookup = new MultiSelectorLookup([new SamczunSelectorLookup(), new Byte4SelectorLookup()]);
