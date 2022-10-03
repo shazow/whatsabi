@@ -26,7 +26,6 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "@ethersproject/asm": "^5.7",
     "ethers": "^5.7"
   },
   "devDependencies": {
