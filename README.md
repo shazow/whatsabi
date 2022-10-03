@@ -18,15 +18,24 @@ function signatures.
 ## Usage
 
 ```typescript
-import { getDefaultProvider } from "ethers";
-import { selectorsFromBytecode } from "@shazow/whatsabi";
+import { ethers } from "ethers";
+import { whatsabi } from "@shazow/whatsabi";
 
-
+const provider = new ethers.getDefaultProvider(); // substitute with your fav provider
 const address = "0x7a250d5630b4cf539739df2c5dacb4c659f2488d"; // Or your fav contract address
-const code = await getDefaultProvider().getCode(address); // Load the bytecode
+const code = await provider.getCode(address); // Load the bytecode
 
-const selectors = selectorsFromBytecode(code); // Get the callable selectors
+// Get just the callable selectors
+const selectors = whatsabi.selectorsFromBytecode(code);
 console.log(selectors); // ["0x02751cec", "0x054d50d4", "0x18cbafe5", ...]
+
+// Get an ABI-like list of interfaces
+const abi = whatsabi.abiFromBytecode(code);
+console.log(abi);
+// [
+//     { type: 'function', selector: '0xe8e33700', payable: false },
+//     { type: 'function', selector: '0xf305d719', payable: true },
+//     ...
 
 ```
 
