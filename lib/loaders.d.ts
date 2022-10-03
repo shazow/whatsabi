@@ -1,5 +1,3 @@
-import { Provider } from "@ethersproject/abstract-provider";
-export declare function getCode(provider: Provider, address: string): Promise<string>;
 export interface ABILoader {
     loadABI(address: string): Promise<any[]>;
 }
