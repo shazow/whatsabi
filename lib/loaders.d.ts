@@ -3,6 +3,12 @@ export declare function getCode(provider: Provider, address: string): Promise<st
 export interface ABILoader {
     loadABI(address: string): Promise<any[]>;
 }
+export declare class MultiABILoader implements ABILoader {
+    loaders: ABILoader[];
+    mode: "any" | "all";
+    constructor(loaders: ABILoader[]);
+    loadABI(address: string): Promise<any[]>;
+}
 export declare class EtherscanABILoader implements ABILoader {
     apiKey?: string;
     baseURL: string;
@@ -15,6 +21,11 @@ export declare class SourcifyABILoader implements ABILoader {
     loadABI(address: string): Promise<any[]>;
 }
 export interface SelectorLookup {
+    loadSelectors(selector: string): Promise<string[]>;
+}
+export declare class MultiSelectorLookup implements SelectorLookup {
+    lookups: SelectorLookup[];
+    constructor(lookups: SelectorLookup[]);
     loadSelectors(selector: string): Promise<string[]>;
 }
 export declare class Byte4SelectorLookup implements SelectorLookup {
