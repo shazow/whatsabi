@@ -20,11 +20,12 @@ describe('loaders module', () => {
   });
 
   online_test('defaultSelectorLookup', async () => {
-    const expected = "swapExactETHForTokens(uint256,address[],address,uint256)";
-    const selector = Object.keys(selectorsFromABI([expected]))[0];
-    expect(selector).toBe("0x7ff36ab5");
+    const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
+    const selector = "0x7ff36ab5"
+    const selectors = selectorsFromABI([sig]);
+    expect(Object.keys(selectors)).toContain(selector);
 
     const r = await defaultSelectorLookup.loadSelectors(selector);
-    expect(r).toContain(expected);
+    expect(r).toContain(sig);
   });
 })

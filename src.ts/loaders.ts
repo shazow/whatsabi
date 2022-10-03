@@ -46,12 +46,33 @@ export interface SelectorLookup {
   loadSelectors(selector: string): Promise<string[]>;
 }
 
+export class MultiSelectorLookup implements SelectorLookup {
+  lookups: SelectorLookup[];
+
+  constructor(lookups: SelectorLookup[]) {
+    this.lookups = lookups;
+  }
+
+  async loadSelectors(selector: string): Promise<string[]> {
+    return Promise.all(
+      this.lookups.map(
+        lookup => lookup.loadSelectors(selector)
+      )
+    ).then(results => Array.from(new Set(results.flat())))
+  }
+}
+
 // https://www.4byte.directory/
 export class Byte4SelectorLookup implements SelectorLookup {
   async loadSelectors(selector: string): Promise<string[]> {
     const url = "https://www.4byte.directory/api/v1/signatures/?hex_signature=" + selector;
-    const r = await fetchJson(url);
-    return r.results.map((r: any): string => { return r.text_signature });
+    try {
+      const r = await fetchJson(url);
+      return r.results.map((r: any): string => { return r.text_signature });
+    } catch (error: any) {
+      if (error.status === 404) return [];
+      throw error;
+    }
   }
 }
 
@@ -59,10 +80,15 @@ export class Byte4SelectorLookup implements SelectorLookup {
 export class SamczunSelectorLookup implements SelectorLookup {
   async loadSelectors(selector: string): Promise<string[]> {
     const url = "https://sig.eth.samczsun.com/api/v1/signatures/?function=" + selector;
-    const r = await fetchJson(url);
-    return r.results.map((r: any): string => { return r.text_signature });
+    try {
+      const r = await fetchJson(url);
+      return r.results.map((r: any): string => { return r.text_signature });
+    } catch (error: any) {
+      if (error.status === 404) return [];
+      throw error;
+    }
   }
 }
 
 export const defaultABILoader: ABILoader = new SourcifyABILoader();
-export const defaultSelectorLookup: SelectorLookup = new SamczunSelectorLookup();
+export const defaultSelectorLookup: SelectorLookup = new MultiSelectorLookup([new SamczunSelectorLookup(), new Byte4SelectorLookup()]);
