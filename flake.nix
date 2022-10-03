@@ -21,6 +21,8 @@
         shellHook = ''
           export PS1="[dev] $PS1"
           export PATH=$PWD/node_modules/.bin:$PATH
+
+          [[ .env ]] && source .env
         '';
       };
     });
