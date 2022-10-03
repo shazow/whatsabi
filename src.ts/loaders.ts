@@ -1,10 +1,4 @@
-import { Provider } from "@ethersproject/abstract-provider";
 import { fetchJson } from "@ethersproject/web";
-
-
-export async function getCode(provider: Provider, address: string): Promise<string> {
-  return await provider.getCode(address);
-}
 
 export interface ABILoader {
   loadABI(address: string): Promise<any[]>;
