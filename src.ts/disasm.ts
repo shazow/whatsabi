@@ -52,12 +52,12 @@ export class BytecodeIter {
     posBuffer: number[]; // Buffer of positions
     posBufferSize: number;
 
-    constructor(bytecode: string, config?: { bufferSize?:number }) {
+    constructor(bytecode: string, config?: { bufferSize?: number }) {
         this.nextStep = 0;
         this.nextPos = 0;
         if (config === undefined) config = {};
 
-        this.posBufferSize = config.bufferSize || 1;
+        this.posBufferSize = Math.max(config.bufferSize || 1, 1);
         this.posBuffer = [];
 
         this.bytecode = ethers.utils.arrayify(bytecode, { allowMissingPrefix: true });
@@ -73,6 +73,7 @@ export class BytecodeIter {
         const instruction = this.bytecode[this.nextPos];
         const width = pushWidth(instruction);
 
+        // TODO: Optimization: Could use a circular buffer
         if (this.posBuffer.length >= this.posBufferSize) this.posBuffer.shift();
         this.posBuffer.push(this.nextPos);
 
@@ -91,7 +92,8 @@ export class BytecodeIter {
     // pos is the byte offset of the current instruction we've iterated over.
     // If iteration has not begun then it's -1.
     pos(): number {
-        return this.nextPos - 1;
+        if (this.posBuffer.length === 0) return -1;
+        return this.posBuffer[this.posBuffer.length - 1];
     }
 
     // at returns instruction at an absolute byte position or relative negative
@@ -101,6 +103,9 @@ export class BytecodeIter {
         let pos = posOrRelativeStep;
         if (pos < 0) {
             pos = this.posBuffer[this.posBuffer.length + pos];
+            if (pos === undefined) {
+                throw new Error("buffer does not contain relative step");
+            }
         }
         return this.bytecode[pos];
     }
@@ -110,16 +115,20 @@ export class BytecodeIter {
         return this.valueAt(-1);
     }
 
-    // valueAt returns the variable width value for PUSH-like instructions (or empty value otherwise), at pos
-    // pos can be a relative negative count for relative buffered offset.
+    // valueAt returns the variable width value for PUSH-like instructions (or
+    // empty value otherwise), at pos pos can be a relative negative count for
+    // relative buffered offset.
     valueAt(posOrRelativeStep: number): Uint8Array {
         let pos = posOrRelativeStep;
         if (pos < 0) {
             pos = this.posBuffer[this.posBuffer.length + pos];
+            if (pos === undefined) {
+                throw new Error("buffer does not contain relative step");
+            }
         }
         const instruction = this.bytecode[pos];
         const width = pushWidth(instruction);
-        return this.bytecode.slice(pos+1, pos+1+width);
+        return this.bytecode.slice(pos + 1, pos + 1 + width);
     }
 }
 
@@ -169,9 +178,9 @@ export function abiFromBytecode(bytecode: string): ABI {
             // We can do direct positive indexing because we know that there
             // are no variable-width instructions in our sequence.
             if (
-                code.at(pos+1) === opcodes.CALLVALUE &&
-                code.at(pos+2) === opcodes.DUP1 &&
-                code.at(pos+3) === opcodes.ISZERO
+                code.at(pos + 1) === opcodes.CALLVALUE &&
+                code.at(pos + 2) === opcodes.DUP1 &&
+                code.at(pos + 3) === opcodes.ISZERO
             ) {
                 notPayable[pos] = step;
                 // TODO: Optimization: Could seek ahead 3 pos/count safely
@@ -192,15 +201,15 @@ export function abiFromBytecode(bytecode: string): ABI {
         //
         // FIXME: We can probably stop checking after we find some instruction set? Maybe 2nd CALLDATASIZE?
         if (
-            code.at(-1) === opcodes.JUMPI && 
+            code.at(-1) === opcodes.JUMPI &&
             isPush(code.at(-2)) &&
             code.at(-3) === opcodes.EQ &&
             isPush(code.at(-4))
         ) {
             // Found a function selector sequence, save it to check against JUMPDEST table later
             const value = ethers.utils.zeroPad(code.valueAt(-4), 4); // 0-prefixed comparisons get optimized to a smaller width than PUSH4
-            const selector:string = ethers.utils.hexlify(value);
-            const offsetDest:number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
+            const selector: string = ethers.utils.hexlify(value);
+            const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
             jumps[selector] = offsetDest;
 
             continue;
