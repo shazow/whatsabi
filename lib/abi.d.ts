@@ -4,10 +4,9 @@ export interface ABIFunction {
     selector: string;
     payable?: boolean;
 }
-export interface ABIError {
-    type: "error";
-}
 export interface ABIEvent {
     type: "event";
+    name?: string;
+    hash: string;
 }
-export declare type ABI = (ABIFunction | ABIError | ABIEvent)[];
+export declare type ABI = (ABIFunction | ABIEvent)[];

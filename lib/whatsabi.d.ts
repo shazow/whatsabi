@@ -1,3 +1,3 @@
 export { selectorsFromABI, selectorsFromBytecode, } from "./selectors";
-export { CodeIter, abiFromBytecode, } from "./disasm";
+export { BytecodeIter, abiFromBytecode, } from "./disasm";
 export * as loaders from "./loaders";
