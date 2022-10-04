@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { defaultABILoader, defaultSelectorLookup } from "../loaders";
+import { defaultABILoader, defaultSignatureLookup } from "../loaders";
 import { selectorsFromABI } from "../index";
 
 // Skip online tests unless ONLINE env is set
@@ -19,13 +19,13 @@ describe('loaders module', () => {
     expect(selectors["0x7ff36ab5"]).toStrictEqual("swapExactETHForTokens(uint256,address[],address,uint256)");
   });
 
-  online_test('defaultSelectorLookup', async () => {
+  online_test('defaultSignatureLookup', async () => {
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     const selector = "0x7ff36ab5"
     const selectors = selectorsFromABI([sig]);
     expect(Object.keys(selectors)).toContain(selector);
 
-    const r = await defaultSelectorLookup.loadSelectors(selector);
+    const r = await defaultSignatureLookup.loadFunctions(selector);
     expect(r).toContain(sig);
   });
 })

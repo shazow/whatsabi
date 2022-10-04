@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-import { ABI, ABIFunction } from "./abi";
+import { ABI, ABIFunction, ABIEvent } from "./abi";
 
 type OpCode = number;
 
@@ -16,16 +16,22 @@ const opcodes: { [key: string]: OpCode } = {
     "PUSH4": 0x63,
     "PUSH32": 0x7f,
     "DUP1": 0x80,
+    "LOG1": 0xa1,
+    "LOG4": 0xa4,
 }
 
 // Return PUSHN width of N if PUSH instruction, otherwise 0
-export function pushWidth(instruction: number): number {
+export function pushWidth(instruction: OpCode): number {
     if (instruction < opcodes.PUSH1 || instruction > opcodes.PUSH32) return 0;
     return instruction - opcodes.PUSH1 + 1;
 }
 
-export function isPush(instruction: number): boolean {
+export function isPush(instruction: OpCode): boolean {
     return !(instruction < opcodes.PUSH1 || instruction > opcodes.PUSH32);
+}
+
+export function isLog(instruction: OpCode): boolean {
+    return instruction >= opcodes.LOG1 && instruction <= opcodes.LOG4;
 }
 
 // CodeIter takes bytecode and handles iterating over it with correct
@@ -101,14 +107,29 @@ export function abiFromBytecode(bytecode: string): ABI {
     const jumps: { [key: string]: number } = {}; // function hash -> instruction offset
     const dests: { [key: number]: number } = {}; // instruction offset -> bytes offset
     const notPayable: { [key: number]: number } = {}; // instruction offset -> bytes offset
+    let lastPush32: Uint8Array = new Uint8Array();  // Track last push32 to find log topics
 
     const code = new CodeIter(bytecode, 4);
 
-    // FIXME: Could optimize by loading JUMPI first (until the jump table
-    // window is reached), then sorting them and seeking to each JUMPDEST.
+    // FIXME: Could optimize finding jumps by loading JUMPI first (until the
+    // jump table window is reached), then sorting them and seeking to each
+    // JUMPDEST.
 
     while (code.hasMore()) {
         const inst = code.next();
+
+        // Track last PUSH32 to find LOG topics
+        // This is probably not bullet proof but seems like a good starting point
+        if (inst === opcodes.PUSH32) {
+            lastPush32 = code.value();
+            continue
+        } else if (isLog(inst) && lastPush32.length > 0) {
+            abi.push({
+                type: "event",
+                hash: ethers.utils.hexlify(lastPush32),
+            } as ABIEvent)
+            continue
+        }
 
         // Find JUMPDEST labels
         if (inst === opcodes.JUMPDEST) {

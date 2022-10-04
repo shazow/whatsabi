@@ -71,53 +71,77 @@ export class SourcifyABILoader implements ABILoader {
   }
 }
 
-export interface SelectorLookup {
-  loadSelectors(selector: string): Promise<string[]>;
+export interface SignatureLookup {
+  loadFunctions(selector: string): Promise<string[]>;
+  loadEvents(hash: string): Promise<string[]>;
 }
 
-export class MultiSelectorLookup implements SelectorLookup {
-  lookups: SelectorLookup[];
+export class MultiSignatureLookup implements SignatureLookup {
+  lookups: SignatureLookup[];
 
-  constructor(lookups: SelectorLookup[]) {
+  constructor(lookups: SignatureLookup[]) {
     this.lookups = lookups;
   }
 
-  async loadSelectors(selector: string): Promise<string[]> {
+  async loadFunctions(selector: string): Promise<string[]> {
     return Promise.all(
       this.lookups.map(
-        lookup => lookup.loadSelectors(selector)
+        lookup => lookup.loadFunctions(selector)
+      )
+    ).then(results => Array.from(new Set(results.flat())))
+  }
+
+  async loadEvents(hash: string): Promise<string[]> {
+    return Promise.all(
+      this.lookups.map(
+        lookup => lookup.loadFunctions(hash)
       )
     ).then(results => Array.from(new Set(results.flat())))
   }
 }
 
 // https://www.4byte.directory/
-export class Byte4SelectorLookup implements SelectorLookup {
-  async loadSelectors(selector: string): Promise<string[]> {
-    const url = "https://www.4byte.directory/api/v1/signatures/?hex_signature=" + selector;
+export class Byte4SignatureLookup implements SignatureLookup {
+  async load(url: string): Promise<string[]> {
     try {
       const r = await fetchJson(url);
+      if (r.results === undefined) return [];
       return r.results.map((r: any): string => { return r.text_signature });
     } catch (error: any) {
       if (error.status === 404) return [];
       throw error;
     }
+  }
+  async loadFunctions(selector: string): Promise<string[]> {
+    return this.load("https://www.4byte.directory/api/v1/signatures/?hex_signature=" + selector);
+  }
+
+  async loadEvents(hash: string): Promise<string[]> {
+    return this.load("https://www.4byte.directory/api/v1/event-signatures/?hex_signature=" + hash);
   }
 }
 
 // https://sig.eth.samczsun.com/
-export class SamczunSelectorLookup implements SelectorLookup {
-  async loadSelectors(selector: string): Promise<string[]> {
-    const url = "https://sig.eth.samczsun.com/api/v1/signatures/?function=" + selector;
+export class SamczunSignatureLookup implements SignatureLookup {
+  async load(url: string): Promise<string[]> {
     try {
       const r = await fetchJson(url);
+      if (r.results === undefined) return [];
       return r.results.map((r: any): string => { return r.text_signature });
     } catch (error: any) {
       if (error.status === 404) return [];
       throw error;
     }
   }
+
+  async loadFunctions(selector: string): Promise<string[]> {
+    return this.load("https://sig.eth.samczsun.com/api/v1/signatures?function=" + selector);
+  }
+
+  async loadEvents(hash: string): Promise<string[]> {
+    return this.load("https://sig.eth.samczsun.com/api/v1/signatures?event=" + hash);
+  }
 }
 
 export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanABILoader()]);
-export const defaultSelectorLookup: SelectorLookup = new MultiSelectorLookup([new SamczunSelectorLookup(), new Byte4SelectorLookup()]);
+export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new SamczunSignatureLookup(), new Byte4SignatureLookup()]);

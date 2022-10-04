@@ -8,14 +8,11 @@ export interface ABIFunction {
     // TODO: outputs: {type, name}[];
 };
 
-export interface ABIError {
-    type: "error",
-    // TODO: ...
-};
-
 export interface ABIEvent {
     type: "event",
+    name?: string;
+    hash: string,
     // TODO: ...
 };
 
-export type ABI = (ABIFunction|ABIError|ABIEvent)[];
+export type ABI = (ABIFunction|ABIEvent)[];
