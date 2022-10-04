@@ -199,7 +199,7 @@ export function abiFromBytecode(bytecode: string): ABI {
         //    80   63    ^          14 60-7f ^       57
         //               Selector            Dest
         //
-        // FIXME: We can probably stop checking after we find some instruction set? Maybe 2nd CALLDATASIZE?
+        // TODO: Optimization: We can probably stop checking after we find some instruction set? Maybe 2nd CALLDATASIZE?
         if (
             code.at(-1) === opcodes.JUMPI &&
             isPush(code.at(-2)) &&
@@ -216,8 +216,10 @@ export function abiFromBytecode(bytecode: string): ABI {
         }
     }
 
-    for (let selector of Object.keys(jumps)) {
-        // TODO: Check jumpdests?
+    for (const [selector, offset] of Object.entries(jumps)) {
+        // TODO: Optimization: If we only look at selectors in the jump table region, we shouldn't need to check JUMPDEST validity.
+        if (!(offset in dests)) continue; // Selector does not point to a valid jumpdest
+
         abi.push({
             type: "function",
             selector: selector,
