@@ -10,6 +10,7 @@ const opcodes: { [key: string]: OpCode } = {
     "EQ": 0x14,
     "ISZERO": 0x15,
     "CALLVALUE": 0x34,
+    "CALLDATASIZE": 0x36,
     "JUMPI": 0x57,
     "JUMPDEST": 0x5b,
     "PUSH1": 0x60,
@@ -139,7 +140,9 @@ export function abiFromBytecode(bytecode: string): ABI {
     const jumps: { [key: string]: number } = {}; // function hash -> instruction offset
     const dests: { [key: number]: number } = {}; // instruction offset -> bytes offset
     const notPayable: { [key: number]: number } = {}; // instruction offset -> bytes offset
+
     let lastPush32: Uint8Array = new Uint8Array();  // Track last push32 to find log topics
+    let inJumpTable: boolean = true;
 
     const code = new BytecodeIter(bytecode, { bufferSize: 4 });
 
@@ -170,7 +173,7 @@ export function abiFromBytecode(bytecode: string): ABI {
             // Index jump destinations so we can check against them later
             dests[pos] = step;
 
-            // Note whether a JUMPDEST is has non-payable guards
+            // Check whether a JUMPDEST has non-payable guards
             //
             // We look for a sequence of instructions that look like:
             // JUMPDEST CALLVALUE DUP1 ISZERO
@@ -185,8 +188,17 @@ export function abiFromBytecode(bytecode: string): ABI {
                 notPayable[pos] = step;
                 // TODO: Optimization: Could seek ahead 3 pos/count safely
             }
+
+            // Check whether we've reached the end of the selector jump table,
+            // first time we see: JUMPDEST CALLDATASIZE
+            if (inJumpTable && code.at(pos + 1) === opcodes.CALLDATASIZE) {
+                inJumpTable = false;
+            }
+
             continue
         }
+
+        if (!inJumpTable) continue; // Skip searching for function selectors at this point
 
         // Find callable function selectors:
         //
@@ -198,8 +210,6 @@ export function abiFromBytecode(bytecode: string): ABI {
         //    DUP1 PUSH4 <BYTE4>    EQ PUSHN <BYTEN> JUMPI
         //    80   63    ^          14 60-7f ^       57
         //               Selector            Dest
-        //
-        // TODO: Optimization: We can probably stop checking after we find some instruction set? Maybe 2nd CALLDATASIZE?
         if (
             code.at(-1) === opcodes.JUMPI &&
             isPush(code.at(-2)) &&
@@ -209,6 +219,19 @@ export function abiFromBytecode(bytecode: string): ABI {
             // Found a function selector sequence, save it to check against JUMPDEST table later
             const value = ethers.utils.zeroPad(code.valueAt(-4), 4); // 0-prefixed comparisons get optimized to a smaller width than PUSH4
             const selector: string = ethers.utils.hexlify(value);
+            const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
+            jumps[selector] = offsetDest;
+
+            continue;
+        }
+        // In some cases, the sequence can get optimized such as for 0x00000000:
+        //    DUP1 ISZERO PUSHN <BYTEN> JUMPI
+        if (
+            code.at(-1) === opcodes.JUMPI &&
+            isPush(code.at(-2)) &&
+            code.at(-3) === opcodes.ISZERO
+        ) {
+            const selector = "0x00000000";
             const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
             jumps[selector] = offsetDest;
 
