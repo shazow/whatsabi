@@ -1,4 +1,2 @@
-export declare function selectorsFromABI(abi: any[]): {
-    [key: string]: string;
-};
-export declare function selectorsFromBytecode(code: string): string[];
+export * from "./whatsabi";
+export * as whatsabi from "./whatsabi";
