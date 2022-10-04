@@ -43,9 +43,10 @@ export class EtherscanABILoader implements ABILoader {
   apiKey?: string;
   baseURL: string;
 
-  constructor(apiKey?: string) {
-    this.apiKey = apiKey;
-    this.baseURL = "https://api.etherscan.io/api";
+  constructor(config?: {apiKey?: string, baseURL?: string}) {
+    if (config === undefined) config = {};
+    this.apiKey = config.apiKey;
+    this.baseURL = config.baseURL || "https://api.etherscan.io/api";
   }
 
   async loadABI(address: string): Promise<any[]> {
@@ -57,15 +58,10 @@ export class EtherscanABILoader implements ABILoader {
   }
 }
 
+// https://sourcify.dev/
 export class SourcifyABILoader implements ABILoader {
-  baseURL: string;
-
-  constructor() {
-    this.baseURL = "https://repo.sourcify.dev/contracts/full_match/1";
-  }
-
   async loadABI(address: string): Promise<any[]> {
-    const url = this.baseURL + "/" + address + "/metadata.json";
+    const url = "https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json";
     const r = await fetchJson(url);
     return JSON.parse(r.result);
   }

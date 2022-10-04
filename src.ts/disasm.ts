@@ -34,23 +34,30 @@ export function isLog(instruction: OpCode): boolean {
     return instruction >= opcodes.LOG1 && instruction <= opcodes.LOG4;
 }
 
-// CodeIter takes bytecode and handles iterating over it with correct
+// BytecodeIter takes EVM bytecode and handles iterating over it with correct
 // step widths, while tracking N buffer of previous offsets for indexed access.
 // This is useful for checking against sequences of variable width
 // instructions.
-export class CodeIter {
+export class BytecodeIter {
     bytecode: Uint8Array;
 
-    nextCount: number; // Instruction count
+    nextStep: number; // Instruction count
     nextPos: number; // Byte-wise instruction position (takes variable width into account)
+
+    // TODO: Could improve the buffer by making it sparse tracking of only
+    // variable-width (PUSH) instruction indices, this would allow relatively
+    // efficient seeking to arbitrary positions after a full iter. Then again,
+    // roughly 1/4 of instructions are PUSH, so maybe it doesn't help enough?
+
     posBuffer: number[]; // Buffer of positions
     posBufferSize: number;
 
-    constructor(bytecode: string, bufferSize?:number) {
-        this.nextCount = 0;
+    constructor(bytecode: string, config?: { bufferSize?:number }) {
+        this.nextStep = 0;
         this.nextPos = 0;
+        if (config === undefined) config = {};
 
-        this.posBufferSize = bufferSize || 0;
+        this.posBufferSize = config.bufferSize || 1;
         this.posBuffer = [];
 
         this.bytecode = ethers.utils.arrayify(bytecode, { allowMissingPrefix: true });
@@ -69,10 +76,33 @@ export class CodeIter {
         if (this.posBuffer.length >= this.posBufferSize) this.posBuffer.shift();
         this.posBuffer.push(this.nextPos);
 
-        this.nextCount += 1;
+        this.nextStep += 1;
         this.nextPos += 1 + width;
 
         return instruction;
+    }
+
+    // step is the current instruction position that we've iterated over. If
+    // iteration has not begun, then it's -1.
+    step(): number {
+        return this.nextStep - 1;
+    }
+
+    // pos is the byte offset of the current instruction we've iterated over.
+    // If iteration has not begun then it's -1.
+    pos(): number {
+        return this.nextPos - 1;
+    }
+
+    // at returns instruction at an absolute byte position or relative negative
+    // buffered step offset. Buffered step offsets must be negative and start
+    // at -1 (current step).
+    at(posOrRelativeStep: number): OpCode {
+        let pos = posOrRelativeStep;
+        if (pos < 0) {
+            pos = this.posBuffer[this.posBuffer.length + pos];
+        }
+        return this.bytecode[pos];
     }
 
     // value of last next-returned OpCode (should be a PUSHN intruction)
@@ -80,17 +110,10 @@ export class CodeIter {
         return this.valueAt(-1);
     }
 
-    // at returns instruction at an absolute position or relative negative count.
-    at(pos: number): OpCode {
-        if (pos < 0) {
-            pos = this.posBuffer[this.posBuffer.length + pos];
-        }
-        return this.bytecode[pos];
-    }
-
-    // valueAt returns the variable width value for PUSH-like instructions at pos
+    // valueAt returns the variable width value for PUSH-like instructions (or empty value otherwise), at pos
     // pos can be a relative negative count for relative buffered offset.
-    valueAt(pos: number): Uint8Array {
+    valueAt(posOrRelativeStep: number): Uint8Array {
+        let pos = posOrRelativeStep;
         if (pos < 0) {
             pos = this.posBuffer[this.posBuffer.length + pos];
         }
@@ -109,14 +132,16 @@ export function abiFromBytecode(bytecode: string): ABI {
     const notPayable: { [key: number]: number } = {}; // instruction offset -> bytes offset
     let lastPush32: Uint8Array = new Uint8Array();  // Track last push32 to find log topics
 
-    const code = new CodeIter(bytecode, 4);
+    const code = new BytecodeIter(bytecode, { bufferSize: 4 });
 
-    // FIXME: Could optimize finding jumps by loading JUMPI first (until the
-    // jump table window is reached), then sorting them and seeking to each
-    // JUMPDEST.
+    // TODO: Optimization: Could optimize finding jumps by loading JUMPI first
+    // (until the jump table window is reached), then sorting them and seeking
+    // to each JUMPDEST.
 
     while (code.hasMore()) {
         const inst = code.next();
+        const pos = code.pos();
+        const step = code.step();
 
         // Track last PUSH32 to find LOG topics
         // This is probably not bullet proof but seems like a good starting point
@@ -134,19 +159,22 @@ export function abiFromBytecode(bytecode: string): ABI {
         // Find JUMPDEST labels
         if (inst === opcodes.JUMPDEST) {
             // Index jump destinations so we can check against them later
-            dests[code.nextPos-1] = code.nextCount-1;
+            dests[pos] = step;
 
             // Note whether a JUMPDEST is has non-payable guards
             //
             // We look for a sequence of instructions that look like:
             // JUMPDEST CALLVALUE DUP1 ISZERO
+            //
+            // We can do direct positive indexing because we know that there
+            // are no variable-width instructions in our sequence.
             if (
-                code.at(code.nextPos) === opcodes.CALLVALUE &&
-                code.at(code.nextPos+1) === opcodes.DUP1 &&
-                code.at(code.nextPos+2) === opcodes.ISZERO
+                code.at(pos+1) === opcodes.CALLVALUE &&
+                code.at(pos+2) === opcodes.DUP1 &&
+                code.at(pos+3) === opcodes.ISZERO
             ) {
-                notPayable[code.nextPos-1] = code.nextCount-1;
-                // TODO: Could seek ahead 3 pos/count safely
+                notPayable[pos] = step;
+                // TODO: Optimization: Could seek ahead 3 pos/count safely
             }
             continue
         }

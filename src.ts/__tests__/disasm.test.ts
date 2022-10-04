@@ -1,8 +1,8 @@
 import {describe, expect, test} from '@jest/globals';
 
-import { CodeIter, pushWidth } from "../disasm";
+import { BytecodeIter, pushWidth } from "../disasm";
 
-describe('CodeIter', () => {
+describe('BytecodeIter', () => {
   test('opcodes', () => {
     const bytecode = "604260005260206000F3";
     // [00]	PUSH1	42
@@ -12,7 +12,7 @@ describe('CodeIter', () => {
     // [07]	PUSH1	00
     // [09]	RETURN
 
-    const code = new CodeIter(bytecode, 4);
+    const code = new BytecodeIter(bytecode, { bufferSize: 4 });
 
     expect(code.next()).toBe(0x60);
 
@@ -44,4 +44,11 @@ describe('CodeIter', () => {
 
     expect(code.next()).toBe(0x00); // STOP, default value after hasMore is done
   });
+
+  test('exceed buffer', () => {
+    const code = new BytecodeIter("604260005260206000F3", { bufferSize: 1 });
+
+    expect(code.at(-1)).toBe(undefined);
+    expect(code.next()).toBe(0x60);
+  })
 });

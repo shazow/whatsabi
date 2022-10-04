@@ -20,7 +20,7 @@ online_test('README usage', async () => {
   expect(selectors).toContain("0x18cbafe5")
 
   const abi = whatsabi.abiFromBytecode(code);
-  console.log(abi);
+  // console.log(abi);
 
   expect(abi).toContainEqual({ type: 'function', selector: '0xe8e33700', payable: false })
   expect(abi).toContainEqual({ type: 'function', selector: '0xf305d719', payable: true })

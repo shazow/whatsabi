@@ -4,7 +4,7 @@ export {
 } from "./selectors";
 
 export {
-    CodeIter,
+    BytecodeIter,
     abiFromBytecode,
 } from "./disasm";
 
