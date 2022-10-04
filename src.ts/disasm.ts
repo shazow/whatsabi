@@ -210,6 +210,9 @@ export function abiFromBytecode(bytecode: string): ABI {
         //    DUP1 PUSH4 <BYTE4>    EQ PUSHN <BYTEN> JUMPI
         //    80   63    ^          14 60-7f ^       57
         //               Selector            Dest
+        //
+        // Wee can reliably skip checking for DUP1 if we're only searching
+        // within `inJumpTable` range.
         if (
             code.at(-1) === opcodes.JUMPI &&
             isPush(code.at(-2)) &&
@@ -217,7 +220,11 @@ export function abiFromBytecode(bytecode: string): ABI {
             isPush(code.at(-4))
         ) {
             // Found a function selector sequence, save it to check against JUMPDEST table later
-            const value = ethers.utils.zeroPad(code.valueAt(-4), 4); // 0-prefixed comparisons get optimized to a smaller width than PUSH4
+            let value = code.valueAt(-4)
+            if (value.length < 4) {
+                // 0-prefixed comparisons get optimized to a smaller width than PUSH4
+                value = ethers.utils.zeroPad(value, 4);
+            }
             const selector: string = ethers.utils.hexlify(value);
             const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
             jumps[selector] = offsetDest;
