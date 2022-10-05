@@ -74,12 +74,12 @@ console.log(await signatureLookup.loadEvents("0x721c20121297512b72821b97f5326877
 
 ## Development
 
-```
+```console
 $ cat .env
 export INFURA_API_KEY="..."
 export ETHERSCAN_API_KEY="..."
-$ nix develop
-$ npm install
+$ nix develop  # Or use your system's package manager to install node/ts/etc
+[dev] $ npm install
 [dev] $ ONLINE=1 make test
 ```
 
