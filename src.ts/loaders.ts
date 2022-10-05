@@ -97,7 +97,7 @@ export class MultiSignatureLookup implements SignatureLookup {
 }
 
 // https://www.4byte.directory/
-export class Byte4SignatureLookup implements SignatureLookup {
+export class FourByteSignatureLookup implements SignatureLookup {
   async load(url: string): Promise<string[]> {
     try {
       const r = await fetchJson(url);
@@ -142,4 +142,4 @@ export class SamczunSignatureLookup implements SignatureLookup {
 }
 
 export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanABILoader()]);
-export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new SamczunSignatureLookup(), new Byte4SignatureLookup()]);
+export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new SamczunSignatureLookup(), new FourByteSignatureLookup()]);
