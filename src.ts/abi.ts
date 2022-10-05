@@ -1,7 +1,7 @@
 export interface ABIFunction {
     type: "function";
     name?: string;
-    nameCandidates?: string[];
+    nameAlts?: string[];
     selector: string;
     payable?: boolean;
     // TODO: constant: boolean;
@@ -12,7 +12,7 @@ export interface ABIFunction {
 export interface ABIEvent {
     type: "event",
     name?: string;
-    nameCandidates?: string[];
+    nameAlts?: string[];
     hash: string,
     // TODO: ...
 };
