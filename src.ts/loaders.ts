@@ -10,7 +10,7 @@ export class MultiABILoader implements ABILoader {
 
   constructor(loaders: ABILoader[]) {
     this.loaders = loaders;
-    this.mode = "any"; 
+    this.mode = "any";
   }
 
   async loadABI(address: string): Promise<any[]> {
@@ -119,11 +119,11 @@ export class Byte4SignatureLookup implements SignatureLookup {
 
 // https://sig.eth.samczsun.com/
 export class SamczunSignatureLookup implements SignatureLookup {
-  async load(url: string): Promise<string[]> {
+  async load(url: string): Promise<any> {
     try {
       const r = await fetchJson(url);
-      if (r.results === undefined) return [];
-      return r.results.map((r: any): string => { return r.text_signature });
+      if (!r.ok) throw new Error("Samczun API bad response: " + JSON.stringify(r));
+      return r;
     } catch (error: any) {
       if (error.status === 404) return [];
       throw error;
@@ -131,11 +131,13 @@ export class SamczunSignatureLookup implements SignatureLookup {
   }
 
   async loadFunctions(selector: string): Promise<string[]> {
-    return this.load("https://sig.eth.samczsun.com/api/v1/signatures?function=" + selector);
+    const r = await this.load("https://sig.eth.samczsun.com/api/v1/signatures?function=" + selector);
+    return r.result.function[selector].map((item:any) => item.name);
   }
 
   async loadEvents(hash: string): Promise<string[]> {
-    return this.load("https://sig.eth.samczsun.com/api/v1/signatures?event=" + hash);
+    const r = await this.load("https://sig.eth.samczsun.com/api/v1/signatures?event=" + hash);
+    return r.result.event[hash].map((item:any) => item.name);
   }
 }
 
