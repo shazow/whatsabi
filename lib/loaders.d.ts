@@ -35,7 +35,7 @@ export declare class Byte4SignatureLookup implements SignatureLookup {
     loadEvents(hash: string): Promise<string[]>;
 }
 export declare class SamczunSignatureLookup implements SignatureLookup {
-    load(url: string): Promise<string[]>;
+    load(url: string): Promise<any>;
     loadFunctions(selector: string): Promise<string[]>;
     loadEvents(hash: string): Promise<string[]>;
 }
