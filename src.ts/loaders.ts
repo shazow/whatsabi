@@ -63,7 +63,7 @@ export class SourcifyABILoader implements ABILoader {
   async loadABI(address: string): Promise<any[]> {
     const url = "https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json";
     const r = await fetchJson(url);
-    return JSON.parse(r.result);
+    return JSON.parse(r.result).output.abi;
   }
 }
 
