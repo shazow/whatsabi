@@ -211,7 +211,7 @@ export function abiFromBytecode(bytecode: string): ABI {
         //    80   63    ^          14 60-7f ^       57
         //               Selector            Dest
         //
-        // Wee can reliably skip checking for DUP1 if we're only searching
+        // We can reliably skip checking for DUP1 if we're only searching
         // within `inJumpTable` range.
         if (
             code.at(-1) === opcodes.JUMPI &&
