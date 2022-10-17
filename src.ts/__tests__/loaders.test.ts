@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { defaultABILoader, defaultSignatureLookup } from "../loaders";
+import { defaultABILoader, defaultSignatureLookup, SourcifyABILoader, EtherscanABILoader } from "../loaders";
 import { selectorsFromABI } from "../index";
 
 // Skip online tests unless ONLINE env is set
@@ -28,4 +28,23 @@ describe('loaders module', () => {
     const r = await defaultSignatureLookup.loadFunctions(selector);
     expect(r).toContain(sig);
   });
+
+  online_test('SourcifyABILoader', async () => {
+    const loader = new SourcifyABILoader();
+    const abi = await loader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
+    const selectors = Object.values(selectorsFromABI(abi));
+    const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
+    expect(selectors).toContain(sig);
+  })
+
+  online_test('EtherscanABILoader', async () => {
+    const loader = new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] });
+    const abi = await loader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
+    const selectors = Object.values(selectorsFromABI(abi));
+    const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
+    expect(selectors).toContain(sig);
+  })
+
+
+
 })

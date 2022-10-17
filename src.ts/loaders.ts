@@ -1,4 +1,5 @@
 import { fetchJson } from "@ethersproject/web";
+import { getAddress } from "@ethersproject/address";
 
 export interface ABILoader {
   loadABI(address: string): Promise<any[]>;
@@ -61,9 +62,12 @@ export class EtherscanABILoader implements ABILoader {
 // https://sourcify.dev/
 export class SourcifyABILoader implements ABILoader {
   async loadABI(address: string): Promise<any[]> {
-    const url = "https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json";
+    // Sourcify doesn't like it when the address is not checksummed
+    address = getAddress(address);
+
+    const url = "https://repo.sourcify.dev/contracts/partial_match/1/" + address + "/metadata.json";
     const r = await fetchJson(url);
-    return JSON.parse(r.result).output.abi;
+    return r.output.abi;
   }
 }
 
