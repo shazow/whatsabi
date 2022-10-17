@@ -113,6 +113,7 @@ export class FourByteSignatureLookup implements SignatureLookup {
     }
   }
   async loadFunctions(selector: string): Promise<string[]> {
+    // TODO: Use github lookup?
     return this.load("https://www.4byte.directory/api/v1/signatures/?hex_signature=" + selector);
   }
 

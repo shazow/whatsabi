@@ -1,6 +1,13 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { defaultABILoader, defaultSignatureLookup, SourcifyABILoader, EtherscanABILoader } from "../loaders";
+import {
+  defaultABILoader,
+  defaultSignatureLookup,
+  SourcifyABILoader,
+  EtherscanABILoader,
+  SamczunSignatureLookup,
+  FourByteSignatureLookup,
+} from "../loaders";
 import { selectorsFromABI } from "../index";
 
 // Skip online tests unless ONLINE env is set
@@ -45,6 +52,18 @@ describe('loaders module', () => {
     expect(selectors).toContain(sig);
   })
 
+  online_test('SamczunSignatureLookup', async () => {
+    const lookup = new SamczunSignatureLookup();
+    const selectors = await lookup.loadFunctions("0x7ff36ab5");
+    const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
+    expect(selectors).toContain(sig);
+  })
 
+  online_test('FourByteSignatureLookup', async () => {
+    const lookup = new FourByteSignatureLookup();
+    const selectors = await lookup.loadFunctions("0x7ff36ab5");
+    const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
+    expect(selectors).toContain(sig);
+  })
 
 })
