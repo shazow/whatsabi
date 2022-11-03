@@ -198,6 +198,12 @@ export function abiFromBytecode(bytecode: string): ABI {
                 // TODO: Optimization: Could seek ahead 3 pos/count safely
             }
 
+            // TODO: Check whether function has a simple return flow
+            // if (code.at(pos - 1) === opcodes.RETURN) { ... }
+
+            // TODO: Check whether this is a STOP jump? Do we care?
+            // if (code.at(pos + 1) === opcodes.STOP) { ... }
+
             // Check whether we've reached the end of the selector jump table,
             // first time we see: JUMPDEST CALLDATASIZE
             if (inJumpTable && code.at(pos + 1) === opcodes.CALLDATASIZE) {
