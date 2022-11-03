@@ -19,6 +19,7 @@ const opcodes: { [key: string]: OpCode } = {
     "DUP1": 0x80,
     "LOG1": 0xa1,
     "LOG4": 0xa4,
+    "RETURN": 0xf3,
 }
 
 // Return PUSHN width of N if PUSH instruction, otherwise 0
@@ -139,9 +140,12 @@ export function abiFromBytecode(bytecode: string): ABI {
     // JUMPDEST lookup
     const jumps: { [key: string]: number } = {}; // function hash -> instruction offset
     const dests: { [key: number]: number } = {}; // instruction offset -> bytes offset
+    const outputs: { [key: number]: number } = {}; // instruction offset -> largest return size
     const notPayable: { [key: number]: number } = {}; // instruction offset -> bytes offset
+    const selectorDests = new Set<number>();
 
     let lastPush32: Uint8Array = new Uint8Array();  // Track last push32 to find log topics
+    let lastSelectorJump: number = 0; // Track current function window to detect return values
     let inJumpTable: boolean = true;
 
     const code = new BytecodeIter(bytecode, { bufferSize: 4 });
@@ -172,6 +176,11 @@ export function abiFromBytecode(bytecode: string): ABI {
         if (inst === opcodes.JUMPDEST) {
             // Index jump destinations so we can check against them later
             dests[pos] = step;
+            if (selectorDests.has(step)) {
+                lastSelectorJump = step;
+            }
+
+            // FIXME: Do we want to keep checking if the dest is not in our selector jump table?
 
             // Check whether a JUMPDEST has non-payable guards
             //
@@ -198,6 +207,11 @@ export function abiFromBytecode(bytecode: string): ABI {
             continue
         }
 
+        // Find RETURN sizes for the current function
+        if (inst === opcodes.RETURN) {
+            // XXX: ...
+        }
+
         if (!inJumpTable) continue; // Skip searching for function selectors at this point
 
         // Find callable function selectors:
@@ -213,6 +227,10 @@ export function abiFromBytecode(bytecode: string): ABI {
         //
         // We can reliably skip checking for DUP1 if we're only searching
         // within `inJumpTable` range.
+        //
+        // Note that sizes of selectors and destinations can vary. Selector
+        // PUSH can get optimized with zero-prefixes, all the way down to an
+        // ISZERO routine (see next condition block).
         if (
             code.at(-1) === opcodes.JUMPI &&
             isPush(code.at(-2)) &&
@@ -228,6 +246,7 @@ export function abiFromBytecode(bytecode: string): ABI {
             const selector: string = ethers.utils.hexlify(value);
             const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
             jumps[selector] = offsetDest;
+            selectorDests.add(offsetDest);
 
             continue;
         }
@@ -241,6 +260,7 @@ export function abiFromBytecode(bytecode: string): ABI {
             const selector = "0x00000000";
             const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
             jumps[selector] = offsetDest;
+            selectorDests.add(offsetDest);
 
             continue;
         }
