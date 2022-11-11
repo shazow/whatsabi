@@ -94,7 +94,7 @@ export class MultiSignatureLookup implements SignatureLookup {
   async loadEvents(hash: string): Promise<string[]> {
     return Promise.all(
       this.lookups.map(
-        lookup => lookup.loadFunctions(hash)
+        lookup => lookup.loadEvents(hash)
       )
     ).then(results => Array.from(new Set(results.flat())))
   }
