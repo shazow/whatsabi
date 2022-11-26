@@ -12,7 +12,7 @@ const opcodes: Readonly<{ [key: string]: OpCode }> = Object.freeze({
     CALLVALUE: 0x34,
     CALLDATALOAD: 0x35,
     CALLDATASIZE: 0x36,
-    JUMP: 0x57,
+    JUMP: 0x56,
     JUMPI: 0x57,
     JUMPDEST: 0x5b,
     PUSH1: 0x60,
