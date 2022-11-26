@@ -146,7 +146,7 @@ const interestingOpCodes : Set<OpCode> = new Set([
     opcodes.STOP, // No return value
     opcodes.RETURN, // Has return value?
     opcodes.CALLDATALOAD, // Has arguments
-    // TODO: Add LOGs to track event emiters?
+    // TODO: Add LOGs to track event emitters?
 ]);
 
 type Function = {
@@ -157,13 +157,56 @@ type Function = {
     end?: number; // Last instruction offset before the next JUMPDEST
 };
 
-export function abiFromBytecode(bytecode: string): ABI {
-    const abi: ABI = [];
+type Program = {
+    dests: { [key: number]: Function }; // instruction offset -> Function
+    jumps: { [key: string]: number }; // function hash -> instruction offset
+    notPayable: { [key: number]: number }; // instruction offset -> bytes offset
+    eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
+}
 
-    // JUMPDEST lookup
-    const jumps: { [key: string]: number } = {}; // function hash -> instruction offset
-    const dests: { [key: number]: Function } = {}; // instruction offset -> Function
-    const notPayable: { [key: number]: number } = {}; // instruction offset -> bytes offset
+export function abiFromBytecode(bytecode: string): ABI {
+    const p = disasm(bytecode);
+
+    const abi: ABI = [];
+    for (const [selector, offset] of Object.entries(p.jumps)) {
+        // TODO: Optimization: If we only look at selectors in the jump table region, we shouldn't need to check JUMPDEST validity.
+        if (!(offset in p.dests)) {
+            // Selector does not point to a valid jumpdest. This should not happen.
+            continue;
+        }
+
+        // Collapse tags for function call graph
+        const fn = p.dests[offset];
+        const tags = collapseTags(fn, p.dests);
+        if (tags.size > 0) console.log("XXX", { selector, fn, tags });
+
+        abi.push({
+            type: "function",
+            selector: selector,
+            payable: !p.notPayable[p.jumps[selector]],
+        } as ABIFunction)
+    }
+
+    for (const h of p.eventCandidates) {
+        abi.push({
+            type: "event",
+            hash: h,
+        } as ABIEvent)
+    }
+
+    console.log("XXX", "DOT DEBUG", debugDotJumps({start: 0, jumps: Object.values(p.jumps)} as Function, p.dests, Object.fromEntries(Object.entries(p.jumps).map(([k, v]) => [v, k]))));
+
+    return abi;
+}
+
+function disasm(bytecode: string): Program {
+    const p = {
+        dests: {},
+        jumps: {},
+        notPayable: {},
+        eventCandidates: [],
+    } as Program;
+
     const selectorDests = new Set<number>();
 
     let lastPush32: Uint8Array = new Uint8Array();  // Track last push32 to find log topics
@@ -183,10 +226,7 @@ export function abiFromBytecode(bytecode: string): ABI {
             lastPush32 = code.value();
             continue
         } else if (isLog(inst) && lastPush32.length > 0) {
-            abi.push({
-                type: "event",
-                hash: ethers.utils.hexlify(lastPush32),
-            } as ABIEvent)
+            p.eventCandidates.push(ethers.utils.hexlify(lastPush32));
             continue
         }
 
@@ -200,7 +240,7 @@ export function abiFromBytecode(bytecode: string): ABI {
                 opTags: new Set(),
                 jumps: new Array<number>(),
             } as Function;
-            dests[pos] = currentFunction;
+            p.dests[pos] = currentFunction;
 
             // FIXME: Do we want to keep checking if the dest is not in our selector jump table?
 
@@ -216,7 +256,7 @@ export function abiFromBytecode(bytecode: string): ABI {
                 code.at(pos + 2) === opcodes.DUP1 &&
                 code.at(pos + 3) === opcodes.ISZERO
             ) {
-                notPayable[pos] = step;
+                p.notPayable[pos] = step;
                 // TODO: Optimization: Could seek ahead 3 pos/count safely
             }
 
@@ -280,7 +320,7 @@ export function abiFromBytecode(bytecode: string): ABI {
             }
             const selector: string = ethers.utils.hexlify(value);
             const offsetDest: number = valueToOffset(code.valueAt(-2));
-            jumps[selector] = offsetDest;
+            p.jumps[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
             continue;
@@ -294,35 +334,14 @@ export function abiFromBytecode(bytecode: string): ABI {
         ) {
             const selector = "0x00000000";
             const offsetDest: number = valueToOffset(code.valueAt(-2));
-            jumps[selector] = offsetDest;
+            p.jumps[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
             continue;
         }
     }
 
-    for (const [selector, offset] of Object.entries(jumps)) {
-        // TODO: Optimization: If we only look at selectors in the jump table region, we shouldn't need to check JUMPDEST validity.
-        if (!(offset in dests)) {
-            // Selector does not point to a valid jumpdest. This should not happen.
-            continue;
-        }
-
-        // Collapse tags for function call graph
-        const fn = dests[offset];
-        const tags = collapseTags(fn, dests);
-        if (tags.size > 0) console.log("XXX", { selector, fn, tags });
-
-        abi.push({
-            type: "function",
-            selector: selector,
-            payable: !notPayable[jumps[selector]],
-        } as ABIFunction)
-    }
-
-    console.log("XXX", "DOT DEBUG", debugDotJumps({start: 0, jumps: Object.values(jumps)} as Function, dests, Object.fromEntries(Object.entries(jumps).map(([k, v]) => [v, k]))));
-
-    return abi;
+    return p;
 }
 
 function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpCode> {
