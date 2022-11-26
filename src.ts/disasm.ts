@@ -275,8 +275,8 @@ function disasm(bytecode: string): Program {
         // Annotate current function
         if (currentFunction.opTags !== undefined) {
 
-            // Detect simple JUMP helper subroutines
-            if (inst === opcodes.JUMP && isPush(code.at(-2))) {
+            // Detect simple JUMP/JUMPI helper subroutines
+            if ((inst === opcodes.JUMP || inst === opcodes.JUMPI) && isPush(code.at(-2))) {
                 const jumpOffset = valueToOffset(code.valueAt(-2));
                 currentFunction.jumps.push(jumpOffset);
             }
@@ -358,14 +358,14 @@ function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpC
 // Debug helper:
 
 function programToDotGraph(p: Program): string {
-    const nameLookup = Object.fromEntries(Object.entries(p.jumps).map(([k, v]) => [v, k]));
+    const nameLookup = Object.fromEntries(Object.entries(p.jumps).map(([k, v]) => [v, "SEL" + k]));
     const start = {start: 0, jumps: Object.values(p.jumps)} as Function;
 
     function jumpsToDot(fn: Function): string {
         if (fn.jumps.length === 0) return "";
 
         function name(n: number): string {
-            return nameLookup[n] || ("F" + n);
+            return nameLookup[n] || ("FUNC" + n);
         }
 
         let s = name(fn.start) + " -> { " + fn.jumps.map(n => name(n)).join(" ") + " }\n";
@@ -375,6 +375,6 @@ function programToDotGraph(p: Program): string {
         return s;
     }
 
-    return jumpsToDot(start);
+    return "digraph jumps {\n" + jumpsToDot(start) + "\n}";
 }
 
