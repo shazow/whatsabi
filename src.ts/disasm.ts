@@ -194,7 +194,7 @@ export function abiFromBytecode(bytecode: string): ABI {
         } as ABIEvent)
     }
 
-    console.log("XXX", "DOT DEBUG", debugDotJumps({start: 0, jumps: Object.values(p.jumps)} as Function, p.dests, Object.fromEntries(Object.entries(p.jumps).map(([k, v]) => [v, k]))));
+    console.log("XXX", "DOT DEBUG", programToDotGraph(p));
 
     return abi;
 }
@@ -354,16 +354,27 @@ function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpC
     return tags;
 }
 
-function debugDotJumps(fn: Function, dests: { [key: number]: Function }, names: { [key: number]: string }): string {
-    if (fn.jumps.length === 0) return "";
 
-    function name(n: number): string {
-        return names[n] || ("F" + n);
+// Debug helper:
+
+function programToDotGraph(p: Program): string {
+    const nameLookup = Object.fromEntries(Object.entries(p.jumps).map(([k, v]) => [v, k]));
+    const start = {start: 0, jumps: Object.values(p.jumps)} as Function;
+
+    function jumpsToDot(fn: Function): string {
+        if (fn.jumps.length === 0) return "";
+
+        function name(n: number): string {
+            return nameLookup[n] || ("F" + n);
+        }
+
+        let s = name(fn.start) + " -> { " + fn.jumps.map(n => name(n)).join(" ") + " }\n";
+        for (const jump of fn.jumps) {
+            s += jumpsToDot(p.dests[jump]);
+        }
+        return s;
     }
 
-    let s = name(fn.start) + " -> { " + fn.jumps.map(n => name(n)).join(" ") + " }\n";
-    for (const jump of fn.jumps) {
-        s += debugDotJumps(dests[jump], dests, names);
-    }
-    return s;
+    return jumpsToDot(start);
 }
+
