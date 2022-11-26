@@ -5,22 +5,24 @@ import { ABI, ABIFunction, ABIEvent } from "./abi";
 type OpCode = number;
 
 // Some opcodes we care about, doesn't need to be a complete list
-const opcodes: { [key: string]: OpCode } = {
-    "STOP": 0x00,
-    "EQ": 0x14,
-    "ISZERO": 0x15,
-    "CALLVALUE": 0x34,
-    "CALLDATASIZE": 0x36,
-    "JUMPI": 0x57,
-    "JUMPDEST": 0x5b,
-    "PUSH1": 0x60,
-    "PUSH4": 0x63,
-    "PUSH32": 0x7f,
-    "DUP1": 0x80,
-    "LOG1": 0xa1,
-    "LOG4": 0xa4,
-    "RETURN": 0xf3,
-}
+const opcodes: Readonly<{ [key: string]: OpCode }> = Object.freeze({
+    STOP: 0x00,
+    EQ: 0x14,
+    ISZERO: 0x15,
+    CALLVALUE: 0x34,
+    CALLDATALOAD: 0x35,
+    CALLDATASIZE: 0x36,
+    JUMP: 0x57,
+    JUMPI: 0x57,
+    JUMPDEST: 0x5b,
+    PUSH1: 0x60,
+    PUSH4: 0x63,
+    PUSH32: 0x7f,
+    DUP1: 0x80,
+    LOG1: 0xa1,
+    LOG4: 0xa4,
+    RETURN: 0xf3,
+});
 
 // Return PUSHN width of N if PUSH instruction, otherwise 0
 export function pushWidth(instruction: OpCode): number {
@@ -34,6 +36,11 @@ export function isPush(instruction: OpCode): boolean {
 
 export function isLog(instruction: OpCode): boolean {
     return instruction >= opcodes.LOG1 && instruction <= opcodes.LOG4;
+}
+
+function valueToOffset(value: Uint8Array): number {
+    // FIXME: Should be a cleaner way to do this...
+    return parseInt(ethers.utils.hexlify(value), 16);
 }
 
 // BytecodeIter takes EVM bytecode and handles iterating over it with correct
@@ -134,25 +141,36 @@ export class BytecodeIter {
     }
 }
 
+// Opcodes that tell us something interesting about the function they're in
+const interestingOpCodes : Set<OpCode> = new Set([
+    opcodes.STOP, // No return value
+    opcodes.RETURN, // Has return value?
+    opcodes.CALLDATALOAD, // Has arguments
+    // TODO: Add LOGs to track event emiters?
+]);
+
+type Function = {
+    byteOffset: number // JUMPDEST byte offset
+    opTags: Set<OpCode>; // Track whether function uses interesting opcodes
+    start: number; // JUMPDEST instruction offset
+    jumps: Array<number>; // JUMPDEST instruction offsets this function can jump to
+    end?: number; // Last instruction offset before the next JUMPDEST
+};
+
 export function abiFromBytecode(bytecode: string): ABI {
     const abi: ABI = [];
 
     // JUMPDEST lookup
     const jumps: { [key: string]: number } = {}; // function hash -> instruction offset
-    const dests: { [key: number]: number } = {}; // instruction offset -> bytes offset
-    const outputs: { [key: number]: number } = {}; // instruction offset -> largest return size
+    const dests: { [key: number]: Function } = {}; // instruction offset -> Function
     const notPayable: { [key: number]: number } = {}; // instruction offset -> bytes offset
     const selectorDests = new Set<number>();
 
     let lastPush32: Uint8Array = new Uint8Array();  // Track last push32 to find log topics
-    let lastSelectorJump: number = 0; // Track current function window to detect return values
+    let currentFunction: Function = {} as Function;
     let inJumpTable: boolean = true;
 
     const code = new BytecodeIter(bytecode, { bufferSize: 4 });
-
-    // TODO: Optimization: Could optimize finding jumps by loading JUMPI first
-    // (until the jump table window is reached), then sorting them and seeking
-    // to each JUMPDEST.
 
     while (code.hasMore()) {
         const inst = code.next();
@@ -175,10 +193,14 @@ export function abiFromBytecode(bytecode: string): ABI {
         // Find JUMPDEST labels
         if (inst === opcodes.JUMPDEST) {
             // Index jump destinations so we can check against them later
-            dests[pos] = step;
-            if (selectorDests.has(step)) {
-                lastSelectorJump = step;
-            }
+            if (currentFunction) currentFunction.end = pos - 1;
+            currentFunction = {
+                byteOffset: step,
+                start: pos,
+                opTags: new Set(),
+                jumps: new Array<number>(),
+            } as Function;
+            dests[pos] = currentFunction;
 
             // FIXME: Do we want to keep checking if the dest is not in our selector jump table?
 
@@ -198,11 +220,8 @@ export function abiFromBytecode(bytecode: string): ABI {
                 // TODO: Optimization: Could seek ahead 3 pos/count safely
             }
 
-            // TODO: Check whether function has a simple return flow
+            // TODO: Check whether function has a simple return flow?
             // if (code.at(pos - 1) === opcodes.RETURN) { ... }
-
-            // TODO: Check whether this is a STOP jump? Do we care?
-            // if (code.at(pos + 1) === opcodes.STOP) { ... }
 
             // Check whether we've reached the end of the selector jump table,
             // first time we see: JUMPDEST CALLDATASIZE
@@ -210,12 +229,22 @@ export function abiFromBytecode(bytecode: string): ABI {
                 inJumpTable = false;
             }
 
-            continue
+            continue;
         }
 
-        // Find RETURN sizes for the current function
-        if (inst === opcodes.RETURN) {
-            // XXX: ...
+        // Annotate current function
+        if (currentFunction.opTags !== undefined) {
+
+            // Detect simple JUMP helper subroutines
+            if (inst === opcodes.JUMP && isPush(code.at(-2))) {
+                const jumpOffset = valueToOffset(code.valueAt(-2));
+                currentFunction.jumps.push(jumpOffset);
+            }
+
+            // Tag current function with interesting opcodes (not including above)
+            if (interestingOpCodes.has(inst)) {
+                currentFunction.opTags.add(inst);
+            }
         }
 
         if (!inJumpTable) continue; // Skip searching for function selectors at this point
@@ -250,7 +279,7 @@ export function abiFromBytecode(bytecode: string): ABI {
                 value = ethers.utils.zeroPad(value, 4);
             }
             const selector: string = ethers.utils.hexlify(value);
-            const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
+            const offsetDest: number = valueToOffset(code.valueAt(-2));
             jumps[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
@@ -264,7 +293,7 @@ export function abiFromBytecode(bytecode: string): ABI {
             code.at(-3) === opcodes.ISZERO
         ) {
             const selector = "0x00000000";
-            const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
+            const offsetDest: number = valueToOffset(code.valueAt(-2));
             jumps[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
@@ -274,7 +303,15 @@ export function abiFromBytecode(bytecode: string): ABI {
 
     for (const [selector, offset] of Object.entries(jumps)) {
         // TODO: Optimization: If we only look at selectors in the jump table region, we shouldn't need to check JUMPDEST validity.
-        if (!(offset in dests)) continue; // Selector does not point to a valid jumpdest
+        if (!(offset in dests)) {
+            // Selector does not point to a valid jumpdest. This should not happen.
+            continue;
+        }
+
+        // Collapse tags for function call graph
+        const fn = dests[offset];
+        const tags = collapseTags(fn, dests);
+        if (tags.size > 0) console.log("XXX", { selector, fn, tags });
 
         abi.push({
             type: "function",
@@ -283,5 +320,31 @@ export function abiFromBytecode(bytecode: string): ABI {
         } as ABIFunction)
     }
 
+    console.log("XXX", "DOT DEBUG", debugDotJumps({start: 0, jumps: Object.values(jumps)} as Function, dests, Object.fromEntries(Object.entries(jumps).map(([k, v]) => [v, k]))));
+
     return abi;
+}
+
+function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpCode> {
+    let tags = fn.opTags;
+    for (const jumpOffset of fn.jumps) {
+        // TODO: Probably want un-recurse this
+        const moreTags = collapseTags(dests[jumpOffset], dests);
+        tags = new Set([...tags, ...moreTags]);
+    }
+    return tags;
+}
+
+function debugDotJumps(fn: Function, dests: { [key: number]: Function }, names: { [key: number]: string }): string {
+    if (fn.jumps.length === 0) return "";
+
+    function name(n: number): string {
+        return names[n] || ("F" + n);
+    }
+
+    let s = name(fn.start) + " -> { " + fn.jumps.map(n => name(n)).join(" ") + " }\n";
+    for (const jump of fn.jumps) {
+        s += debugDotJumps(dests[jump], dests, names);
+    }
+    return s;
 }
