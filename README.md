@@ -54,7 +54,8 @@ console.log(await signatureLookup.loadEvents("0x721c20121297512b72821b97f5326877
 
 ## See Also
 
-* [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/) - A frontend for whatsabi by [@w1nt3r_eth](https://twitter.com/w1nt3r_eth) - [github.com/w1nt3r-eth/abi.w1nt3r.xyz](https://github.com/w1nt3r-eth/abi.w1nt3r.xyz)
+* [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/) - A frontend for whatsabi by [@w1nt3r_eth](https://twitter.com/w1nt3r_eth) - https://github.com/w1nt3r-eth/abi.w1nt3r.xyz
+* [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, uses whatsabi for unverified contracts - https://github.com/verynifty/ethcmd
 
 
 ## Caveats
