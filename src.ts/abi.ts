@@ -1,12 +1,12 @@
 export type ABIFunction = {
-    type: "function";
-    outputs: {type: string, length: number, name?: string}[];
+    type: "function"; // TODO: constructor, receive, fallback
     selector: string;
+    outputs?: {type: string, length?: number, name?: string}[];
+    inputs?: {type: string}[];
     sig?: string;
     sigAlts?: string[];
     payable?: boolean;
-    // TODO: constant: boolean;
-    // TODO: inputs: {type: name}[];
+    stateMutability?: "nonpayable"|"payable"|"view"|"pure";
 };
 
 export type ABIEvent = {

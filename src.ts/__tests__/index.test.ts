@@ -1,13 +1,49 @@
+import { ethers } from "ethers";
+
 import { expect, test } from '@jest/globals';
 
 import { SAMPLE_CODE, SAMPLE_ABI } from "./__fixtures__/sample";
 
-import { selectorsFromBytecode, selectorsFromABI } from '../index';
+import { selectorsFromBytecode, selectorsFromABI, abiFromBytecode } from '../index';
+import {ABIFunction} from '../abi';
 
-test.only('selectorsFromBytecode', () => {
+test('selectorsFromBytecode', () => {
   const abi = selectorsFromABI(SAMPLE_ABI)
   const expected = Object.keys(abi);
 
   const r = selectorsFromBytecode(SAMPLE_CODE);
   expect(new Set(r)).toStrictEqual(new Set(expected));
 });
+
+test('abiFromBytecode functions', () => {
+  const r = abiFromBytecode(SAMPLE_CODE).filter(a => a.type === "function") as ABIFunction[];
+  const expected = toKnown(SAMPLE_ABI.filter(a => a.type === "function"));
+
+  expect(
+    Object.fromEntries(r.map(a=> [a.selector, a]))
+  ).toStrictEqual(
+    Object.fromEntries(expected.map(a => [a.selector, a]))
+  );
+});
+
+// toKnown converts a traditional ABI object to a subset that we know how to extract
+function toKnown(abi: any[]) {
+  const iface = new ethers.utils.Interface(abi);
+
+  return abi.map(a => {
+    if (a.type === "event") {
+      return a;
+    }
+    if (a.type === "function") {
+      a.selector = iface.getSighash(a.name);
+    }
+
+    if (a.inputs) a.inputs = [{type: "bytes"}];
+    if (a.outputs) a.outputs = [{type: "bytes"}];
+
+    delete(a["anonymous"]);
+    delete(a["name"]);
+
+    return a;
+  })
+}

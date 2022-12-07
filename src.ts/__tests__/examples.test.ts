@@ -28,7 +28,7 @@ online_test('README usage', async () => {
   // ]
 
   expect(abi).toContainEqual({"hash": "0x721c20121297512b72821b97f5326877ea8ecf4bb9948fea5bfcb6453074d37f", "type": "event"})
-  expect(abi).toContainEqual({"payable": true, "selector": "0x06fdde03", "type": "function"})
+  expect(abi).toContainEqual({"payable": true, "selector": "0x06fdde03", "type": "function", "inputs": [{"type": "bytes"}], "outputs": [{"type": "bytes"}]})
 
   const signatureLookup = new whatsabi.loaders.SamczunSignatureLookup();
   {

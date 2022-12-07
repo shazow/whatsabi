@@ -12,6 +12,8 @@ const opcodes: Readonly<{ [key: string]: OpCode }> = Object.freeze({
     CALLVALUE: 0x34,
     CALLDATALOAD: 0x35,
     CALLDATASIZE: 0x36,
+    SLOAD: 0x54,
+    SSTORE: 0x55,
     JUMP: 0x56,
     JUMPI: 0x57,
     JUMPDEST: 0x5b,
@@ -146,6 +148,10 @@ const interestingOpCodes : Set<OpCode> = new Set([
     opcodes.STOP, // No return value
     opcodes.RETURN, // Has return value?
     opcodes.CALLDATALOAD, // Has arguments
+    opcodes.CALLDATASIZE, // FIXME: Is it superfluous to have these two?
+    opcodes.CALLDATACOPY,
+    opcodes.SLOAD, // Not pure
+    opcodes.SSTORE, // Not view
     // TODO: Add LOGs to track event emitters?
 ]);
 
@@ -178,26 +184,48 @@ export function abiFromBytecode(bytecode: string): ABI {
         // Collapse tags for function call graph
         const fn = p.dests[offset];
         const tags = collapseTags(fn, p.dests);
-        if (tags.size > 0) console.log("XXX", { selector, fn, tags });
 
-        abi.push({
+        const funcABI = {
             type: "function",
             selector: selector,
             payable: !p.notPayable[p.jumps[selector]],
-        } as ABIFunction)
+        } as ABIFunction;
+
+        // Unfortunately we don't have better details about the type sizes, so we just return a dynamically-sized /shrug
+        if (tags.has(opcodes.RETURN)) {
+            funcABI.outputs = [{type: "bytes"}];
+        }
+        if (tags.has(opcodes.CALLDATALOAD) || tags.has(opcodes.CALLDATASIZE) || tags.has(opcodes.CALLDATACOPY)) {
+            funcABI.inputs = [{type: "bytes"}];
+        }
+
+        let mutability = "nonpayable";
+        if (funcABI.payable) {
+            mutability = "payable";
+        } else if (!tags.has(opcodes.SSTORE)) {
+            mutability = "view";
+        }
+        // TODO: Can we make a claim about purity? Probably not reliably without handling dynamic jumps?
+        // if (mutability === "view" && !tags.has(opcodes.SLOAD)) {
+        //    mutability = "pure";
+        // }
+
+        funcABI.stateMutability = mutability;
+
+        abi.push(funcABI);
     }
 
     for (const h of p.eventCandidates) {
         abi.push({
             type: "event",
             hash: h,
-        } as ABIEvent)
+        } as ABIEvent);
     }
-
-    console.log("XXX", "DOT DEBUG", programToDotGraph(p));
 
     return abi;
 }
+
+const _EmptyArray = new Uint8Array();
 
 function disasm(bytecode: string): Program {
     const p = {
@@ -209,7 +237,7 @@ function disasm(bytecode: string): Program {
 
     const selectorDests = new Set<number>();
 
-    let lastPush32: Uint8Array = new Uint8Array();  // Track last push32 to find log topics
+    let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
     let currentFunction: Function = {} as Function;
     let inJumpTable: boolean = true;
 
@@ -241,8 +269,6 @@ function disasm(bytecode: string): Program {
                 jumps: new Array<number>(),
             } as Function;
             p.dests[pos] = currentFunction;
-
-            // FIXME: Do we want to keep checking if the dest is not in our selector jump table?
 
             // Check whether a JUMPDEST has non-payable guards
             //
@@ -357,7 +383,7 @@ function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpC
 
 // Debug helper:
 
-function programToDotGraph(p: Program): string {
+export function programToDotGraph(p: Program): string {
     const nameLookup = Object.fromEntries(Object.entries(p.jumps).map(([k, v]) => [v, "SEL" + k]));
     const start = {start: 0, jumps: Object.values(p.jumps)} as Function;
 
