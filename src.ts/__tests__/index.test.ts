@@ -38,11 +38,17 @@ function toKnown(abi: any[]) {
       a.selector = iface.getSighash(a.name);
     }
 
-    if (a.inputs) a.inputs = [{type: "bytes"}];
-    if (a.outputs) a.outputs = [{type: "bytes"}];
+    // We can only tell iff there are inputs/outputs, not what they are
+    if (a.inputs.length > 0) a.inputs = [{type: "bytes"}];
+    else delete(a["inputs"]);
+
+    if (a.outputs.length > 0) a.outputs = [{type: "bytes"}];
+    else delete(a["outputs"]);
 
     delete(a["anonymous"]);
-    delete(a["name"]);
+    // XXX: delete(a["name"]);
+
+    a.payable = a.stateMutability === "payable";
 
     return a;
   })
