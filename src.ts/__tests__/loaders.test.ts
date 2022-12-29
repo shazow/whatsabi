@@ -10,14 +10,12 @@ import {
 } from "../loaders";
 import { selectorsFromABI } from "../index";
 
-// Skip online tests unless ONLINE env is set
-const online_test = process.env["ONLINE"] ? test : test.skip;
-
-// TODO: Add fixtures so that tests are runnable offline
+import { online_test } from "./offline";
 
 describe('loaders module', () => {
   online_test('defaultABILoader', async () => {
-    const abi = await defaultABILoader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
+    const addr = "0x7a250d5630b4cf539739df2c5dacb4c659f2488d";
+    const abi = await defaultABILoader.loadABI(addr);
     const selectors = selectorsFromABI(abi);
     const hashes = Object.keys(selectors);
     hashes.sort();
