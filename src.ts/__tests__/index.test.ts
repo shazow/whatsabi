@@ -17,12 +17,17 @@ test('selectorsFromBytecode', () => {
 
 test('abiFromBytecode functions', () => {
   const r = abiFromBytecode(SAMPLE_CODE).filter(a => a.type === "function") as ABIFunction[];
-  const expected = toKnown(SAMPLE_ABI.filter(a => a.type === "function"));
+  const got = Object.fromEntries(r.map(a=> [a.selector, a]));
+  const sample = toKnown(SAMPLE_ABI.filter(a => a.type === "function"));
+  const expected = Object.fromEntries(sample.map(a => {
+    (got[a.selector] as any).name = a.name;
+    return [a.selector, a]
+  }))
 
   expect(
-    Object.fromEntries(r.map(a=> [a.selector, a]))
+    got
   ).toStrictEqual(
-    Object.fromEntries(expected.map(a => [a.selector, a]))
+    expected
   );
 });
 
