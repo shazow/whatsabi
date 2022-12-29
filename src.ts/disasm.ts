@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-import { ABI, ABIFunction, ABIEvent } from "./abi";
+import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
 type OpCode = number;
 
@@ -199,7 +199,7 @@ export function abiFromBytecode(bytecode: string): ABI {
             funcABI.inputs = [{type: "bytes"}];
         }
 
-        let mutability = "nonpayable";
+        let mutability : StateMutability = "nonpayable";
         if (funcABI.payable) {
             mutability = "payable";
         } else if (!tags.has(opcodes.SSTORE)) {

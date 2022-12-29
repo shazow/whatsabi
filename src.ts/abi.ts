@@ -1,3 +1,5 @@
+export type StateMutability = "nonpayable"|"payable"|"view"|"pure";
+
 export type ABIFunction = {
     type: "function"; // TODO: constructor, receive, fallback
     selector: string;
@@ -6,7 +8,7 @@ export type ABIFunction = {
     sig?: string;
     sigAlts?: string[];
     payable?: boolean;
-    stateMutability?: "nonpayable"|"payable"|"view"|"pure";
+    stateMutability?: StateMutability;
 };
 
 export type ABIEvent = {
