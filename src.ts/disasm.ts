@@ -241,6 +241,10 @@ function disasm(bytecode: string): Program {
     let currentFunction: Function = {} as Function;
     let inJumpTable: boolean = true;
 
+    let maxOffset = bytecode.length / 2; // FIXME: Rough upper-bound for max addressable instruction, should load it more precisely. We use this to guess if a PUSH refers to a dynamic JUMPDEST instruction.
+    let maxOffsetLength = ethers.utils.arrayify(ethers.utils.hexlify(maxOffset)).length;
+    let minOffset = 0;
+
     const code = new BytecodeIter(bytecode, { bufferSize: 4 });
 
     while (code.hasMore()) {
@@ -293,6 +297,7 @@ function disasm(bytecode: string): Program {
             // first time we see: JUMPDEST CALLDATASIZE
             if (inJumpTable && code.at(pos + 1) === opcodes.CALLDATASIZE) {
                 inJumpTable = false;
+                minOffset = step + 1;
             }
 
             continue;
@@ -313,7 +318,23 @@ function disasm(bytecode: string): Program {
             }
         }
 
-        if (!inJumpTable) continue; // Skip searching for function selectors at this point
+        if (!inJumpTable) {
+            if (isPush(inst)) {
+                // Is it a dynamic jump candidate?
+                // It's fairly slow to test extraneous jumps, so we try to eliminate any extreme outliers early.
+                const val = code.value();
+                if (val.length > maxOffsetLength) continue;
+                const maybeOffset: number = valueToOffset(code.value());
+                if (maybeOffset < minOffset) continue;
+                if (maybeOffset > maxOffset) continue;
+
+                // We'll need to double-check later that this jump is a valid JUMPDEST
+                console.log("Adding maybe offset:", maybeOffset);
+                currentFunction.jumps.push(maybeOffset);
+            }
+
+            continue; // Skip searching for function selectors at this point
+        }
 
         // Find callable function selectors:
         //
@@ -374,6 +395,8 @@ function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpC
     let tags = fn.opTags;
     for (const jumpOffset of fn.jumps) {
         // TODO: Probably want un-recurse this
+        // XXX: How do we avoid circular graphs here?
+        if (dests[jumpOffset] === undefined) continue; // Invalid jump
         const moreTags = collapseTags(dests[jumpOffset], dests);
         tags = new Set([...tags, ...moreTags]);
     }
