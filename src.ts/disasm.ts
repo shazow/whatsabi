@@ -1,25 +1,30 @@
 import { ethers } from "ethers";
 
-import { ABI, ABIFunction, ABIEvent } from "./abi";
+import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
 type OpCode = number;
 
 // Some opcodes we care about, doesn't need to be a complete list
-const opcodes: { [key: string]: OpCode } = {
-    "STOP": 0x00,
-    "EQ": 0x14,
-    "ISZERO": 0x15,
-    "CALLVALUE": 0x34,
-    "CALLDATASIZE": 0x36,
-    "JUMPI": 0x57,
-    "JUMPDEST": 0x5b,
-    "PUSH1": 0x60,
-    "PUSH4": 0x63,
-    "PUSH32": 0x7f,
-    "DUP1": 0x80,
-    "LOG1": 0xa1,
-    "LOG4": 0xa4,
-}
+const opcodes: Readonly<{ [key: string]: OpCode }> = Object.freeze({
+    STOP: 0x00,
+    EQ: 0x14,
+    ISZERO: 0x15,
+    CALLVALUE: 0x34,
+    CALLDATALOAD: 0x35,
+    CALLDATASIZE: 0x36,
+    SLOAD: 0x54,
+    SSTORE: 0x55,
+    JUMP: 0x56,
+    JUMPI: 0x57,
+    JUMPDEST: 0x5b,
+    PUSH1: 0x60,
+    PUSH4: 0x63,
+    PUSH32: 0x7f,
+    DUP1: 0x80,
+    LOG1: 0xa1,
+    LOG4: 0xa4,
+    RETURN: 0xf3,
+});
 
 // Return PUSHN width of N if PUSH instruction, otherwise 0
 export function pushWidth(instruction: OpCode): number {
@@ -33,6 +38,11 @@ export function isPush(instruction: OpCode): boolean {
 
 export function isLog(instruction: OpCode): boolean {
     return instruction >= opcodes.LOG1 && instruction <= opcodes.LOG4;
+}
+
+function valueToOffset(value: Uint8Array): number {
+    // FIXME: Should be a cleaner way to do this...
+    return parseInt(ethers.utils.hexlify(value), 16);
 }
 
 // BytecodeIter takes EVM bytecode and handles iterating over it with correct
@@ -133,22 +143,105 @@ export class BytecodeIter {
     }
 }
 
+// Opcodes that tell us something interesting about the function they're in
+const interestingOpCodes : Set<OpCode> = new Set([
+    opcodes.STOP, // No return value
+    opcodes.RETURN, // Has return value?
+    opcodes.CALLDATALOAD, // Has arguments
+    opcodes.CALLDATASIZE, // FIXME: Is it superfluous to have these two?
+    opcodes.CALLDATACOPY,
+    opcodes.SLOAD, // Not pure
+    opcodes.SSTORE, // Not view
+    // TODO: Add LOGs to track event emitters?
+]);
+
+type Function = {
+    byteOffset: number // JUMPDEST byte offset
+    opTags: Set<OpCode>; // Track whether function uses interesting opcodes
+    start: number; // JUMPDEST instruction offset
+    jumps: Array<number>; // JUMPDEST instruction offsets this function can jump to
+    end?: number; // Last instruction offset before the next JUMPDEST
+};
+
+type Program = {
+    dests: { [key: number]: Function }; // instruction offset -> Function
+    jumps: { [key: string]: number }; // function hash -> instruction offset
+    notPayable: { [key: number]: number }; // instruction offset -> bytes offset
+    eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
+}
+
 export function abiFromBytecode(bytecode: string): ABI {
+    const p = disasm(bytecode);
+
     const abi: ABI = [];
+    for (const [selector, offset] of Object.entries(p.jumps)) {
+        // TODO: Optimization: If we only look at selectors in the jump table region, we shouldn't need to check JUMPDEST validity.
+        if (!(offset in p.dests)) {
+            // Selector does not point to a valid jumpdest. This should not happen.
+            continue;
+        }
 
-    // JUMPDEST lookup
-    const jumps: { [key: string]: number } = {}; // function hash -> instruction offset
-    const dests: { [key: number]: number } = {}; // instruction offset -> bytes offset
-    const notPayable: { [key: number]: number } = {}; // instruction offset -> bytes offset
+        // Collapse tags for function call graph
+        const fn = p.dests[offset];
+        const tags = collapseTags(fn, p.dests);
 
-    let lastPush32: Uint8Array = new Uint8Array();  // Track last push32 to find log topics
+        const funcABI = {
+            type: "function",
+            selector: selector,
+            payable: !p.notPayable[p.jumps[selector]],
+        } as ABIFunction;
+
+        // Unfortunately we don't have better details about the type sizes, so we just return a dynamically-sized /shrug
+        if (tags.has(opcodes.RETURN)) {
+            funcABI.outputs = [{type: "bytes"}];
+        }
+        if (tags.has(opcodes.CALLDATALOAD) || tags.has(opcodes.CALLDATASIZE) || tags.has(opcodes.CALLDATACOPY)) {
+            funcABI.inputs = [{type: "bytes"}];
+        }
+
+        let mutability : StateMutability = "nonpayable";
+        if (funcABI.payable) {
+            mutability = "payable";
+        } else if (!tags.has(opcodes.SSTORE)) {
+            mutability = "view";
+        }
+        // TODO: Can we make a claim about purity? Probably not reliably without handling dynamic jumps?
+        // if (mutability === "view" && !tags.has(opcodes.SLOAD)) {
+        //    mutability = "pure";
+        // }
+
+        funcABI.stateMutability = mutability;
+
+        abi.push(funcABI);
+    }
+
+    for (const h of p.eventCandidates) {
+        abi.push({
+            type: "event",
+            hash: h,
+        } as ABIEvent);
+    }
+
+    return abi;
+}
+
+const _EmptyArray = new Uint8Array();
+
+function disasm(bytecode: string): Program {
+    const p = {
+        dests: {},
+        jumps: {},
+        notPayable: {},
+        eventCandidates: [],
+    } as Program;
+
+    const selectorDests = new Set<number>();
+
+    let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
+    let currentFunction: Function = {} as Function;
     let inJumpTable: boolean = true;
 
     const code = new BytecodeIter(bytecode, { bufferSize: 4 });
-
-    // TODO: Optimization: Could optimize finding jumps by loading JUMPI first
-    // (until the jump table window is reached), then sorting them and seeking
-    // to each JUMPDEST.
 
     while (code.hasMore()) {
         const inst = code.next();
@@ -161,17 +254,21 @@ export function abiFromBytecode(bytecode: string): ABI {
             lastPush32 = code.value();
             continue
         } else if (isLog(inst) && lastPush32.length > 0) {
-            abi.push({
-                type: "event",
-                hash: ethers.utils.hexlify(lastPush32),
-            } as ABIEvent)
+            p.eventCandidates.push(ethers.utils.hexlify(lastPush32));
             continue
         }
 
         // Find JUMPDEST labels
         if (inst === opcodes.JUMPDEST) {
             // Index jump destinations so we can check against them later
-            dests[pos] = step;
+            if (currentFunction) currentFunction.end = pos - 1;
+            currentFunction = {
+                byteOffset: step,
+                start: pos,
+                opTags: new Set(),
+                jumps: new Array<number>(),
+            } as Function;
+            p.dests[pos] = currentFunction;
 
             // Check whether a JUMPDEST has non-payable guards
             //
@@ -185,9 +282,12 @@ export function abiFromBytecode(bytecode: string): ABI {
                 code.at(pos + 2) === opcodes.DUP1 &&
                 code.at(pos + 3) === opcodes.ISZERO
             ) {
-                notPayable[pos] = step;
+                p.notPayable[pos] = step;
                 // TODO: Optimization: Could seek ahead 3 pos/count safely
             }
+
+            // TODO: Check whether function has a simple return flow?
+            // if (code.at(pos - 1) === opcodes.RETURN) { ... }
 
             // Check whether we've reached the end of the selector jump table,
             // first time we see: JUMPDEST CALLDATASIZE
@@ -195,7 +295,22 @@ export function abiFromBytecode(bytecode: string): ABI {
                 inJumpTable = false;
             }
 
-            continue
+            continue;
+        }
+
+        // Annotate current function
+        if (currentFunction.opTags !== undefined) {
+
+            // Detect simple JUMP/JUMPI helper subroutines
+            if ((inst === opcodes.JUMP || inst === opcodes.JUMPI) && isPush(code.at(-2))) {
+                const jumpOffset = valueToOffset(code.valueAt(-2));
+                currentFunction.jumps.push(jumpOffset);
+            }
+
+            // Tag current function with interesting opcodes (not including above)
+            if (interestingOpCodes.has(inst)) {
+                currentFunction.opTags.add(inst);
+            }
         }
 
         if (!inJumpTable) continue; // Skip searching for function selectors at this point
@@ -213,6 +328,10 @@ export function abiFromBytecode(bytecode: string): ABI {
         //
         // We can reliably skip checking for DUP1 if we're only searching
         // within `inJumpTable` range.
+        //
+        // Note that sizes of selectors and destinations can vary. Selector
+        // PUSH can get optimized with zero-prefixes, all the way down to an
+        // ISZERO routine (see next condition block).
         if (
             code.at(-1) === opcodes.JUMPI &&
             isPush(code.at(-2)) &&
@@ -226,8 +345,9 @@ export function abiFromBytecode(bytecode: string): ABI {
                 value = ethers.utils.zeroPad(value, 4);
             }
             const selector: string = ethers.utils.hexlify(value);
-            const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
-            jumps[selector] = offsetDest;
+            const offsetDest: number = valueToOffset(code.valueAt(-2));
+            p.jumps[selector] = offsetDest;
+            selectorDests.add(offsetDest);
 
             continue;
         }
@@ -239,23 +359,48 @@ export function abiFromBytecode(bytecode: string): ABI {
             code.at(-3) === opcodes.ISZERO
         ) {
             const selector = "0x00000000";
-            const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
-            jumps[selector] = offsetDest;
+            const offsetDest: number = valueToOffset(code.valueAt(-2));
+            p.jumps[selector] = offsetDest;
+            selectorDests.add(offsetDest);
 
             continue;
         }
     }
 
-    for (const [selector, offset] of Object.entries(jumps)) {
-        // TODO: Optimization: If we only look at selectors in the jump table region, we shouldn't need to check JUMPDEST validity.
-        if (!(offset in dests)) continue; // Selector does not point to a valid jumpdest
+    return p;
+}
 
-        abi.push({
-            type: "function",
-            selector: selector,
-            payable: !notPayable[jumps[selector]],
-        } as ABIFunction)
+function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpCode> {
+    let tags = fn.opTags;
+    for (const jumpOffset of fn.jumps) {
+        // TODO: Probably want un-recurse this
+        const moreTags = collapseTags(dests[jumpOffset], dests);
+        tags = new Set([...tags, ...moreTags]);
+    }
+    return tags;
+}
+
+
+// Debug helper:
+
+export function programToDotGraph(p: Program): string {
+    const nameLookup = Object.fromEntries(Object.entries(p.jumps).map(([k, v]) => [v, "SEL" + k]));
+    const start = {start: 0, jumps: Object.values(p.jumps)} as Function;
+
+    function jumpsToDot(fn: Function): string {
+        if (fn.jumps.length === 0) return "";
+
+        function name(n: number): string {
+            return nameLookup[n] || ("FUNC" + n);
+        }
+
+        let s = name(fn.start) + " -> { " + fn.jumps.map(n => name(n)).join(" ") + " }\n";
+        for (const jump of fn.jumps) {
+            s += jumpsToDot(p.dests[jump]);
+        }
+        return s;
     }
 
-    return abi;
+    return "digraph jumps {\n" + jumpsToDot(start) + "\n}";
 }
+
