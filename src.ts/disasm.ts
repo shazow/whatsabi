@@ -18,13 +18,21 @@ const opcodes: Readonly<{ [key: string]: OpCode }> = Object.freeze({
     JUMPI: 0x57,
     JUMPDEST: 0x5b,
     PUSH1: 0x60,
+    PUSH2: 0x61,
     PUSH4: 0x63,
     PUSH32: 0x7f,
     DUP1: 0x80,
+    DUP2: 0x81,
+    DUP16: 0x8f,
     LOG1: 0xa1,
     LOG4: 0xa4,
     RETURN: 0xf3,
 });
+
+const opcodeNames: Readonly<{ [key: OpCode]: string }> = Object.freeze(
+    Object.fromEntries(
+        Object.entries(opcodes).map(([k, v]) => [v, k])
+));
 
 // Return PUSHN width of N if PUSH instruction, otherwise 0
 export function pushWidth(instruction: OpCode): number {
@@ -34,6 +42,10 @@ export function pushWidth(instruction: OpCode): number {
 
 export function isPush(instruction: OpCode): boolean {
     return !(instruction < opcodes.PUSH1 || instruction > opcodes.PUSH32);
+}
+
+export function isDup(instruction: OpCode): boolean {
+    return !(instruction < opcodes.DUP1 || instruction > opcodes.DUP16);
 }
 
 export function isLog(instruction: OpCode): boolean {
@@ -107,10 +119,8 @@ export class BytecodeIter {
         return this.posBuffer[this.posBuffer.length - 1];
     }
 
-    // at returns instruction at an absolute byte position or relative negative
-    // buffered step offset. Buffered step offsets must be negative and start
-    // at -1 (current step).
-    at(posOrRelativeStep: number): OpCode {
+    // asPos returns an absolute position for a given position that could be relative.
+    asPos(posOrRelativeStep: number): number {
         let pos = posOrRelativeStep;
         if (pos < 0) {
             pos = this.posBuffer[this.posBuffer.length + pos];
@@ -118,6 +128,14 @@ export class BytecodeIter {
                 throw new Error("buffer does not contain relative step");
             }
         }
+        return pos;
+    }
+
+    // at returns instruction at an absolute byte position or relative negative
+    // buffered step offset. Buffered step offsets must be negative and start
+    // at -1 (current step).
+    at(posOrRelativeStep: number): OpCode {
+        let pos = this.asPos(posOrRelativeStep);
         return this.bytecode[pos];
     }
 
@@ -130,13 +148,7 @@ export class BytecodeIter {
     // empty value otherwise), at pos pos can be a relative negative count for
     // relative buffered offset.
     valueAt(posOrRelativeStep: number): Uint8Array {
-        let pos = posOrRelativeStep;
-        if (pos < 0) {
-            pos = this.posBuffer[this.posBuffer.length + pos];
-            if (pos === undefined) {
-                throw new Error("buffer does not contain relative step");
-            }
-        }
+        let pos = this.asPos(posOrRelativeStep);
         const instruction = this.bytecode[pos];
         const width = pushWidth(instruction);
         return this.bytecode.slice(pos + 1, pos + 1 + width);
@@ -241,7 +253,7 @@ function disasm(bytecode: string): Program {
     let currentFunction: Function = {} as Function;
     let inJumpTable: boolean = true;
 
-    const code = new BytecodeIter(bytecode, { bufferSize: 4 });
+    const code = new BytecodeIter(bytecode, { bufferSize: 5 });
 
     while (code.hasMore()) {
         const inst = code.next();
@@ -299,7 +311,7 @@ function disasm(bytecode: string): Program {
         }
 
         // Annotate current function
-        if (currentFunction.opTags !== undefined) {
+        if (!inJumpTable && currentFunction.opTags !== undefined) {
 
             // Detect simple JUMP/JUMPI helper subroutines
             if ((inst === opcodes.JUMP || inst === opcodes.JUMPI) && isPush(code.at(-2))) {
@@ -314,6 +326,12 @@ function disasm(bytecode: string): Program {
         }
 
         if (!inJumpTable) continue; // Skip searching for function selectors at this point
+
+        // Beyond this, we're only looking with instruction sequences that end with 
+        //   ... PUSHN <BYTEN> JUMPI
+        if (!(
+            code.at(-1) === opcodes.JUMPI && isPush(code.at(-2))
+        )) continue;
 
         // Find callable function selectors:
         //
@@ -333,8 +351,6 @@ function disasm(bytecode: string): Program {
         // PUSH can get optimized with zero-prefixes, all the way down to an
         // ISZERO routine (see next condition block).
         if (
-            code.at(-1) === opcodes.JUMPI &&
-            isPush(code.at(-2)) &&
             code.at(-3) === opcodes.EQ &&
             isPush(code.at(-4))
         ) {
@@ -351,11 +367,31 @@ function disasm(bytecode: string): Program {
 
             continue;
         }
+
+        // Sometimes the positions get swapped with DUP2:
+        //    PUSHN <SELECTOR> DUP2 EQ PUSHN <OFFSET> JUMPI
+        if (
+            code.at(-3) === opcodes.EQ &&
+            code.at(-4) === opcodes.DUP2 &&
+            isPush(code.at(-5))
+        ) {
+            // Found a function selector sequence, save it to check against JUMPDEST table later
+            let value = code.valueAt(-5)
+            if (value.length < 4) {
+                // 0-prefixed comparisons get optimized to a smaller width than PUSH4
+                value = ethers.utils.zeroPad(value, 4);
+            }
+            const selector: string = ethers.utils.hexlify(value);
+            const offsetDest: number = valueToOffset(code.valueAt(-2));
+            p.jumps[selector] = offsetDest;
+            selectorDests.add(offsetDest);
+
+            continue;
+        }
+
         // In some cases, the sequence can get optimized such as for 0x00000000:
         //    DUP1 ISZERO PUSHN <BYTEN> JUMPI
         if (
-            code.at(-1) === opcodes.JUMPI &&
-            isPush(code.at(-2)) &&
             code.at(-3) === opcodes.ISZERO
         ) {
             const selector = "0x00000000";
@@ -404,3 +440,11 @@ export function programToDotGraph(p: Program): string {
     return "digraph jumps {\n" + jumpsToDot(start) + "\n}";
 }
 
+export function printCode(code: BytecodeIter, at: number): string {
+    const inst = code.at(at);
+    const pos = code.asPos(at);
+    const name = opcodeNames[inst] || inst;
+    const value = isPush(inst) && ethers.utils.hexlify(code.valueAt(at)) || "";
+
+    return `${pos}\t${name}\t${value}`;
+}
