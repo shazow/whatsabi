@@ -3,8 +3,8 @@
 import { ethers } from "ethers";
 import { readFileSync } from "fs";
 
-import { withCache } from "../__tests__/offline";
-import { bytecodeToString, bytecodeToStringConfig } from '../disasm';
+import { withCache } from "../internal/filecache";
+import { bytecodeToString, bytecodeToStringConfig } from '../internal/debug';
 
 const { INFURA_API_KEY, OPCODES_JSON } = process.env;
 const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();

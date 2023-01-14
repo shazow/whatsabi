@@ -20,7 +20,9 @@ test('abiFromBytecode functions', () => {
   const got = Object.fromEntries(r.map(a=> [a.selector, a]));
   const sample = toKnown(SAMPLE_ABI.filter(a => a.type === "function"));
   const expected = Object.fromEntries(sample.map(a => {
-    (got[a.selector] as any).name = a.name;
+    if (got[a.selector] !== undefined) {
+      (got[a.selector] as any).name = a.name;
+    }
     return [a.selector, a]
   }))
 

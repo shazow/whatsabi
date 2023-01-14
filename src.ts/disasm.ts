@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 
 import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
-import { opcodes, mnemonics, OpCode, pushWidth, isPush, isDup, isLog, isHalt } from "./opcodes";
+import { opcodes, OpCode, pushWidth, isPush, isLog, isHalt } from "./opcodes";
 
 
 function valueToOffset(value: Uint8Array): number {
@@ -120,7 +120,7 @@ const interestingOpCodes : Set<OpCode> = new Set([
     // TODO: Add LOGs to track event emitters?
 ]);
 
-type Function = {
+export type Function = {
     byteOffset: number // JUMPDEST byte offset
     opTags: Set<OpCode>; // Track whether function uses interesting opcodes
     start: number; // JUMPDEST instruction offset
@@ -128,7 +128,7 @@ type Function = {
     end?: number; // Last instruction offset before the next JUMPDEST
 };
 
-type Program = {
+export type Program = {
     dests: { [key: number]: Function }; // instruction offset -> Function
     selectors: { [key: string]: number }; // function hash -> instruction offset
     notPayable: { [key: number]: number }; // instruction offset -> bytes offset
@@ -406,65 +406,4 @@ function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpC
         tags = new Set([...tags, ...moreTags]);
     }
     return tags;
-}
-
-
-// Debug helper:
-
-export function programToDotGraph(p: Program): string {
-    const nameLookup = Object.fromEntries(Object.entries(p.selectors).map(([k, v]) => [v, "SEL" + k]));
-    const start = {start: 0, jumps: Object.values(p.selectors)} as Function;
-
-    function jumpsToDot(fn: Function): string {
-        if (fn.jumps.length === 0) return "";
-
-        function name(n: number): string {
-            return nameLookup[n] || ("FUNC" + n);
-        }
-
-        let s = name(fn.start) + " -> { " + fn.jumps.map(n => name(n)).join(" ") + " }\n";
-        for (const jump of fn.jumps) {
-            s += jumpsToDot(p.dests[jump]);
-        }
-        return s;
-    }
-
-    return "digraph jumps {\n" + jumpsToDot(start) + "\n}";
-}
-
-export type bytecodeToStringConfig = {
-    start?: number,
-    stop?: number,
-    highlight?: number,
-    opcodeLookup?: { [key: OpCode]: string },
-};
-
-export function* bytecodeToString(
-    bytecode: string, 
-    config?: bytecodeToStringConfig,
-) {
-    const code = new BytecodeIter(bytecode);
-
-    if (config === undefined) config = {};
-    let { start, stop, highlight, opcodeLookup } = config;
-    if (!opcodeLookup) opcodeLookup = mnemonics;
-
-    while (code.hasMore()) {
-        const inst = code.next();
-        const step = code.step();
-
-        if (start && step < start) continue;
-        if (stop && step > stop) break;
-
-        const pos = ethers.utils.hexlify(code.pos());
-        const value = isPush(inst) && ethers.utils.hexlify(code.value()) || "";
-        let name = opcodeLookup[inst];
-        if (isPush(inst)) name = "PUSH" + (inst - opcodes.PUSH1 + 1);
-        else if (isDup(inst)) name = "DUP" + (inst - opcodes.DUP1 + 1);
-        else if (name === undefined) name = ethers.utils.hexlify(inst);
-
-        const line = `${step}\t${pos}\t${name}\t${value}\t${highlight === step ? "<--" : ""}`;
-        const done : boolean = yield line;
-        if (done) break;
-    }
 }

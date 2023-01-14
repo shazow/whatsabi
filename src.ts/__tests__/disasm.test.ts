@@ -1,6 +1,7 @@
 import {describe, expect, test} from '@jest/globals';
 
-import { BytecodeIter, pushWidth } from "../disasm";
+import { BytecodeIter } from "../disasm";
+import { pushWidth } from "../opcodes";
 
 describe('BytecodeIter', () => {
   test('opcodes', () => {

@@ -10,7 +10,7 @@ import {
 } from "../loaders";
 import { selectorsFromABI } from "../index";
 
-import { online_test } from "./offline";
+import { online_test } from "./env";
 
 describe('loaders module', () => {
   online_test('defaultABILoader', async () => {

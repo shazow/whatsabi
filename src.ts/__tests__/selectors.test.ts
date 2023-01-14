@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 
 import { selectorsFromBytecode } from '../index';
 
-import { withCache } from "./offline";
+import { withCache } from "../internal/filecache";
 import { cached_test } from "./env";
 
 
