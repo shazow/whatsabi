@@ -1,11 +1,6 @@
 import * as fs from 'fs';
-import { test } from '@jest/globals';
 
-const CACHE_DIR = ".cache"
-
-// Skip online tests unless ONLINE env is set
-export const online_test = process.env["ONLINE"] !== undefined ? test : test.skip;
-export const cached_test = !process.env["SKIP_CACHED"] ? test : test.skip;
+const CACHE_DIR = process.env["CACHE_DIR"] || ".cache";
 
 export async function withCache(
   cacheKey: string,

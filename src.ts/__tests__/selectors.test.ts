@@ -3,7 +3,8 @@ import { ethers } from "ethers";
 
 import { selectorsFromBytecode } from '../index';
 
-import { withCache, cached_test } from "./offline";
+import { withCache } from "./offline";
+import { cached_test } from "./env";
 
 
 const { INFURA_API_KEY } = process.env;
@@ -13,7 +14,7 @@ cached_test('cached online: selectorsFromBytecode for Uniswap v2 Router', async 
   const address = "0x7a250d5630b4cf539739df2c5dacb4c659f2488d";
 
   const code = await withCache(
-    `${address}_abi`,
+    `${address}_code`,
     async () => {
       return await provider.getCode(address)
     },
@@ -30,7 +31,7 @@ cached_test('cached online: selectorsFromBytecode for 0x00000000 method', async 
   const address = "0x000000000000Df8c944e775BDe7Af50300999283";
 
   const code = await withCache(
-    `${address}_abi`,
+    `${address}_code`,
     async () => {
       return await provider.getCode(address)
     },

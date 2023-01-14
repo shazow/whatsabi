@@ -2,55 +2,8 @@ import { ethers } from "ethers";
 
 import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
-type OpCode = number;
+import { opcodes, mnemonics, OpCode, pushWidth, isPush, isDup, isLog, isHalt } from "./opcodes";
 
-// Some opcodes we care about, doesn't need to be a complete list
-const opcodes: Readonly<{ [key: string]: OpCode }> = Object.freeze({
-    STOP: 0x00,
-    EQ: 0x14,
-    ISZERO: 0x15,
-    CALLVALUE: 0x34,
-    CALLDATALOAD: 0x35,
-    CALLDATASIZE: 0x36,
-    SLOAD: 0x54,
-    SSTORE: 0x55,
-    JUMP: 0x56,
-    JUMPI: 0x57,
-    JUMPDEST: 0x5b,
-    PUSH1: 0x60,
-    PUSH2: 0x61,
-    PUSH4: 0x63,
-    PUSH32: 0x7f,
-    DUP1: 0x80,
-    DUP2: 0x81,
-    DUP16: 0x8f,
-    LOG1: 0xa1,
-    LOG4: 0xa4,
-    RETURN: 0xf3,
-});
-
-const opcodeNames: Readonly<{ [key: OpCode]: string }> = Object.freeze(
-    Object.fromEntries(
-        Object.entries(opcodes).map(([k, v]) => [v, k])
-));
-
-// Return PUSHN width of N if PUSH instruction, otherwise 0
-export function pushWidth(instruction: OpCode): number {
-    if (instruction < opcodes.PUSH1 || instruction > opcodes.PUSH32) return 0;
-    return instruction - opcodes.PUSH1 + 1;
-}
-
-export function isPush(instruction: OpCode): boolean {
-    return !(instruction < opcodes.PUSH1 || instruction > opcodes.PUSH32);
-}
-
-export function isDup(instruction: OpCode): boolean {
-    return !(instruction < opcodes.DUP1 || instruction > opcodes.DUP16);
-}
-
-export function isLog(instruction: OpCode): boolean {
-    return instruction >= opcodes.LOG1 && instruction <= opcodes.LOG4;
-}
 
 function valueToOffset(value: Uint8Array): number {
     // FIXME: Should be a cleaner way to do this...
@@ -177,7 +130,7 @@ type Function = {
 
 type Program = {
     dests: { [key: number]: Function }; // instruction offset -> Function
-    jumps: { [key: string]: number }; // function hash -> instruction offset
+    selectors: { [key: string]: number }; // function hash -> instruction offset
     notPayable: { [key: number]: number }; // instruction offset -> bytes offset
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
 }
@@ -186,7 +139,7 @@ export function abiFromBytecode(bytecode: string): ABI {
     const p = disasm(bytecode);
 
     const abi: ABI = [];
-    for (const [selector, offset] of Object.entries(p.jumps)) {
+    for (const [selector, offset] of Object.entries(p.selectors)) {
         // TODO: Optimization: If we only look at selectors in the jump table region, we shouldn't need to check JUMPDEST validity.
         if (!(offset in p.dests)) {
             // Selector does not point to a valid jumpdest. This should not happen.
@@ -195,12 +148,13 @@ export function abiFromBytecode(bytecode: string): ABI {
 
         // Collapse tags for function call graph
         const fn = p.dests[offset];
-        const tags = collapseTags(fn, p.dests);
+        //const tags = collapseTags(fn, p.dests);
+        const tags = collapseTags(fn, {});
 
         const funcABI = {
             type: "function",
             selector: selector,
-            payable: !p.notPayable[p.jumps[selector]],
+            payable: !p.notPayable[p.selectors[selector]],
         } as ABIFunction;
 
         // Unfortunately we don't have better details about the type sizes, so we just return a dynamically-sized /shrug
@@ -242,7 +196,7 @@ const _EmptyArray = new Uint8Array();
 function disasm(bytecode: string): Program {
     const p = {
         dests: {},
-        jumps: {},
+        selectors: {},
         notPayable: {},
         eventCandidates: [],
     } as Program;
@@ -251,7 +205,9 @@ function disasm(bytecode: string): Program {
 
     let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
     let currentFunction: Function = {} as Function;
+    let seenJumpTable: boolean = false;
     let inJumpTable: boolean = true;
+    let resumeJumpTable: number = 0;
 
     const code = new BytecodeIter(bytecode, { bufferSize: 5 });
 
@@ -272,14 +228,25 @@ function disasm(bytecode: string): Program {
 
         // Find JUMPDEST labels
         if (inst === opcodes.JUMPDEST) {
+            // End of the function, or disjoint function?
+            if (isHalt(code.at(-2)) || code.at(-2) === opcodes.JUMP) {
+                if (currentFunction) currentFunction.end = pos - 1;
+                currentFunction = {
+                    byteOffset: step,
+                    start: pos,
+                    opTags: new Set(),
+                    jumps: new Array<number>(),
+                } as Function;
+
+
+                if (inJumpTable) {
+                    inJumpTable = false;
+                    // XXX: This is wrong, we bail too early and don't find continuations properly
+                    // console.log("XXX: End of jump table\n" + bytecodeToString(bytecode, {start: 0, stop: step+100, highlight: step}));
+                }
+            } // Otherwise it's just a simple branch, we continue
+
             // Index jump destinations so we can check against them later
-            if (currentFunction) currentFunction.end = pos - 1;
-            currentFunction = {
-                byteOffset: step,
-                start: pos,
-                opTags: new Set(),
-                jumps: new Array<number>(),
-            } as Function;
             p.dests[pos] = currentFunction;
 
             // Check whether a JUMPDEST has non-payable guards
@@ -301,17 +268,31 @@ function disasm(bytecode: string): Program {
             // TODO: Check whether function has a simple return flow?
             // if (code.at(pos - 1) === opcodes.RETURN) { ... }
 
-            // Check whether we've reached the end of the selector jump table,
-            // first time we see: JUMPDEST CALLDATASIZE
-            if (inJumpTable && code.at(pos + 1) === opcodes.CALLDATASIZE) {
-                inJumpTable = false;
-            }
-
             continue;
         }
 
+        if (inst === opcodes.CALLDATALOAD) {
+            // TODO: We can't guarantee that jump tables directly call
+            // CALLDATALOAD. It might already be in the stack. To generalize
+            // further, we'll need to annotate the current stack the way we
+            // annotate functions.
+
+            if (!seenJumpTable) {
+                // First jump table
+                inJumpTable = true;
+                seenJumpTable = true;
+                continue;
+            }
+
+            if (currentFunction && currentFunction.start === resumeJumpTable) {
+                // Continuation of a previous jump table?
+                inJumpTable = true;
+                continue;
+            }
+        }
+
         // Annotate current function
-        if (!inJumpTable && currentFunction.opTags !== undefined) {
+        if (currentFunction.opTags !== undefined) {
 
             // Detect simple JUMP/JUMPI helper subroutines
             if ((inst === opcodes.JUMP || inst === opcodes.JUMPI) && isPush(code.at(-2))) {
@@ -326,6 +307,13 @@ function disasm(bytecode: string): Program {
         }
 
         if (!inJumpTable) continue; // Skip searching for function selectors at this point
+
+        // We're in a jump table section now. Let's find some selectors.
+
+        if (inst === opcodes.JUMP && isPush(code.at(-2))) {
+            // The table is continued elsewhere? Or could be a default target
+            resumeJumpTable = valueToOffset(code.valueAt(-2));
+        }
 
         // Beyond this, we're only looking with instruction sequences that end with 
         //   ... PUSHN <BYTEN> JUMPI
@@ -362,7 +350,7 @@ function disasm(bytecode: string): Program {
             }
             const selector: string = ethers.utils.hexlify(value);
             const offsetDest: number = valueToOffset(code.valueAt(-2));
-            p.jumps[selector] = offsetDest;
+            p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
             continue;
@@ -383,7 +371,7 @@ function disasm(bytecode: string): Program {
             }
             const selector: string = ethers.utils.hexlify(value);
             const offsetDest: number = valueToOffset(code.valueAt(-2));
-            p.jumps[selector] = offsetDest;
+            p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
             continue;
@@ -396,11 +384,13 @@ function disasm(bytecode: string): Program {
         ) {
             const selector = "0x00000000";
             const offsetDest: number = valueToOffset(code.valueAt(-2));
-            p.jumps[selector] = offsetDest;
+            p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
             continue;
         }
+
+        // console.log("XXX: Failed to catch selector\n" + bytecodeToString(bytecode, {start: step-5, stop: step+1, highlight: step}));
     }
 
     return p;
@@ -410,7 +400,9 @@ function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpC
     let tags = fn.opTags;
     for (const jumpOffset of fn.jumps) {
         // TODO: Probably want un-recurse this
-        const moreTags = collapseTags(dests[jumpOffset], dests);
+        const destFn = dests[jumpOffset];
+        if (!destFn) continue; // This should not happen, track it?
+        const moreTags = collapseTags(destFn, dests);
         tags = new Set([...tags, ...moreTags]);
     }
     return tags;
@@ -420,8 +412,8 @@ function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpC
 // Debug helper:
 
 export function programToDotGraph(p: Program): string {
-    const nameLookup = Object.fromEntries(Object.entries(p.jumps).map(([k, v]) => [v, "SEL" + k]));
-    const start = {start: 0, jumps: Object.values(p.jumps)} as Function;
+    const nameLookup = Object.fromEntries(Object.entries(p.selectors).map(([k, v]) => [v, "SEL" + k]));
+    const start = {start: 0, jumps: Object.values(p.selectors)} as Function;
 
     function jumpsToDot(fn: Function): string {
         if (fn.jumps.length === 0) return "";
@@ -440,11 +432,39 @@ export function programToDotGraph(p: Program): string {
     return "digraph jumps {\n" + jumpsToDot(start) + "\n}";
 }
 
-export function printCode(code: BytecodeIter, at: number): string {
-    const inst = code.at(at);
-    const pos = code.asPos(at);
-    const name = opcodeNames[inst] || inst;
-    const value = isPush(inst) && ethers.utils.hexlify(code.valueAt(at)) || "";
+export type bytecodeToStringConfig = {
+    start?: number,
+    stop?: number,
+    highlight?: number,
+    opcodeLookup?: { [key: OpCode]: string },
+};
 
-    return `${pos}\t${name}\t${value}`;
+export function* bytecodeToString(
+    bytecode: string, 
+    config?: bytecodeToStringConfig,
+) {
+    const code = new BytecodeIter(bytecode);
+
+    if (config === undefined) config = {};
+    let { start, stop, highlight, opcodeLookup } = config;
+    if (!opcodeLookup) opcodeLookup = mnemonics;
+
+    while (code.hasMore()) {
+        const inst = code.next();
+        const step = code.step();
+
+        if (start && step < start) continue;
+        if (stop && step > stop) break;
+
+        const pos = ethers.utils.hexlify(code.pos());
+        const value = isPush(inst) && ethers.utils.hexlify(code.value()) || "";
+        let name = opcodeLookup[inst];
+        if (isPush(inst)) name = "PUSH" + (inst - opcodes.PUSH1 + 1);
+        else if (isDup(inst)) name = "DUP" + (inst - opcodes.DUP1 + 1);
+        else if (name === undefined) name = ethers.utils.hexlify(inst);
+
+        const line = `${step}\t${pos}\t${name}\t${value}\t${highlight === step ? "<--" : ""}`;
+        const done : boolean = yield line;
+        if (done) break;
+    }
 }
