@@ -1,12 +1,12 @@
 #!/usr/bin/env ts-node-script
 
 import { ethers } from "ethers";
-import { readFileSync } from "fs";
 
 import { withCache } from "../internal/filecache";
-import { bytecodeToString, bytecodeToStringConfig } from '../internal/debug';
+import { programToDotGraph } from '../internal/debug';
+import { disasm } from '../disasm';
 
-const { INFURA_API_KEY, OPCODES_JSON } = process.env;
+const { INFURA_API_KEY } = process.env;
 const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();
 
 async function main() {
@@ -17,8 +17,6 @@ async function main() {
         process.exit(1);
     }
 
-    console.debug("Loading code for address:", address);
-
     const code = await withCache(
         `${address}_abi`,
         async () => {
@@ -26,22 +24,8 @@ async function main() {
         },
     );
 
-    const config : bytecodeToStringConfig = {};
-
-    if (OPCODES_JSON) {
-        const opcodes = JSON.parse(readFileSync(OPCODES_JSON, 'utf8'));
-
-        config.opcodeLookup = Object.fromEntries(
-            Object.entries(opcodes).map(([k, v]) => [parseInt(k, 16), v as string])
-        );
-    }
-
-    const iter = bytecodeToString(code, config);
-    while (true) {
-        const {value, done} = iter.next()
-        if (done) break;
-        console.log(value);
-    }
+    const program = disasm(code);
+    console.log(programToDotGraph(program));
 }
 
 main().then().catch(err => {

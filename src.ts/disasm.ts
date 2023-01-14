@@ -193,7 +193,7 @@ export function abiFromBytecode(bytecode: string): ABI {
 
 const _EmptyArray = new Uint8Array();
 
-function disasm(bytecode: string): Program {
+export function disasm(bytecode: string): Program {
     const p = {
         dests: {},
         selectors: {},

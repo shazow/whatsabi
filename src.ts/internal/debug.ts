@@ -16,7 +16,7 @@ export function programToDotGraph(p: Program): string {
             return nameLookup[n] || ("FUNC" + n);
         }
 
-        let s = name(fn.start) + " -> { " + fn.jumps.map(n => name(n)).join(" ") + " }\n";
+        let s = "\t" + name(fn.start) + " -> { " + fn.jumps.map(n => name(n)).join(" ") + " }\n";
         for (const jump of fn.jumps) {
             s += jumpsToDot(p.dests[jump]);
         }
