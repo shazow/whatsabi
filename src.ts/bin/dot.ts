@@ -28,7 +28,13 @@ async function main() {
     );
 
     const program = disasm(code);
-    console.log(programToDotGraph(program));
+    const iter = programToDotGraph(program);
+
+    while (true) {
+        const {value, done} = iter.next()
+        if (done) break;
+        console.log(value);
+    }
 }
 
 main().then().catch(err => {
