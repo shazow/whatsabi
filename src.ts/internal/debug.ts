@@ -1,14 +1,28 @@
 import { ethers } from "ethers";
 
-import { opcodes, mnemonics, OpCode, isPush, isDup }  from "../opcodes";
+import { mnemonics, OpCode, isPush }  from "../opcodes";
 import { BytecodeIter } from "../disasm";
 
 // Debug helper:
 
+const hexpads = "0x0000";
+
+export function BytecodeIterString(code : BytecodeIter): string {
+    const step = code.step();
+    const pos = code.pos();
+    let hexpos = ethers.utils.hexlify(pos);
+    if (hexpos.length < hexpads.length) hexpos = hexpads.slice(0, hexpos.length - hexpads.length) + hexpos.slice(2);
+    const inst = code.at(pos);
+    const value = isPush(inst) ? ethers.utils.hexlify(code.valueAt(pos)) : "";
+    const name = mnemonics[inst] || ethers.utils.hexlify(inst);
+
+    return `${String(step).padStart(6, " ")}\t${hexpos}\t${name}\t${value}`
+}
+
 export type bytecodeToStringConfig = {
-    start?: number,
-    stop?: number,
-    highlight?: number,
+    startPos?: number,
+    stopPos?: number,
+    highlightPos?: number,
     opcodeLookup?: { [key: OpCode]: string },
 };
 
@@ -19,24 +33,18 @@ export function* bytecodeToString(
     const code = new BytecodeIter(bytecode);
 
     if (config === undefined) config = {};
-    let { start, stop, highlight, opcodeLookup } = config;
+    let { startPos, stopPos, highlightPos, opcodeLookup } = config;
     if (!opcodeLookup) opcodeLookup = mnemonics;
-4
+
     while (code.hasMore()) {
-        const inst = code.next();
-        const step = code.step();
+        code.next();
+        const pos = code.pos();
 
-        if (start && step < start) continue;
-        if (stop && step > stop) break;
+        if (startPos && pos < startPos) continue;
+        if (stopPos && pos > stopPos) break;
 
-        const pos = ethers.utils.hexlify(code.pos());
-        const value = isPush(inst) && ethers.utils.hexlify(code.value()) || "";
-        let name = opcodeLookup[inst];
-        if (isPush(inst)) name = "PUSH" + (inst - opcodes.PUSH1 + 1);
-        else if (isDup(inst)) name = "DUP" + (inst - opcodes.DUP1 + 1);
-        else if (name === undefined) name = ethers.utils.hexlify(inst);
-
-        const line = `${step}\t${pos}\t${name}\t${value}\t${highlight === step ? "<--" : ""}`;
+        const highlight = (highlightPos === pos) ? " <--" : "";
+        const line = BytecodeIterString(code) + highlight;
         const done : boolean = yield line;
         if (done) break;
     }

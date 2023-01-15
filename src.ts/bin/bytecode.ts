@@ -11,6 +11,7 @@ const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestea
 
 async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
+    const jumpdest = process.env["JUMPDEST"] || process.argv[3];
 
     if (!address || !address.startsWith("0x")) {
         console.error("Invalid address: " + address);
@@ -34,6 +35,12 @@ async function main() {
         config.opcodeLookup = Object.fromEntries(
             Object.entries(opcodes).map(([k, v]) => [parseInt(k, 16), v as string])
         );
+    }
+    if (jumpdest) {
+
+        const pos = jumpdest.startsWith("0x") ? parseInt(jumpdest, 16) : parseInt(jumpdest); 
+        config.startPos = config.highlightPos = pos;
+        config.stopPos = pos + 40;
     }
 
     const iter = bytecodeToString(code, config);

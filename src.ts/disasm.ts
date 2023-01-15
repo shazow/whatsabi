@@ -88,7 +88,7 @@ export class BytecodeIter {
     // buffered step offset. Buffered step offsets must be negative and start
     // at -1 (current step).
     at(posOrRelativeStep: number): OpCode {
-        let pos = this.asPos(posOrRelativeStep);
+        const pos = this.asPos(posOrRelativeStep);
         return this.bytecode[pos];
     }
 
@@ -101,7 +101,7 @@ export class BytecodeIter {
     // empty value otherwise), at pos pos can be a relative negative count for
     // relative buffered offset.
     valueAt(posOrRelativeStep: number): Uint8Array {
-        let pos = this.asPos(posOrRelativeStep);
+        const pos = this.asPos(posOrRelativeStep);
         const instruction = this.bytecode[pos];
         const width = pushWidth(instruction);
         return this.bytecode.slice(pos + 1, pos + 1 + width);
@@ -346,6 +346,7 @@ export function disasm(bytecode: string): Program {
             let value = code.valueAt(-4)
             if (value.length < 4) {
                 // 0-prefixed comparisons get optimized to a smaller width than PUSH4
+                // FIXME: Could just use ethers.utils.hexzeropad
                 value = ethers.utils.zeroPad(value, 4);
             }
             const selector: string = ethers.utils.hexlify(value);
