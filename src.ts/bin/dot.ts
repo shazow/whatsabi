@@ -1,5 +1,8 @@
 #!/usr/bin/env ts-node-script
 
+// Example usage:
+// ./src.ts/bin/dot.ts 0x7a250d5630b4cf539739df2c5dacb4c659f2488d | dot -Tpng  | feh -
+
 import { ethers } from "ethers";
 
 import { withCache } from "../internal/filecache";

@@ -16,8 +16,13 @@ export function programToDotGraph(p: Program): string {
             return nameLookup[n] || ("FUNC" + n);
         }
 
-        let s = "\t" + name(fn.start) + " -> { " + fn.jumps.map(n => name(n)).join(" ") + " }\n";
-        for (const jump of fn.jumps) {
+        const jumps = fn.jumps.filter(j => j in p.dests)
+        const n = name(fn.start);
+        const tags = fn.opTags && Array.from(fn.opTags).map(op => mnemonics[op]).join("|")
+
+        let s = "\t" + n + ` [shape=record, label="{ ${n} | { ${tags} } }"]` +
+            "\t" + n + " -> { " + jumps.map(n => name(n)).join(" ") + " }\n";
+        for (const jump of jumps) {
             s += jumpsToDot(p.dests[jump]);
         }
         return s;
@@ -42,7 +47,7 @@ export function* bytecodeToString(
     if (config === undefined) config = {};
     let { start, stop, highlight, opcodeLookup } = config;
     if (!opcodeLookup) opcodeLookup = mnemonics;
-
+4
     while (code.hasMore()) {
         const inst = code.next();
         const step = code.step();
