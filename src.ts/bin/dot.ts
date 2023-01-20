@@ -15,24 +15,25 @@ const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestea
 
 
 export function* programToDotGraph(p: Program) {
-    yield "digraph JUMPS {\n";
+    yield "digraph JUMPS {";
+    yield "\tnode [shape=record];\n";
 
     const nameLookup = Object.fromEntries(Object.entries(p.selectors).map(([k, v]) => [v, k]));
 
     function toID(n: number): string {
-        const sel = nameLookup[n];
-        if (sel) return "SEL" + sel;
-        return "FUNC" + n;
+        return (nameLookup[n] || ethers.utils.hexlify(n));
     }
+    yield "\tsubgraph cluster_0 {"
+    yield "\t\tlabel = Selectors;";
+    yield "\t\tnode [style=filled];";
+    yield "\t\trankdir=LR;";
+    yield `\t\t${Object.keys(p.selectors).map(s => '"' + s + '"').join(" ")}`
+    yield "\t}"
 
-    function toName(n: number): string {
-        const sel = nameLookup[n];
-        if (sel) return "➡️ " + sel;
-        return ethers.utils.hexlify(n);
-    }
-
-    const jumps = Object.values(p.selectors).map(j => p.dests[j]) as Function[];
+    const jumps: Function[] = Object.values(p.selectors).map(j => p.dests[j]) as Function[];
     const seen = new Set<number>();
+
+    if (jumps.length == 0) jumps.push(...Object.values(p.dests));
 
     while (jumps.length > 0) {
         const fn = jumps.pop();
@@ -43,10 +44,9 @@ export function* programToDotGraph(p: Program) {
         const j = fn.jumps.filter(j => j in p.dests).map(j => p.dests[j]);
         const id = toID(fn.start);
         const tags = fn.opTags && Array.from(fn.opTags).map(op => mnemonics[op]).join("|")
-        const style = id.startsWith("SEL") ? " color=blue," : "";
 
-        yield "\t" + id + ` [shape=record,${style} label="{ ${toName(fn.start)} | { ${tags} } }"]`;
-        yield "\t" + id + " -> { " + j.map(n => toID(n.start)).join(" ") + " }";
+        yield `\t"${id}" [label="{ ${id} | { ${tags} } }"]`;
+        yield `\t"${id}" -> { ${j.map(n => '"' + toID(n.start) + '"').join(" ")} }`;
 
         jumps.push(...j);
     }
