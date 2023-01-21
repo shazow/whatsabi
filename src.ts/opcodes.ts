@@ -170,6 +170,10 @@ export function isLog(op: OpCode): boolean {
     return op >= opcodes.LOG1 && op <= opcodes.LOG4;
 }
 
+export function isSwap(op: OpCode): boolean {
+    return op >= opcodes.SWAP1 && op <= opcodes.LOG16;
+}
+
 export function isHalt(op: OpCode): boolean {
     return op === opcodes.RETURN || op >= opcodes.REVERT;
 }
@@ -178,3 +182,92 @@ export function isCompare(op: OpCode): boolean {
     // LT, GT, LTE, GTE, EQ
     return !(op < 0x10 || op > 0x14)
 }
+
+export function stackPush(op: OpCode): number {
+    return (isSwap(op) || isLog(op) || noStackPush.has(op)) ? 0 : 1;
+}
+
+export function stackPop(op: OpCode): number {
+    return hasStackArgs[op] || 0;
+}
+
+// Partial set of ops that don't push to stack (not including log and swap)
+const noStackPush = new Set<OpCode>([
+    opcodes.STOP,
+    opcodes.CALLDATACOPY,
+    opcodes.CODECOPY,
+    opcodes.EXTCODECOPY,
+    opcodes.RETURNDATACOPY,
+    opcodes.POP,
+    opcodes.MSTORE,
+    opcodes.MSTORE8,
+    opcodes.SSTORE,
+    opcodes.JUMP,
+    opcodes.JUMPI,
+    opcodes.JUMPDEST,
+    opcodes.RETURN,
+    opcodes.REVERT,
+    opcodes.INVALID,
+    opcodes.SUICIDE,
+]);
+
+const hasStackArgs : Readonly<{ [key: OpCode]: number }> = Object.freeze({
+    [opcodes.ADD]: 2,
+    [opcodes.MUL]: 2,
+    [opcodes.SUB]: 2,
+    [opcodes.DIV]: 2,
+    [opcodes.SDIV]: 2,
+    [opcodes.MOD]: 2,
+    [opcodes.SMOD]: 2,
+    [opcodes.ADDMOD]: 3,
+    [opcodes.MULMOD]: 3,
+    [opcodes.EXP]: 2,
+    [opcodes.SIGNEXTEND]: 2,
+    [opcodes.LT]: 2,
+    [opcodes.GT]: 2,
+    [opcodes.SLT]: 2,
+    [opcodes.SGT]: 2,
+    [opcodes.EQ]: 2,
+    [opcodes.ISZERO]: 1,
+    [opcodes.AND]: 2,
+    [opcodes.OR]: 2,
+    [opcodes.XOR]: 2,
+    [opcodes.NOT]: 1,
+    [opcodes.BYTE]: 2,
+    [opcodes.SHL]: 2,
+    [opcodes.SHR]: 2,
+    [opcodes.SAR]: 2,
+    [opcodes.SHA3]: 2,
+    [opcodes.BALANCE]: 1,
+    [opcodes.CALLDATALOAD]: 1,
+    [opcodes.CALLDATACOPY]: 3,
+    [opcodes.CODECOPY]: 3,
+    [opcodes.EXTCODESIZE]: 1,
+    [opcodes.EXTCODECOPY]: 4,
+    [opcodes.RETURNDATACOPY]: 3,
+    [opcodes.EXTCODEHASH]: 1,
+    [opcodes.BLOCKHASH]: 1,
+    [opcodes.POP]: 1,
+    [opcodes.MLOAD]: 1,
+    [opcodes.MSTORE]: 2,
+    [opcodes.MSTORE8]: 2,
+    [opcodes.SLOAD]: 1,
+    [opcodes.SSTORE]: 2,
+    [opcodes.JUMP]: 1,
+    [opcodes.JUMPI]: 2,
+    [opcodes.LOG0]: 2,
+    [opcodes.LOG1]: 3,
+    [opcodes.LOG2]: 4,
+    [opcodes.LOG3]: 5,
+    [opcodes.LOG4]: 6,
+    [opcodes.CREATE]: 3,
+    [opcodes.CALL]: 7,
+    [opcodes.CALLCODE]: 7,
+    [opcodes.RETURN]: 2,
+    [opcodes.DELEGATECALL]: 6,
+    [opcodes.CREATE2]: 4,
+    [opcodes.STATICCALL]: 6,
+    [opcodes.REVERT]: 2,
+    [opcodes.SUICIDE]: 1,
+})
+
