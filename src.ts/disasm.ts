@@ -205,9 +205,8 @@ export function disasm(bytecode: string): Program {
 
     let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
     let currentFunction: Function = {} as Function;
-    let seenJumpTable: boolean = false;
-    let inJumpTable: boolean = true;
-    let resumeJumpTable: number = 0;
+    let checkJumpTable: boolean = true;
+    let resumeJumpTable = new Set<number>();
 
     const code = new BytecodeIter(bytecode, { bufferSize: 5 });
 
@@ -239,10 +238,15 @@ export function disasm(bytecode: string): Program {
                 } as Function;
 
 
-                if (inJumpTable) {
-                    inJumpTable = false;
+                if (checkJumpTable) {
+                    checkJumpTable = false;
                     // XXX: This is wrong, we bail too early and don't find continuations properly
                     // console.log("XXX: End of jump table\n" + bytecodeToString(bytecode, {start: 0, stop: step+100, highlight: step}));
+                }
+                if (resumeJumpTable.has(pos)) {
+                    // Continuation of a previous jump table?
+                    checkJumpTable = true;
+                    console.log("XXX", "resumeJumpTable", pos);
                 }
             } // Otherwise it's just a simple branch, we continue
 
@@ -276,19 +280,7 @@ export function disasm(bytecode: string): Program {
             // CALLDATALOAD. It might already be in the stack. To generalize
             // further, we'll need to annotate the current stack the way we
             // annotate functions.
-
-            if (!seenJumpTable) {
-                // First jump table
-                inJumpTable = true;
-                seenJumpTable = true;
-                continue;
-            }
-
-            if (currentFunction && currentFunction.start === resumeJumpTable) {
-                // Continuation of a previous jump table?
-                inJumpTable = true;
-                continue;
-            }
+            checkJumpTable = true;
         }
 
         // Annotate current function
@@ -306,13 +298,13 @@ export function disasm(bytecode: string): Program {
             }
         }
 
-        if (!inJumpTable) continue; // Skip searching for function selectors at this point
+        if (!checkJumpTable) continue; // Skip searching for function selectors at this point
 
         // We're in a jump table section now. Let's find some selectors.
 
         if (inst === opcodes.JUMP && isPush(code.at(-2))) {
             // The table is continued elsewhere? Or could be a default target
-            resumeJumpTable = valueToOffset(code.valueAt(-2));
+            resumeJumpTable.add(valueToOffset(code.valueAt(-2)));
         }
 
         // Beyond this, we're only looking with instruction sequences that end with 
@@ -354,6 +346,8 @@ export function disasm(bytecode: string): Program {
             p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
+            console.debug("XXX", "selector found", selector, pos);
+
             continue;
         }
 
@@ -374,6 +368,8 @@ export function disasm(bytecode: string): Program {
             const offsetDest: number = valueToOffset(code.valueAt(-2));
             p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
+
+            console.debug("XXX", "selector found", selector, pos);
 
             continue;
         }
