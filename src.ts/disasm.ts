@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 
 import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
-import { opcodes, OpCode, pushWidth, isPush, isLog, isHalt } from "./opcodes";
+import { opcodes, OpCode, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes";
 
 
 function valueToOffset(value: Uint8Array): number {
@@ -204,9 +204,16 @@ export function disasm(bytecode: string): Program {
     const selectorDests = new Set<number>();
 
     let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
-    let currentFunction: Function = {} as Function;
     let checkJumpTable: boolean = true;
     let resumeJumpTable = new Set<number>();
+
+    let currentFunction: Function = {
+        byteOffset: 0,
+        start: 0,
+        opTags: new Set(),
+        jumps: new Array<number>(),
+    } as Function;
+    p.dests[0] = currentFunction;
 
     const code = new BytecodeIter(bytecode, { bufferSize: 5 });
 
@@ -237,16 +244,12 @@ export function disasm(bytecode: string): Program {
                     jumps: new Array<number>(),
                 } as Function;
 
-
                 if (checkJumpTable) {
                     checkJumpTable = false;
-                    // XXX: This is wrong, we bail too early and don't find continuations properly
-                    // console.log("XXX: End of jump table\n" + bytecodeToString(bytecode, {start: 0, stop: step+100, highlight: step}));
                 }
-                if (resumeJumpTable.has(pos)) {
+                if (resumeJumpTable.delete(pos)) {
                     // Continuation of a previous jump table?
-                    checkJumpTable = true;
-                    console.log("XXX", "resumeJumpTable", pos);
+                    checkJumpTable = code.at(pos + 1) === opcodes.DUP1 || code.at(pos + 1) === opcodes.CALLDATALOAD;
                 }
             } // Otherwise it's just a simple branch, we continue
 
@@ -275,14 +278,6 @@ export function disasm(bytecode: string): Program {
             continue;
         }
 
-        if (inst === opcodes.CALLDATALOAD) {
-            // TODO: We can't guarantee that jump tables directly call
-            // CALLDATALOAD. It might already be in the stack. To generalize
-            // further, we'll need to annotate the current stack the way we
-            // annotate functions.
-            checkJumpTable = true;
-        }
-
         // Annotate current function
         if (currentFunction.opTags !== undefined) {
 
@@ -304,7 +299,8 @@ export function disasm(bytecode: string): Program {
 
         if (inst === opcodes.JUMP && isPush(code.at(-2))) {
             // The table is continued elsewhere? Or could be a default target
-            resumeJumpTable.add(valueToOffset(code.valueAt(-2)));
+            const offsetDest: number = valueToOffset(code.valueAt(-2));
+            resumeJumpTable.add(offsetDest);
         }
 
         // Beyond this, we're only looking with instruction sequences that end with 
@@ -313,6 +309,9 @@ export function disasm(bytecode: string): Program {
             code.at(-1) === opcodes.JUMPI && isPush(code.at(-2))
         )) continue;
 
+        const offsetDest: number = valueToOffset(code.valueAt(-2));
+        currentFunction.jumps.push(offsetDest);
+
         // Find callable function selectors:
         //
         // https://github.com/ethereum/solidity/blob/242096695fd3e08cc3ca3f0a7d2e06d09b5277bf/libsolidity/codegen/ContractCompiler.cpp#L333
@@ -320,7 +319,7 @@ export function disasm(bytecode: string): Program {
         // We're looking for a sequence of opcodes that looks like:
         //
         //    DUP1 PUSH4 0x2E64CEC1 EQ PUSH1 0x37    JUMPI
-        //    DUP1 PUSH4 <BYTE4>    EQ PUSHN <BYTEN> JUMPI
+        //    DUP1 PUSH4 <SELECTOR> EQ PUSHN <OFFSET> JUMPI
         //    80   63    ^          14 60-7f ^       57
         //               Selector            Dest
         //
@@ -342,11 +341,8 @@ export function disasm(bytecode: string): Program {
                 value = ethers.utils.zeroPad(value, 4);
             }
             const selector: string = ethers.utils.hexlify(value);
-            const offsetDest: number = valueToOffset(code.valueAt(-2));
             p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
-
-            console.debug("XXX", "selector found", selector, pos);
 
             continue;
         }
@@ -365,29 +361,36 @@ export function disasm(bytecode: string): Program {
                 value = ethers.utils.zeroPad(value, 4);
             }
             const selector: string = ethers.utils.hexlify(value);
-            const offsetDest: number = valueToOffset(code.valueAt(-2));
             p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
-
-            console.debug("XXX", "selector found", selector, pos);
 
             continue;
         }
 
         // In some cases, the sequence can get optimized such as for 0x00000000:
-        //    DUP1 ISZERO PUSHN <BYTEN> JUMPI
+        //    DUP1 ISZERO PUSHN <OFFSET> JUMPI
         if (
-            code.at(-3) === opcodes.ISZERO
+            code.at(-3) === opcodes.ISZERO &&
+            code.at(-4) === opcodes.DUP1
         ) {
             const selector = "0x00000000";
-            const offsetDest: number = valueToOffset(code.valueAt(-2));
             p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
             continue;
         }
 
-        // console.log("XXX: Failed to catch selector\n" + bytecodeToString(bytecode, {start: step-5, stop: step+1, highlight: step}));
+        // Jumptable trees use GT/LT comparisons to branch jumps.
+        //    DUP1 PUSHN <SELECTOR> GT/LT PUSHN <OFFSET> JUMPI
+        if (
+            code.at(-3) !== opcodes.EQ &&
+            isCompare(code.at(-3)) &&
+            code.at(-5) === opcodes.DUP1
+        ) {
+            resumeJumpTable.add(offsetDest);
+
+            continue;
+        }
     }
 
     return p;
