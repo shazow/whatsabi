@@ -33,7 +33,8 @@ test('abiFromBytecode functions', () => {
   );
 });
 
-// toKnown converts a traditional ABI object to a subset that we know how to extract
+// toKnown converts a traditional ABI object to a subset that we know how to
+// extract, so that we can make comparisons within our limitations.
 function toKnown(abi: any[]) {
   const iface = new ethers.utils.Interface(abi);
 
@@ -53,7 +54,6 @@ function toKnown(abi: any[]) {
     else delete(a["outputs"]);
 
     delete(a["anonymous"]);
-    // XXX: delete(a["name"]);
 
     a.payable = a.stateMutability === "payable";
 
