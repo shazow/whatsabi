@@ -1,38 +1,13 @@
 import { ethers } from "ethers";
 
-import { ABI, ABIFunction, ABIEvent } from "./abi";
+import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
-type OpCode = number;
+import { opcodes, OpCode, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes";
 
-// Some opcodes we care about, doesn't need to be a complete list
-const opcodes: { [key: string]: OpCode } = {
-    "STOP": 0x00,
-    "EQ": 0x14,
-    "ISZERO": 0x15,
-    "CALLVALUE": 0x34,
-    "CALLDATASIZE": 0x36,
-    "JUMPI": 0x57,
-    "JUMPDEST": 0x5b,
-    "PUSH1": 0x60,
-    "PUSH4": 0x63,
-    "PUSH32": 0x7f,
-    "DUP1": 0x80,
-    "LOG1": 0xa1,
-    "LOG4": 0xa4,
-}
 
-// Return PUSHN width of N if PUSH instruction, otherwise 0
-export function pushWidth(instruction: OpCode): number {
-    if (instruction < opcodes.PUSH1 || instruction > opcodes.PUSH32) return 0;
-    return instruction - opcodes.PUSH1 + 1;
-}
-
-export function isPush(instruction: OpCode): boolean {
-    return !(instruction < opcodes.PUSH1 || instruction > opcodes.PUSH32);
-}
-
-export function isLog(instruction: OpCode): boolean {
-    return instruction >= opcodes.LOG1 && instruction <= opcodes.LOG4;
+function valueToOffset(value: Uint8Array): number {
+    // FIXME: Should be a cleaner way to do this...
+    return parseInt(ethers.utils.hexlify(value), 16);
 }
 
 // BytecodeIter takes EVM bytecode and handles iterating over it with correct
@@ -97,10 +72,8 @@ export class BytecodeIter {
         return this.posBuffer[this.posBuffer.length - 1];
     }
 
-    // at returns instruction at an absolute byte position or relative negative
-    // buffered step offset. Buffered step offsets must be negative and start
-    // at -1 (current step).
-    at(posOrRelativeStep: number): OpCode {
+    // asPos returns an absolute position for a given position that could be relative.
+    asPos(posOrRelativeStep: number): number {
         let pos = posOrRelativeStep;
         if (pos < 0) {
             pos = this.posBuffer[this.posBuffer.length + pos];
@@ -108,6 +81,14 @@ export class BytecodeIter {
                 throw new Error("buffer does not contain relative step");
             }
         }
+        return pos;
+    }
+
+    // at returns instruction at an absolute byte position or relative negative
+    // buffered step offset. Buffered step offsets must be negative and start
+    // at -1 (current step).
+    at(posOrRelativeStep: number): OpCode {
+        const pos = this.asPos(posOrRelativeStep);
         return this.bytecode[pos];
     }
 
@@ -120,35 +101,124 @@ export class BytecodeIter {
     // empty value otherwise), at pos pos can be a relative negative count for
     // relative buffered offset.
     valueAt(posOrRelativeStep: number): Uint8Array {
-        let pos = posOrRelativeStep;
-        if (pos < 0) {
-            pos = this.posBuffer[this.posBuffer.length + pos];
-            if (pos === undefined) {
-                throw new Error("buffer does not contain relative step");
-            }
-        }
+        const pos = this.asPos(posOrRelativeStep);
         const instruction = this.bytecode[pos];
         const width = pushWidth(instruction);
         return this.bytecode.slice(pos + 1, pos + 1 + width);
     }
 }
 
+// Opcodes that tell us something interesting about the function they're in
+const interestingOpCodes : Set<OpCode> = new Set([
+    opcodes.STOP, // No return value
+    opcodes.RETURN, // Has return value?
+    opcodes.CALLDATALOAD, // Has arguments
+    opcodes.CALLDATASIZE, // FIXME: Is it superfluous to have these two?
+    opcodes.CALLDATACOPY,
+    opcodes.SLOAD, // Not pure
+    opcodes.SSTORE, // Not view
+    opcodes.REVERT,
+    // TODO: Add LOGs to track event emitters?
+]);
+
+export type Function = {
+    byteOffset: number // JUMPDEST byte offset
+    opTags: Set<OpCode>; // Track whether function uses interesting opcodes
+    start: number; // JUMPDEST instruction offset
+    jumps: Array<number>; // JUMPDEST instruction offsets this function can jump to
+    end?: number; // Last instruction offset before the next JUMPDEST
+};
+
+export type Program = {
+    dests: { [key: number]: Function }; // instruction offset -> Function
+    selectors: { [key: string]: number }; // function hash -> instruction offset
+    notPayable: { [key: number]: number }; // instruction offset -> bytes offset
+    eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
+}
+
 export function abiFromBytecode(bytecode: string): ABI {
+    const p = disasm(bytecode);
+
     const abi: ABI = [];
+    for (const [selector, offset] of Object.entries(p.selectors)) {
+        // TODO: Optimization: If we only look at selectors in the jump table region, we shouldn't need to check JUMPDEST validity.
+        if (!(offset in p.dests)) {
+            // Selector does not point to a valid jumpdest. This should not happen.
+            continue;
+        }
 
-    // JUMPDEST lookup
-    const jumps: { [key: string]: number } = {}; // function hash -> instruction offset
-    const dests: { [key: number]: number } = {}; // instruction offset -> bytes offset
-    const notPayable: { [key: number]: number } = {}; // instruction offset -> bytes offset
+        // Collapse tags for function call graph
+        const fn = p.dests[offset];
+        const tags = subtreeTags(fn, p.dests);
 
-    let lastPush32: Uint8Array = new Uint8Array();  // Track last push32 to find log topics
-    let inJumpTable: boolean = true;
+        const funcABI = {
+            type: "function",
+            selector: selector,
+            payable: !p.notPayable[offset],
+        } as ABIFunction;
 
-    const code = new BytecodeIter(bytecode, { bufferSize: 4 });
+        // Note that these are not very reliable because our tag detection
+        // fails to follow dynamic jumps.
+        let mutability : StateMutability = "nonpayable";
+        if (funcABI.payable) {
+            mutability = "payable";
+        } else if (!tags.has(opcodes.SSTORE)) {
+            mutability = "view";
+        }
+        // TODO: Can we make a claim about purity? Probably not reliably without handling dynamic jumps?
+        // if (mutability === "view" && !tags.has(opcodes.SLOAD)) {
+        //    mutability = "pure";
+        // }
 
-    // TODO: Optimization: Could optimize finding jumps by loading JUMPI first
-    // (until the jump table window is reached), then sorting them and seeking
-    // to each JUMPDEST.
+        funcABI.stateMutability = mutability;
+
+        // Unfortunately we don't have better details about the type sizes, so we just return a dynamically-sized /shrug
+        if (tags.has(opcodes.RETURN) || mutability === "view") {
+            // FIXME: We assume outputs based on mutability, that's a hack.
+            funcABI.outputs = [{type: "bytes"}];
+        }
+        if (tags.has(opcodes.CALLDATALOAD) || tags.has(opcodes.CALLDATASIZE) || tags.has(opcodes.CALLDATACOPY)) {
+            funcABI.inputs = [{type: "bytes"}];
+        }
+
+        abi.push(funcABI);
+    }
+
+    for (const h of p.eventCandidates) {
+        abi.push({
+            type: "event",
+            hash: h,
+        } as ABIEvent);
+    }
+
+    return abi;
+}
+
+const _EmptyArray = new Uint8Array();
+
+export function disasm(bytecode: string): Program {
+    const p = {
+        dests: {},
+        selectors: {},
+        notPayable: {},
+        eventCandidates: [],
+    } as Program;
+
+    const selectorDests = new Set<number>();
+
+    let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
+    let checkJumpTable: boolean = true;
+    let resumeJumpTable = new Set<number>();
+
+    let currentFunction: Function = {
+        byteOffset: 0,
+        start: 0,
+        opTags: new Set(),
+        jumps: new Array<number>(),
+    } as Function;
+    p.dests[0] = currentFunction;
+
+    const code = new BytecodeIter(bytecode, { bufferSize: 5 });
 
     while (code.hasMore()) {
         const inst = code.next();
@@ -161,17 +231,35 @@ export function abiFromBytecode(bytecode: string): ABI {
             lastPush32 = code.value();
             continue
         } else if (isLog(inst) && lastPush32.length > 0) {
-            abi.push({
-                type: "event",
-                hash: ethers.utils.hexlify(lastPush32),
-            } as ABIEvent)
+            p.eventCandidates.push(ethers.utils.hexlify(lastPush32));
             continue
         }
 
         // Find JUMPDEST labels
         if (inst === opcodes.JUMPDEST) {
+            // End of the function, or disjoint function?
+            if (isHalt(code.at(-2)) || code.at(-2) === opcodes.JUMP) {
+                if (currentFunction) currentFunction.end = pos - 1;
+                currentFunction = {
+                    byteOffset: step,
+                    start: pos,
+                    opTags: new Set(),
+                    jumps: new Array<number>(),
+                } as Function;
+
+                // We don't stop looking for jump tables until we find at least one selector
+                if (checkJumpTable && Object.keys(p.selectors).length > 0) {
+                    checkJumpTable = false;
+                }
+                if (resumeJumpTable.delete(pos)) {
+                    // Continuation of a previous jump table?
+                    // Selector branch trees start by pushing CALLDATALOAD or it was pushed before.
+                    checkJumpTable = code.at(pos + 1) === opcodes.DUP1 || code.at(pos + 1) === opcodes.CALLDATALOAD;
+                }
+            } // Otherwise it's just a simple branch, we continue
+
             // Index jump destinations so we can check against them later
-            dests[pos] = step;
+            p.dests[pos] = currentFunction;
 
             // Check whether a JUMPDEST has non-payable guards
             //
@@ -185,20 +273,49 @@ export function abiFromBytecode(bytecode: string): ABI {
                 code.at(pos + 2) === opcodes.DUP1 &&
                 code.at(pos + 3) === opcodes.ISZERO
             ) {
-                notPayable[pos] = step;
+                p.notPayable[pos] = step;
                 // TODO: Optimization: Could seek ahead 3 pos/count safely
             }
 
-            // Check whether we've reached the end of the selector jump table,
-            // first time we see: JUMPDEST CALLDATASIZE
-            if (inJumpTable && code.at(pos + 1) === opcodes.CALLDATASIZE) {
-                inJumpTable = false;
-            }
+            // TODO: Check whether function has a simple return flow?
+            // if (code.at(pos - 1) === opcodes.RETURN) { ... }
 
-            continue
+            continue;
         }
 
-        if (!inJumpTable) continue; // Skip searching for function selectors at this point
+        // Annotate current function
+        if (currentFunction.opTags !== undefined) {
+
+            // Detect simple JUMP/JUMPI helper subroutines
+            if ((inst === opcodes.JUMP || inst === opcodes.JUMPI) && isPush(code.at(-2))) {
+                const jumpOffset = valueToOffset(code.valueAt(-2));
+                currentFunction.jumps.push(jumpOffset);
+            }
+
+            // Tag current function with interesting opcodes (not including above)
+            if (interestingOpCodes.has(inst)) {
+                currentFunction.opTags.add(inst);
+            }
+        }
+
+        if (!checkJumpTable) continue; // Skip searching for function selectors at this point
+
+        // We're in a jump table section now. Let's find some selectors.
+
+        if (inst === opcodes.JUMP && isPush(code.at(-2))) {
+            // The table is continued elsewhere? Or could be a default target
+            const offsetDest: number = valueToOffset(code.valueAt(-2));
+            resumeJumpTable.add(offsetDest);
+        }
+
+        // Beyond this, we're only looking with instruction sequences that end with 
+        //   ... PUSHN <BYTEN> JUMPI
+        if (!(
+            code.at(-1) === opcodes.JUMPI && isPush(code.at(-2))
+        )) continue;
+
+        const offsetDest: number = valueToOffset(code.valueAt(-2));
+        currentFunction.jumps.push(offsetDest);
 
         // Find callable function selectors:
         //
@@ -207,15 +324,17 @@ export function abiFromBytecode(bytecode: string): ABI {
         // We're looking for a sequence of opcodes that looks like:
         //
         //    DUP1 PUSH4 0x2E64CEC1 EQ PUSH1 0x37    JUMPI
-        //    DUP1 PUSH4 <BYTE4>    EQ PUSHN <BYTEN> JUMPI
+        //    DUP1 PUSH4 <SELECTOR> EQ PUSHN <OFFSET> JUMPI
         //    80   63    ^          14 60-7f ^       57
         //               Selector            Dest
         //
         // We can reliably skip checking for DUP1 if we're only searching
         // within `inJumpTable` range.
+        //
+        // Note that sizes of selectors and destinations can vary. Selector
+        // PUSH can get optimized with zero-prefixes, all the way down to an
+        // ISZERO routine (see next condition block).
         if (
-            code.at(-1) === opcodes.JUMPI &&
-            isPush(code.at(-2)) &&
             code.at(-3) === opcodes.EQ &&
             isPush(code.at(-4))
         ) {
@@ -223,39 +342,78 @@ export function abiFromBytecode(bytecode: string): ABI {
             let value = code.valueAt(-4)
             if (value.length < 4) {
                 // 0-prefixed comparisons get optimized to a smaller width than PUSH4
+                // FIXME: Could just use ethers.utils.hexzeropad
                 value = ethers.utils.zeroPad(value, 4);
             }
             const selector: string = ethers.utils.hexlify(value);
-            const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
-            jumps[selector] = offsetDest;
+            p.selectors[selector] = offsetDest;
+            selectorDests.add(offsetDest);
 
             continue;
         }
-        // In some cases, the sequence can get optimized such as for 0x00000000:
-        //    DUP1 ISZERO PUSHN <BYTEN> JUMPI
+
+        // Sometimes the positions get swapped with DUP2:
+        //    PUSHN <SELECTOR> DUP2 EQ PUSHN <OFFSET> JUMPI
         if (
-            code.at(-1) === opcodes.JUMPI &&
-            isPush(code.at(-2)) &&
-            code.at(-3) === opcodes.ISZERO
+            code.at(-3) === opcodes.EQ &&
+            code.at(-4) === opcodes.DUP2 &&
+            isPush(code.at(-5))
+        ) {
+            // Found a function selector sequence, save it to check against JUMPDEST table later
+            let value = code.valueAt(-5)
+            if (value.length < 4) {
+                // 0-prefixed comparisons get optimized to a smaller width than PUSH4
+                value = ethers.utils.zeroPad(value, 4);
+            }
+            const selector: string = ethers.utils.hexlify(value);
+            p.selectors[selector] = offsetDest;
+            selectorDests.add(offsetDest);
+
+            continue;
+        }
+
+        // In some cases, the sequence can get optimized such as for 0x00000000:
+        //    DUP1 ISZERO PUSHN <OFFSET> JUMPI
+        if (
+            code.at(-3) === opcodes.ISZERO &&
+            code.at(-4) === opcodes.DUP1
         ) {
             const selector = "0x00000000";
-            const offsetDest: number = parseInt(ethers.utils.hexlify(code.valueAt(-2)), 16);
-            jumps[selector] = offsetDest;
+            p.selectors[selector] = offsetDest;
+            selectorDests.add(offsetDest);
+
+            continue;
+        }
+
+        // Jumptable trees use GT/LT comparisons to branch jumps.
+        //    DUP1 PUSHN <SELECTOR> GT/LT PUSHN <OFFSET> JUMPI
+        if (
+            code.at(-3) !== opcodes.EQ &&
+            isCompare(code.at(-3)) &&
+            code.at(-5) === opcodes.DUP1
+        ) {
+            resumeJumpTable.add(offsetDest);
 
             continue;
         }
     }
 
-    for (const [selector, offset] of Object.entries(jumps)) {
-        // TODO: Optimization: If we only look at selectors in the jump table region, we shouldn't need to check JUMPDEST validity.
-        if (!(offset in dests)) continue; // Selector does not point to a valid jumpdest
+    return p;
+}
 
-        abi.push({
-            type: "function",
-            selector: selector,
-            payable: !notPayable[jumps[selector]],
-        } as ABIFunction)
+function subtreeTags(entryFunc: Function, dests: { [key: number]: Function }): Set<OpCode> {
+    let tags = new Set<OpCode>([]);
+    const stack = new Array<Function>(entryFunc);
+    const seen = new Set<number>();
+
+    while (stack.length > 0) {
+        const fn = stack.pop();
+        if (!fn) continue;
+        if (seen.has(fn.start)) continue;
+        seen.add(fn.start);
+
+        tags = new Set([...tags, ...fn.opTags]);
+        stack.push(...fn.jumps.map(offset => dests[offset]))
     }
-
-    return abi;
+    return tags;
 }

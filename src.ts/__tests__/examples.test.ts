@@ -1,22 +1,29 @@
-import { test, expect } from "@jest/globals";
-const online_test = process.env["ONLINE"] ? test : test.skip;
+import { expect } from "@jest/globals";
 
 import { ethers } from "ethers";
 import { whatsabi } from "../index";
 
+import { withCache } from "../internal/filecache";
+import { cached_test } from "./env";
 
 const { INFURA_API_KEY } = process.env;
 const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();
 
 
-online_test('README usage', async () => {
+cached_test('README usage', async () => {
   const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
-  const code = await provider.getCode(address); // Load the bytecode
+
+  const code = await withCache(
+    `${address}_code`,
+    async () => {
+      return await provider.getCode(address)
+    },
+  )
 
   const selectors = whatsabi.selectorsFromBytecode(code); // Get the callable selectors
   
-  // console.log(selectors); // ["0x00000000", "0x06fdde03", "0x46423aa7", "0x55944a42", ...]
-  expect(selectors).toEqual(expect.arrayContaining(["0x00000000", "0x06fdde03", "0x46423aa7", "0x55944a42"]));
+  // console.log(selectors); // ["0x06fdde03", "0x46423aa7", "0x55944a42", ...]
+  expect(selectors).toEqual(expect.arrayContaining(["0x06fdde03", "0x46423aa7", "0x55944a42"]));
 
   const abi = whatsabi.abiFromBytecode(code);
   // console.log(abi);
@@ -28,7 +35,9 @@ online_test('README usage', async () => {
   // ]
 
   expect(abi).toContainEqual({"hash": "0x721c20121297512b72821b97f5326877ea8ecf4bb9948fea5bfcb6453074d37f", "type": "event"})
-  expect(abi).toContainEqual({"payable": true, "selector": "0x06fdde03", "type": "function"})
+  expect(abi).toContainEqual(
+    {"payable": true, "selector": "0xb3a34c4c", "type": "function", "stateMutability": "payable", "inputs": [{"type": "bytes"}], "outputs": [{"type": "bytes"}]},
+  )
 
   const signatureLookup = new whatsabi.loaders.SamczunSignatureLookup();
   {
