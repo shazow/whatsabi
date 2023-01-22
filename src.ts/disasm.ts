@@ -117,6 +117,7 @@ const interestingOpCodes : Set<OpCode> = new Set([
     opcodes.CALLDATACOPY,
     opcodes.SLOAD, // Not pure
     opcodes.SSTORE, // Not view
+    opcodes.REVERT,
     // TODO: Add LOGs to track event emitters?
 ]);
 
@@ -148,23 +149,16 @@ export function abiFromBytecode(bytecode: string): ABI {
 
         // Collapse tags for function call graph
         const fn = p.dests[offset];
-        //const tags = collapseTags(fn, p.dests);
-        const tags = collapseTags(fn, {});
+        const tags = subtreeTags(fn, p.dests);
 
         const funcABI = {
             type: "function",
             selector: selector,
-            payable: !p.notPayable[p.selectors[selector]],
+            payable: !p.notPayable[offset],
         } as ABIFunction;
 
-        // Unfortunately we don't have better details about the type sizes, so we just return a dynamically-sized /shrug
-        if (tags.has(opcodes.RETURN)) {
-            funcABI.outputs = [{type: "bytes"}];
-        }
-        if (tags.has(opcodes.CALLDATALOAD) || tags.has(opcodes.CALLDATASIZE) || tags.has(opcodes.CALLDATACOPY)) {
-            funcABI.inputs = [{type: "bytes"}];
-        }
-
+        // Note that these are not very reliable because our tag detection
+        // fails to follow dynamic jumps.
         let mutability : StateMutability = "nonpayable";
         if (funcABI.payable) {
             mutability = "payable";
@@ -177,6 +171,15 @@ export function abiFromBytecode(bytecode: string): ABI {
         // }
 
         funcABI.stateMutability = mutability;
+
+        // Unfortunately we don't have better details about the type sizes, so we just return a dynamically-sized /shrug
+        if (tags.has(opcodes.RETURN) || mutability === "view") {
+            // FIXME: We assume outputs based on mutability, that's a hack.
+            funcABI.outputs = [{type: "bytes"}];
+        }
+        if (tags.has(opcodes.CALLDATALOAD) || tags.has(opcodes.CALLDATASIZE) || tags.has(opcodes.CALLDATACOPY)) {
+            funcABI.inputs = [{type: "bytes"}];
+        }
 
         abi.push(funcABI);
     }
@@ -244,11 +247,13 @@ export function disasm(bytecode: string): Program {
                     jumps: new Array<number>(),
                 } as Function;
 
-                if (checkJumpTable) {
+                // We don't stop looking for jump tables until we find at least one selector
+                if (checkJumpTable && Object.keys(p.selectors).length > 0) {
                     checkJumpTable = false;
                 }
                 if (resumeJumpTable.delete(pos)) {
                     // Continuation of a previous jump table?
+                    // Selector branch trees start by pushing CALLDATALOAD or it was pushed before.
                     checkJumpTable = code.at(pos + 1) === opcodes.DUP1 || code.at(pos + 1) === opcodes.CALLDATALOAD;
                 }
             } // Otherwise it's just a simple branch, we continue
@@ -396,14 +401,19 @@ export function disasm(bytecode: string): Program {
     return p;
 }
 
-function collapseTags(fn: Function, dests: { [key: number]: Function }): Set<OpCode> {
-    let tags = fn.opTags;
-    for (const jumpOffset of fn.jumps) {
-        // TODO: Probably want un-recurse this
-        const destFn = dests[jumpOffset];
-        if (!destFn) continue; // This should not happen, track it?
-        const moreTags = collapseTags(destFn, dests);
-        tags = new Set([...tags, ...moreTags]);
+function subtreeTags(entryFunc: Function, dests: { [key: number]: Function }): Set<OpCode> {
+    let tags = new Set<OpCode>([]);
+    const stack = new Array<Function>(entryFunc);
+    const seen = new Set<number>();
+
+    while (stack.length > 0) {
+        const fn = stack.pop();
+        if (!fn) continue;
+        if (seen.has(fn.start)) continue;
+        seen.add(fn.start);
+
+        tags = new Set([...tags, ...fn.opTags]);
+        stack.push(...fn.jumps.map(offset => dests[offset]))
     }
     return tags;
 }
