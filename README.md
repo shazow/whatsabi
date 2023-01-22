@@ -34,8 +34,8 @@ const abi = whatsabi.abiFromBytecode(code);
 console.log(abi);
 // -> [
 //  {"type": "event", "hash": "0x721c20121297512b72821b97f5326877ea8ecf4bb9948fea5bfcb6453074d37f"},
-//  {"type": "function", "payable": true, "selector": "0x06fdde03"},
-//  {"type": "function", "payable": true, "selector": "0x46423aa7"},
+//  {"type": "function", "payable": true, "selector": "0x06fdde03", ...},
+//  {"type": "function", "payable": true, "selector": "0x46423aa7", ...},
 //   ...
 
 // We also have a suite of database loaders for convenience
