@@ -29,7 +29,7 @@ export declare class MultiSignatureLookup implements SignatureLookup {
     loadFunctions(selector: string): Promise<string[]>;
     loadEvents(hash: string): Promise<string[]>;
 }
-export declare class Byte4SignatureLookup implements SignatureLookup {
+export declare class FourByteSignatureLookup implements SignatureLookup {
     load(url: string): Promise<string[]>;
     loadFunctions(selector: string): Promise<string[]>;
     loadEvents(hash: string): Promise<string[]>;

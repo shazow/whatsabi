@@ -1,8 +1,5 @@
 import { ABI } from "./abi";
-declare type OpCode = number;
-export declare function pushWidth(instruction: OpCode): number;
-export declare function isPush(instruction: OpCode): boolean;
-export declare function isLog(instruction: OpCode): boolean;
+import { OpCode } from "./opcodes";
 export declare class BytecodeIter {
     bytecode: Uint8Array;
     nextStep: number;
@@ -16,9 +13,29 @@ export declare class BytecodeIter {
     next(): OpCode;
     step(): number;
     pos(): number;
+    asPos(posOrRelativeStep: number): number;
     at(posOrRelativeStep: number): OpCode;
     value(): Uint8Array;
     valueAt(posOrRelativeStep: number): Uint8Array;
 }
+export declare type Function = {
+    byteOffset: number;
+    opTags: Set<OpCode>;
+    start: number;
+    jumps: Array<number>;
+    end?: number;
+};
+export declare type Program = {
+    dests: {
+        [key: number]: Function;
+    };
+    selectors: {
+        [key: string]: number;
+    };
+    notPayable: {
+        [key: number]: number;
+    };
+    eventCandidates: Array<string>;
+};
 export declare function abiFromBytecode(bytecode: string): ABI;
-export {};
+export declare function disasm(bytecode: string): Program;

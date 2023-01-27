@@ -1,14 +1,24 @@
-export interface ABIFunction {
+export declare type StateMutability = "nonpayable" | "payable" | "view" | "pure";
+export declare type ABIFunction = {
     type: "function";
-    name?: string;
-    nameAlts?: string[];
     selector: string;
+    outputs?: {
+        type: string;
+        length?: number;
+        name?: string;
+    }[];
+    inputs?: {
+        type: string;
+    }[];
+    sig?: string;
+    sigAlts?: string[];
     payable?: boolean;
-}
-export interface ABIEvent {
+    stateMutability?: StateMutability;
+};
+export declare type ABIEvent = {
     type: "event";
-    name?: string;
-    nameAlts?: string[];
     hash: string;
-}
+    sig?: string;
+    sigAlts?: string[];
+};
 export declare type ABI = (ABIFunction | ABIEvent)[];
