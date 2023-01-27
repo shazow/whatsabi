@@ -26,10 +26,10 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "ethers": "^5.7",
-    "ts-node": "^10.9.1"
+    "ethers": "^5.7"
   },
   "devDependencies": {
-    "ts-jest": "^29"
+    "ts-jest": "^29",
+    "ts-node": "^10.9.1"
   }
 }
