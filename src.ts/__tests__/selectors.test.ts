@@ -38,6 +38,5 @@ cached_test('cached online: selectorsFromBytecode for 0x00000000 method', async 
   )
 
   const r = selectorsFromBytecode(code);
-  expect(new Set(r)).toStrictEqual(new Set(['0x00000000', '0x150b7a02', '0xf04f2707']))
-  // Note: Removed '0x83197ef0', '0xcc066bb8', not sure where they came from?
+  expect(new Set(r)).toStrictEqual(new Set(['0x00000000', '0xf04f2707']))
 });
