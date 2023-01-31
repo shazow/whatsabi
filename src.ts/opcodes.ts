@@ -65,6 +65,7 @@ export const opcodes: Readonly<{ [key: string]: OpCode }> = Object.freeze({
   MSIZE: 0x59,
   GAS: 0x5a,
   JUMPDEST: 0x5b,
+  PUSH0: 0x5f,
   PUSH1: 0x60,
   PUSH2: 0x61,
   PUSH3: 0x62,
