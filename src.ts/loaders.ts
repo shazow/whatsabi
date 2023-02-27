@@ -84,19 +84,23 @@ export class MultiSignatureLookup implements SignatureLookup {
   }
 
   async loadFunctions(selector: string): Promise<string[]> {
-    return Promise.all(
-      this.lookups.map(
-        lookup => lookup.loadFunctions(selector)
-      )
-    ).then(results => Array.from(new Set(results.flat())))
+    for (const lookup of this.lookups) {
+      const r = await lookup.loadFunctions(selector);
+
+      // Return the first non-empty result
+      if (r.length > 0) return Promise.resolve(r);
+    }
+    return Promise.resolve([]);
   }
 
   async loadEvents(hash: string): Promise<string[]> {
-    return Promise.all(
-      this.lookups.map(
-        lookup => lookup.loadEvents(hash)
-      )
-    ).then(results => Array.from(new Set(results.flat())))
+    for (const lookup of this.lookups) {
+      const r = await lookup.loadEvents(hash);
+
+      // Return the first non-empty result
+      if (r.length > 0) return Promise.resolve(r);
+    }
+    return Promise.resolve([]);
   }
 }
 
