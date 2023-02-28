@@ -5,40 +5,24 @@ export interface ABILoader {
   loadABI(address: string): Promise<any[]>;
 }
 
+// Load ABIs from multiple providers until a result is found.
 export class MultiABILoader implements ABILoader {
   loaders: ABILoader[];
-  mode: "any"|"all";
 
   constructor(loaders: ABILoader[]) {
     this.loaders = loaders;
-    this.mode = "any";
   }
 
   async loadABI(address: string): Promise<any[]> {
-    if (this.mode === "any") {
-      return Promise.any(
-        this.loaders.map(
-          loader => loader.loadABI(address)
-        )
-      );
+    for (const loader of this.loaders) {
+      const r = await loader.loadABI(address);
+
+      // Return the first non-empty result
+      if (r.length > 0) return Promise.resolve(r);
     }
-
-    let r: { [key: string]: any } = {};
-    await Promise.all(
-      this.loaders.map(
-        loader => loader.loadABI(address)
-      )
-    ).then((results) => results.flat().map((fragment:any) => {
-      // Dedupe results
-      const key = fragment.type + ":" + fragment.name;
-      if (r[key] !== undefined) return;
-      r[key] = fragment;
-    }))
-
-    return Object.values(r);
+    return Promise.resolve([]);
   }
 }
-
 
 export class EtherscanABILoader implements ABILoader {
   apiKey?: string;
@@ -76,6 +60,7 @@ export interface SignatureLookup {
   loadEvents(hash: string): Promise<string[]>;
 }
 
+// Load signatures from multiple providers until a result is found.
 export class MultiSignatureLookup implements SignatureLookup {
   lookups: SignatureLookup[];
 

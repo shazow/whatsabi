@@ -8,8 +8,20 @@ const { INFURA_API_KEY, ETHERSCAN_API_KEY } = process.env;
 const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();
 
 
-test('autoload', async () => {
-  const address = "0x000000000000Df8c944e775BDe7Af50300999283";
+test('autoload selectors', async () => {
+  const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
+  const abi = await autoload(address, {
+    provider: provider,
+    abiLoader: false,
+    signatureLookup: false,
+  });
+  expect(abi).toContainEqual({"inputs": [{"type": "bytes"}], "payable": true, "selector": "0x6dbf2fa0", "stateMutability": "payable", "type": "function"});
+  expect(abi).toContainEqual({"inputs": [{"type": "bytes"}], "payable": true, "selector": "0xec0ab6a7", "stateMutability": "payable", "type": "function"});
+})
+
+
+test('autoload full', async () => {
+  const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
   const abi = await autoload(address, {
     provider: provider,
     abiLoader: new whatsabi.loaders.MultiABILoader([
@@ -21,7 +33,7 @@ test('autoload', async () => {
       new whatsabi.loaders.FourByteSignatureLookup(),
     ]),
   });
-  expect(abi).toContainEqual({"name": "onERC721Received(address,address,uint256,bytes)", "payable": false, "selector": "0x150b7a02", "type": "function"});
-  expect(abi).toContainEqual({"name": "destroy()", "payable": false, "selector": "0x83197ef0", "type": "function"});
-  expect(abi).toContainEqual({"payable": true, "selector": "0xcc066bb8", "type": "function"})
+  expect(abi).toContainEqual({"constant": false, "inputs": [{"type": "address"}, {"type": "uint256"}, {"type": "bytes"}], "name": "call", "payable": false, "selector": "0x6dbf2fa0", "sig": "call(address,uint256,bytes)", "stateMutability": "payable", "type": "function"})
+
+  expect(abi).toContainEqual({"inputs": [{"type": "bytes"}], "payable": true, "selector": "0xec0ab6a7", "stateMutability": "payable", "type": "function"});
 })
