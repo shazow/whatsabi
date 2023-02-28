@@ -26,12 +26,12 @@ export async function autoload(address:string, config: {provider: Provider, abiL
   for (const a of abi) {
     if (a.type === "function") {
       const r = await config.signatureLookup.loadFunctions(a.selector);
-      if (r.length >= 1) a.name = r[0];
-      if (r.length > 1) a.nameAlts = r.slice(1);
+      if (r.length >= 1) a.sig = r[0];
+      if (r.length > 1) a.sigAlts = r.slice(1);
     } else if (a.type === "event") {
       const r = await config.signatureLookup.loadEvents(a.hash);
-      if (r.length >= 1) a.name = r[0];
-      if (r.length > 1) a.nameAlts = r.slice(1);
+      if (r.length >= 1) a.sig = r[0];
+      if (r.length > 1) a.sigAlts = r.slice(1);
     }
   }
 
