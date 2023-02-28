@@ -18,14 +18,14 @@ export declare class BytecodeIter {
     value(): Uint8Array;
     valueAt(posOrRelativeStep: number): Uint8Array;
 }
-export declare type Function = {
+export type Function = {
     byteOffset: number;
     opTags: Set<OpCode>;
     start: number;
     jumps: Array<number>;
     end?: number;
 };
-export declare type Program = {
+export type Program = {
     dests: {
         [key: number]: Function;
     };

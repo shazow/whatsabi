@@ -3,7 +3,6 @@ export interface ABILoader {
 }
 export declare class MultiABILoader implements ABILoader {
     loaders: ABILoader[];
-    mode: "any" | "all";
     constructor(loaders: ABILoader[]);
     loadABI(address: string): Promise<any[]>;
 }

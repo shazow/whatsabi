@@ -1,4 +1,4 @@
-export declare type OpCode = number;
+export type OpCode = number;
 export declare const opcodes: Readonly<{
     [key: string]: OpCode;
 }>;
