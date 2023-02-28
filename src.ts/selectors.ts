@@ -1,4 +1,5 @@
-import { ethers } from "ethers";
+import { FunctionFragment } from "@ethersproject/abi";
+import { id } from "@ethersproject/hash";
 
 import { abiFromBytecode } from "./disasm";
 
@@ -9,8 +10,8 @@ export function selectorsFromABI(abi: any[]): {[key: string]: string} {
 
     for (const el of abi) {
       if (typeof(el) !== "string" && el.type !== "function") continue;
-      const f = ethers.utils.FunctionFragment.from(el).format();
-      r[ethers.utils.id(f).substring(0, 10)] = f;
+      const f = FunctionFragment.from(el).format();
+      r[id(f).substring(0, 10)] = f;
     }
 
     return r;

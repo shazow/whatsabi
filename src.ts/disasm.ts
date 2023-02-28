@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import { arrayify, hexlify, zeroPad } from "@ethersproject/bytes";
 
 import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
@@ -7,7 +7,7 @@ import { opcodes, OpCode, pushWidth, isPush, isLog, isHalt, isCompare } from "./
 
 function valueToOffset(value: Uint8Array): number {
     // FIXME: Should be a cleaner way to do this...
-    return parseInt(ethers.utils.hexlify(value), 16);
+    return parseInt(hexlify(value), 16);
 }
 
 // BytecodeIter takes EVM bytecode and handles iterating over it with correct
@@ -36,7 +36,7 @@ export class BytecodeIter {
         this.posBufferSize = Math.max(config.bufferSize || 1, 1);
         this.posBuffer = [];
 
-        this.bytecode = ethers.utils.arrayify(bytecode, { allowMissingPrefix: true });
+        this.bytecode = arrayify(bytecode, { allowMissingPrefix: true });
     }
 
     hasMore(): boolean {
@@ -231,7 +231,7 @@ export function disasm(bytecode: string): Program {
             lastPush32 = code.value();
             continue
         } else if (isLog(inst) && lastPush32.length > 0) {
-            p.eventCandidates.push(ethers.utils.hexlify(lastPush32));
+            p.eventCandidates.push(hexlify(lastPush32));
             continue
         }
 
@@ -343,9 +343,9 @@ export function disasm(bytecode: string): Program {
             if (value.length < 4) {
                 // 0-prefixed comparisons get optimized to a smaller width than PUSH4
                 // FIXME: Could just use ethers.utils.hexzeropad
-                value = ethers.utils.zeroPad(value, 4);
+                value = zeroPad(value, 4);
             }
-            const selector: string = ethers.utils.hexlify(value);
+            const selector: string = hexlify(value);
             p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
@@ -363,9 +363,9 @@ export function disasm(bytecode: string): Program {
             let value = code.valueAt(-5)
             if (value.length < 4) {
                 // 0-prefixed comparisons get optimized to a smaller width than PUSH4
-                value = ethers.utils.zeroPad(value, 4);
+                value = zeroPad(value, 4);
             }
-            const selector: string = ethers.utils.hexlify(value);
+            const selector: string = hexlify(value);
             p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
