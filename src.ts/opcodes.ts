@@ -172,7 +172,7 @@ export function isLog(op: OpCode): boolean {
 }
 
 export function isSwap(op: OpCode): boolean {
-    return op >= opcodes.SWAP1 && op <= opcodes.LOG16;
+    return op >= opcodes.SWAP1 && op <= opcodes.SWAP16;
 }
 
 export function isHalt(op: OpCode): boolean {
