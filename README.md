@@ -85,8 +85,10 @@ console.log(abi);
   fail to detect function selectors. Note that functions are not a native thing
   in the EVM, but rather it's an abstraction layer built on top of it by
   compilers.
-* This library does not try to guess the function arguments, if any. That would
-  be a cool addition in the future!
+* ~~This library does not try to guess the function arguments, if any. That would
+  be a cool addition in the future!~~ There are some attempts to guess the
+  presence of inputs and outputs, but no types yet. The `bytes` type is used as
+  a placeholder for now.
 
 
 ## Development
