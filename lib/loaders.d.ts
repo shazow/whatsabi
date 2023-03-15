@@ -33,10 +33,12 @@ export declare class FourByteSignatureLookup implements SignatureLookup {
     loadFunctions(selector: string): Promise<string[]>;
     loadEvents(hash: string): Promise<string[]>;
 }
-export declare class SamczunSignatureLookup implements SignatureLookup {
+export declare class OpenChainSignatureLookup implements SignatureLookup {
     load(url: string): Promise<any>;
     loadFunctions(selector: string): Promise<string[]>;
     loadEvents(hash: string): Promise<string[]>;
+}
+export declare class SamczunSignatureLookup extends OpenChainSignatureLookup {
 }
 export declare const defaultABILoader: ABILoader;
 export declare const defaultSignatureLookup: SignatureLookup;

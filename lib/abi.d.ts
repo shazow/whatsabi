@@ -1,5 +1,5 @@
-export type StateMutability = "nonpayable" | "payable" | "view" | "pure";
-export type ABIFunction = {
+export declare type StateMutability = "nonpayable" | "payable" | "view" | "pure";
+export declare type ABIFunction = {
     type: "function";
     selector: string;
     outputs?: {
@@ -15,10 +15,10 @@ export type ABIFunction = {
     payable?: boolean;
     stateMutability?: StateMutability;
 };
-export type ABIEvent = {
+export declare type ABIEvent = {
     type: "event";
     hash: string;
     sig?: string;
     sigAlts?: string[];
 };
-export type ABI = (ABIFunction | ABIEvent)[];
+export declare type ABI = (ABIFunction | ABIEvent)[];
