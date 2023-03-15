@@ -8,4 +8,8 @@ export {
     abiFromBytecode,
 } from "./disasm";
 
+export {
+    autoload,
+} from "./auto";
+
 export * as loaders from "./loaders";

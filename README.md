@@ -52,6 +52,22 @@ console.log(await signatureLookup.loadEvents("0x721c20121297512b72821b97f5326877
 // There are more fancy loaders in whatsabi.loaders.*, take a look!
 ```
 
+Bonus do-all-the-things helper:
+
+```typescript
+...
+
+const abi = await whatsabi.autoload(address, {
+  provider: provider,
+  // abiLoader: whatsabi.loaders.defaultABILoader, // Optional
+  // signatureLoader: whatsabi.loaders.defaultSignatureLookup, // Optional
+});
+console.log(abi);
+// Detail will vary depending on whether `address` source code was available,
+// or if bytecode-loaded selector signatures were available, or
+// if WhatsABI had to guess everything from just bytecode.
+```
+
 ## See Also
 
 * [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/) - A frontend for whatsabi by [@w1nt3r_eth](https://twitter.com/w1nt3r_eth) - https://github.com/w1nt3r-eth/abi.w1nt3r.xyz
