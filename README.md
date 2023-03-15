@@ -39,7 +39,7 @@ console.log(abi);
 //   ...
 
 // We also have a suite of database loaders for convenience
-const signatureLookup = new whatsabi.loaders.SamczunSignatureLookup();
+const signatureLookup = new whatsabi.loaders.OpenChainSignatureLookup();
 console.log(await signatureLookup.loadFunctions("0x06fdde03"));
 // -> ["name()"]);
 console.log(await signatureLookup.loadFunctions("0x46423aa7"));

@@ -111,12 +111,13 @@ export class FourByteSignatureLookup implements SignatureLookup {
   }
 }
 
-// https://sig.eth.samczsun.com/
-export class SamczunSignatureLookup implements SignatureLookup {
+// openchain.xyz
+// Formerly: https://sig.eth.samczsun.com/
+export class OpenChainSignatureLookup implements SignatureLookup {
   async load(url: string): Promise<any> {
     try {
       const r = await fetchJson(url);
-      if (!r.ok) throw new Error("Samczun API bad response: " + JSON.stringify(r));
+      if (!r.ok) throw new Error("OpenChain API bad response: " + JSON.stringify(r));
       return r;
     } catch (error: any) {
       if (error.status === 404) return [];
@@ -125,15 +126,17 @@ export class SamczunSignatureLookup implements SignatureLookup {
   }
 
   async loadFunctions(selector: string): Promise<string[]> {
-    const r = await this.load("https://sig.eth.samczsun.com/api/v1/signatures?function=" + selector);
-    return r.result.function[selector].map((item:any) => item.name);
+    const r = await this.load("https://api.openchain.xyz/signature-database/v1/lookup?function=" + selector);
+    return (r.result.function[selector] || []).map((item:any) => item.name);
   }
 
   async loadEvents(hash: string): Promise<string[]> {
-    const r = await this.load("https://sig.eth.samczsun.com/api/v1/signatures?event=" + hash);
-    return r.result.event[hash].map((item:any) => item.name);
+    const r = await this.load("https://api.openchain.xyz/signature-database/v1/lookup?event=" + hash);
+    return (r.result.event[hash] || []).map((item:any) => item.name);
   }
 }
 
+export class SamczunSignatureLookup extends OpenChainSignatureLookup {};
+
 export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanABILoader()]);
-export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new SamczunSignatureLookup(), new FourByteSignatureLookup()]);
+export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new OpenChainSignatureLookup(), new FourByteSignatureLookup()]);

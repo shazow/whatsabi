@@ -28,6 +28,9 @@ cached_test('cached online: selectorsFromBytecode for Uniswap v2 Router', async 
 
 cached_test('cached online: selectorsFromBytecode for 0x00000000 method', async () => {
   // Via https://twitter.com/smithbot_eth/status/1576368841072201728
+  // Note: This contract self-destructs and reinits with new code occasionally,
+  // so this test could break. Would be nice to have an immutable contract with
+  // a zero selector.
   const address = "0x000000000000Df8c944e775BDe7Af50300999283";
 
   const code = await withCache(
@@ -38,5 +41,5 @@ cached_test('cached online: selectorsFromBytecode for 0x00000000 method', async 
   )
 
   const r = selectorsFromBytecode(code);
-  expect(new Set(r)).toStrictEqual(new Set(['0x00000000', '0xf04f2707']))
+  expect(r).toEqual(expect.arrayContaining(['0x00000000', '0xf04f2707']))
 });

@@ -5,6 +5,7 @@ import {
   defaultSignatureLookup,
   SourcifyABILoader,
   EtherscanABILoader,
+  OpenChainSignatureLookup,
   SamczunSignatureLookup,
   FourByteSignatureLookup,
 } from "../loaders";
@@ -56,6 +57,14 @@ describe('loaders module', () => {
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     expect(selectors).toContain(sig);
   })
+
+  online_test('OpenChainSignatureLookup', async () => {
+    const lookup = new OpenChainSignatureLookup();
+    const selectors = await lookup.loadFunctions("0x7ff36ab5");
+    const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
+    expect(selectors).toContain(sig);
+  })
+
 
   online_test('FourByteSignatureLookup', async () => {
     const lookup = new FourByteSignatureLookup();

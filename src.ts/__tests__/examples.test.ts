@@ -39,7 +39,7 @@ cached_test('README usage', async () => {
     {"payable": true, "selector": "0xb3a34c4c", "type": "function", "stateMutability": "payable", "inputs": [{"type": "bytes"}], "outputs": [{"type": "bytes"}]},
   )
 
-  const signatureLookup = new whatsabi.loaders.SamczunSignatureLookup();
+  const signatureLookup = new whatsabi.loaders.OpenChainSignatureLookup();
   {
     const sig = await signatureLookup.loadFunctions("0x06fdde03");
     expect(sig).toStrictEqual(["name()"]);

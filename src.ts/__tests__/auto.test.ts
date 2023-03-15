@@ -1,4 +1,4 @@
-import { test, expect } from "@jest/globals";
+import { test, expect, jest } from "@jest/globals";
 
 import { ethers } from "ethers";
 import { whatsabi } from "../index";
@@ -21,6 +21,7 @@ test('autoload selectors', async () => {
 
 
 test('autoload full', async () => {
+  jest.setTimeout(15000);
   const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
   const abi = await autoload(address, {
     provider: provider,
@@ -29,7 +30,7 @@ test('autoload full', async () => {
       new whatsabi.loaders.EtherscanABILoader({ apiKey: ETHERSCAN_API_KEY }),
     ]),
     signatureLookup: new whatsabi.loaders.MultiSignatureLookup([
-      new whatsabi.loaders.SamczunSignatureLookup(),
+      new whatsabi.loaders.OpenChainSignatureLookup(),
       new whatsabi.loaders.FourByteSignatureLookup(),
     ]),
   });
