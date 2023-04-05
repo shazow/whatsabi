@@ -8,6 +8,9 @@ import { abiFromBytecode } from "./disasm";
 // auto is a convenience helper for doing All The Things to load an ABI of a contract.
 // FIXME: It's kinda half-done, not parallelized
 export async function autoload(address:string, config: {provider: Provider, abiLoader?: ABILoader|false, signatureLookup?: SignatureLookup|false}): Promise<ABI> {
+  if (config === undefined) {
+    throw new Error("autoload: config is undefined, must include 'provider'");
+  }
   let abiLoader = config.abiLoader;
   if (abiLoader === undefined) abiLoader = defaultABILoader;
 
