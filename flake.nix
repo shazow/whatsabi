@@ -16,6 +16,8 @@
 
           pkgs.nodePackages.typescript
           pkgs.nodePackages.typescript-language-server
+
+          pkgs.graphviz  # For debugging
         ];
 
         shellHook = ''
