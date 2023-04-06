@@ -13,19 +13,24 @@ async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
     const jumpdest = process.env["JUMPDEST"] || process.argv[3];
 
-    if (!address || !address.startsWith("0x")) {
+    if (!address) {
         console.error("Invalid address: " + address);
         process.exit(1);
     }
 
-    console.debug("Loading code for address:", address);
-
-    const code = await withCache(
-        `${address}_abi`,
-        async () => {
-            return await provider.getCode(address)
-        },
-    );
+    let code : string;
+    if (address === "-") {
+        // Read contract code from stdin
+        code = readFileSync(0, 'utf8').trim();
+    } else {
+        console.debug("Loading code for address:", address);
+        code = await withCache(
+            `${address}_abi`,
+            async () => {
+                return await provider.getCode(address)
+            },
+        );
+    }
 
     const config : bytecodeToStringConfig = {};
 
