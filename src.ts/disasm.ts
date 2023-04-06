@@ -134,6 +134,7 @@ export type Program = {
     selectors: { [key: string]: number }; // function hash -> instruction offset
     notPayable: { [key: number]: number }; // instruction offset -> bytes offset
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
+    init?: Program; // Program embedded as init code
 }
 
 export function abiFromBytecode(bytecode: string): ABI {
@@ -197,12 +198,12 @@ export function abiFromBytecode(bytecode: string): ABI {
 const _EmptyArray = new Uint8Array();
 
 export function disasm(bytecode: string): Program {
-    const p = {
+    let p : Program = {
         dests: {},
         selectors: {},
         notPayable: {},
         eventCandidates: [],
-    } as Program;
+    };
 
     const selectorDests = new Set<number>();
 
@@ -215,7 +216,7 @@ export function disasm(bytecode: string): Program {
         start: 0,
         opTags: new Set(),
         jumps: new Array<number>(),
-    } as Function;
+    };
     p.dests[0] = currentFunction;
 
     const code = new BytecodeIter(bytecode, { bufferSize: 5 });
@@ -296,6 +297,33 @@ export function disasm(bytecode: string): Program {
             if (interestingOpCodes.has(inst)) {
                 currentFunction.opTags.add(inst);
             }
+        }
+
+        // Did we just hit the end of init code?
+        // CODECOPY PUSH1 0x00 RETURN
+        if (code.at(pos + 0) === opcodes.CODECOPY &&
+            code.at(pos + 1) === opcodes.PUSH1 &&
+            code.at(pos + 2) === 0x00 &&
+            code.at(pos + 3) === opcodes.RETURN
+        ) {
+            // Reset state, embed program as init
+            // TODO: Should we have a cleaner way to reset state? Make Program and Function proper classes?
+            p = {
+                dests: {},
+                selectors: {},
+                notPayable: {},
+                eventCandidates: [],
+                init: p,
+            }
+            currentFunction = {
+                byteOffset: 0,
+                start: 0,
+                opTags: new Set(),
+                jumps: new Array<number>(),
+            };
+            p.dests[0] = currentFunction;
+            checkJumpTable = true;
+            continue;
         }
 
         if (!checkJumpTable) continue; // Skip searching for function selectors at this point

@@ -13,13 +13,11 @@ async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
     const jumpdest = process.env["JUMPDEST"] || process.argv[3];
 
+    let code : string;
     if (!address) {
         console.error("Invalid address: " + address);
         process.exit(1);
-    }
-
-    let code : string;
-    if (address === "-") {
+    } else if (address === "-") {
         // Read contract code from stdin
         code = readFileSync(0, 'utf8').trim();
     } else {
