@@ -121,20 +121,35 @@ const interestingOpCodes : Set<OpCode> = new Set([
     // TODO: Add LOGs to track event emitters?
 ]);
 
-export type Function = {
-    byteOffset: number // JUMPDEST byte offset
+export class Function {
+    byteOffset: number; // JUMPDEST byte offset
     opTags: Set<OpCode>; // Track whether function uses interesting opcodes
     start: number; // JUMPDEST instruction offset
     jumps: Array<number>; // JUMPDEST instruction offsets this function can jump to
     end?: number; // Last instruction offset before the next JUMPDEST
-};
 
-export type Program = {
+    constructor(byteOffset: number = 0, start: number = 0) {
+        this.byteOffset = byteOffset;
+        this.start = start;
+        this.opTags = new Set();
+        this.jumps = [];
+    }
+}
+
+export class Program {
     dests: { [key: number]: Function }; // instruction offset -> Function
     selectors: { [key: string]: number }; // function hash -> instruction offset
     notPayable: { [key: number]: number }; // instruction offset -> bytes offset
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
     init?: Program; // Program embedded as init code
+
+    constructor(init?: Program) {
+        this.dests = {};
+        this.selectors = {};
+        this.notPayable = {};
+        this.eventCandidates = [];
+        this.init = init;
+    }
 }
 
 export function abiFromBytecode(bytecode: string): ABI {
@@ -198,12 +213,7 @@ export function abiFromBytecode(bytecode: string): ABI {
 const _EmptyArray = new Uint8Array();
 
 export function disasm(bytecode: string): Program {
-    let p : Program = {
-        dests: {},
-        selectors: {},
-        notPayable: {},
-        eventCandidates: [],
-    };
+    let p : Program = new Program();
 
     const selectorDests = new Set<number>();
 
@@ -211,12 +221,7 @@ export function disasm(bytecode: string): Program {
     let checkJumpTable: boolean = true;
     let resumeJumpTable = new Set<number>();
 
-    let currentFunction: Function = {
-        byteOffset: 0,
-        start: 0,
-        opTags: new Set(),
-        jumps: new Array<number>(),
-    };
+    let currentFunction: Function = new Function();
     p.dests[0] = currentFunction;
 
     const code = new BytecodeIter(bytecode, { bufferSize: 5 });
@@ -241,12 +246,7 @@ export function disasm(bytecode: string): Program {
             // End of the function, or disjoint function?
             if (isHalt(code.at(-2)) || code.at(-2) === opcodes.JUMP) {
                 if (currentFunction) currentFunction.end = pos - 1;
-                currentFunction = {
-                    byteOffset: step,
-                    start: pos,
-                    opTags: new Set(),
-                    jumps: new Array<number>(),
-                } as Function;
+                currentFunction = new Function(step, pos);
 
                 // We don't stop looking for jump tables until we find at least one selector
                 if (checkJumpTable && Object.keys(p.selectors).length > 0) {
@@ -308,19 +308,8 @@ export function disasm(bytecode: string): Program {
         ) {
             // Reset state, embed program as init
             // TODO: Should we have a cleaner way to reset state? Make Program and Function proper classes?
-            p = {
-                dests: {},
-                selectors: {},
-                notPayable: {},
-                eventCandidates: [],
-                init: p,
-            }
-            currentFunction = {
-                byteOffset: 0,
-                start: 0,
-                opTags: new Set(),
-                jumps: new Array<number>(),
-            };
+            p = new Program(p);
+            currentFunction = new Function();
             p.dests[0] = currentFunction;
             checkJumpTable = true;
             continue;
