@@ -220,6 +220,8 @@ export function disasm(bytecode: string): Program {
     let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
     let checkJumpTable: boolean = true;
     let resumeJumpTable = new Set<number>();
+    let seenOps = new Set<OpCode>();
+    let runtimeOffset = 0; // Non-zero if init deploy code is included
 
     let currentFunction: Function = new Function();
     p.dests[0] = currentFunction;
@@ -230,6 +232,8 @@ export function disasm(bytecode: string): Program {
         const inst = code.next();
         const pos = code.pos();
         const step = code.step();
+
+        seenOps.add(inst);
 
         // Track last PUSH32 to find LOG topics
         // This is probably not bullet proof but seems like a good starting point
@@ -245,7 +249,7 @@ export function disasm(bytecode: string): Program {
         if (inst === opcodes.JUMPDEST) {
             // End of the function, or disjoint function?
             if (isHalt(code.at(-2)) || code.at(-2) === opcodes.JUMP) {
-                if (currentFunction) currentFunction.end = pos - 1;
+                if (currentFunction) currentFunction.end = pos - 1 - runtimeOffset;
                 currentFunction = new Function(step, pos);
 
                 // We don't stop looking for jump tables until we find at least one selector
@@ -260,7 +264,7 @@ export function disasm(bytecode: string): Program {
             } // Otherwise it's just a simple branch, we continue
 
             // Index jump destinations so we can check against them later
-            p.dests[pos] = currentFunction;
+            p.dests[pos - runtimeOffset] = currentFunction;
 
             // Check whether a JUMPDEST has non-payable guards
             //
@@ -290,7 +294,7 @@ export function disasm(bytecode: string): Program {
             // Detect simple JUMP/JUMPI helper subroutines
             if ((inst === opcodes.JUMP || inst === opcodes.JUMPI) && isPush(code.at(-2))) {
                 const jumpOffset = valueToOffset(code.valueAt(-2));
-                currentFunction.jumps.push(jumpOffset);
+                currentFunction.jumps.push(jumpOffset - runtimeOffset);
             }
 
             // Tag current function with interesting opcodes (not including above)
@@ -299,20 +303,25 @@ export function disasm(bytecode: string): Program {
             }
         }
 
-        // Did we just hit the end of init code?
-        // CODECOPY PUSH1 0x00 RETURN
-        if (code.at(pos + 0) === opcodes.CODECOPY &&
-            code.at(pos + 1) === opcodes.PUSH1 &&
-            code.at(pos + 2) === 0x00 &&
-            code.at(pos + 3) === opcodes.RETURN
+        // Did we just copy code that might be the runtime code?
+        // PUSH2 <RUNTIME OFFSET> PUSH1 0x00 CODECOPY
+        if (code.at(-1) === opcodes.CODECOPY &&
+            code.at(-2) === opcodes.PUSH1 &&
+            code.at(-3) === opcodes.PUSH2
         ) {
+            const offsetDest: number = valueToOffset(code.valueAt(-3));
+            resumeJumpTable.add(offsetDest);
+            runtimeOffset = offsetDest;
+            continue;
+        }
+
+        if (pos === runtimeOffset && seenOps.has(opcodes.RETURN) && !seenOps.has(opcodes.CALLDATALOAD)) {
             // Reset state, embed program as init
-            // TODO: Should we have a cleaner way to reset state? Make Program and Function proper classes?
             p = new Program(p);
             currentFunction = new Function();
             p.dests[0] = currentFunction;
             checkJumpTable = true;
-            continue;
+            seenOps.clear();
         }
 
         if (!checkJumpTable) continue; // Skip searching for function selectors at this point
@@ -391,9 +400,11 @@ export function disasm(bytecode: string): Program {
 
         // In some cases, the sequence can get optimized such as for 0x00000000:
         //    DUP1 ISZERO PUSHN <OFFSET> JUMPI
+        // But need to avoid CALLVALUE being checked ahead
         if (
             code.at(-3) === opcodes.ISZERO &&
-            code.at(-4) === opcodes.DUP1
+            code.at(-4) === opcodes.DUP1 &&
+            code.at(-5) !== opcodes.CALLVALUE
         ) {
             const selector = "0x00000000";
             p.selectors[selector] = offsetDest;
