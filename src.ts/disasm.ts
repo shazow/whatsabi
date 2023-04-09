@@ -220,7 +220,6 @@ export function disasm(bytecode: string): Program {
     let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
     let checkJumpTable: boolean = true;
     let resumeJumpTable = new Set<number>();
-    let seenOps = new Set<OpCode>();
     let runtimeOffset = 0; // Non-zero if init deploy code is included
 
     let currentFunction: Function = new Function();
@@ -232,8 +231,6 @@ export function disasm(bytecode: string): Program {
         const inst = code.next();
         const pos = code.pos();
         const step = code.step();
-
-        seenOps.add(inst);
 
         // Track last PUSH32 to find LOG topics
         // This is probably not bullet proof but seems like a good starting point
@@ -315,13 +312,15 @@ export function disasm(bytecode: string): Program {
             continue;
         }
 
-        if (pos === runtimeOffset && seenOps.has(opcodes.RETURN) && !seenOps.has(opcodes.CALLDATALOAD)) {
+        if (pos === runtimeOffset &&
+            currentFunction.opTags.has(opcodes.RETURN) &&
+            !currentFunction.opTags.has(opcodes.CALLDATALOAD)
+        ) {
             // Reset state, embed program as init
             p = new Program(p);
             currentFunction = new Function();
             p.dests[0] = currentFunction;
             checkJumpTable = true;
-            seenOps.clear();
         }
 
         if (!checkJumpTable) continue; // Skip searching for function selectors at this point
