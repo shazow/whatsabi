@@ -12,12 +12,13 @@ import { disasm } from '../disasm';
 import { mnemonics } from "../opcodes";
 import { defaultSignatureLookup } from "../loaders";
 
-const { INFURA_API_KEY } = process.env;
+const { INFURA_API_KEY, SKIP_SELECTOR_LOOKUP, SKIP_TAGS } = process.env;
 const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();
 
 
 export function* programToDotGraph(p: Program, lookup: { [key: string]: string }) {
     yield "digraph JUMPS {";
+    yield "\tgraph [nojustify=true];\n";
     yield "\tnode [shape=record];\n";
 
     const nameLookup = Object.fromEntries(Object.entries(p.selectors).map(([k, v]) => [v, k]));
@@ -45,11 +46,13 @@ export function* programToDotGraph(p: Program, lookup: { [key: string]: string }
         seen.add(fn.start);
         const j = fn.jumps.filter(j => j in p.dests).map(j => p.dests[j]);
         const id = toID(fn.start);
-        const tags = fn.opTags && Array.from(fn.opTags).map(op => mnemonics[op]).join("|")
+        const parts = [id];
+        const tags = fn.opTags && Array.from(fn.opTags).map(op => mnemonics[op]).join("\\l")
         const lookupExtra = lookup[id];
-        const extraId = lookupExtra ? `| ${lookupExtra}` : "";
+        if (lookupExtra) parts.push(lookupExtra);
+        if (!SKIP_TAGS) parts.push(tags);
 
-        yield `\t"${id}" [label="{ ${id}${extraId} | { ${tags} } }"]`;
+        yield `\t"${id}" [label="{` + parts.join(" | ") + `} }"]`;
         yield `\t"${id}" -> { ${j.map(n => '"' + toID(n.start) + '"').join(" ")} }`;
 
         jumps.push(...j);
@@ -70,7 +73,6 @@ async function main() {
         // Read contract code from stdin
         code = readFileSync(0, 'utf8').trim();
     } else {
-        console.debug("Loading code for address:", address);
         code = await withCache(
             `${address}_abi`,
             async () => {
@@ -84,6 +86,8 @@ async function main() {
     const selectors : Array<string> = Object.keys(program.selectors);
     const lookup : { [key: string]: string }= {};
     for (const sel of selectors) {
+        if (SKIP_SELECTOR_LOOKUP) break;
+
         const sigs = await withCache(
             `${sel}_selector`,
             async () => {
@@ -91,7 +95,7 @@ async function main() {
             },
         );
         if (sigs.length === 0) continue;
-        lookup[sel] = sigs[0];
+        lookup[sel] = sigs[0].split("(")[0];
     }
 
     const iter = programToDotGraph(program, lookup);
