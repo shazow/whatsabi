@@ -46,5 +46,7 @@ test('code with immutable in solidity', () => {
   const r = selectorsFromBytecode(code);
   r.sort();
 
-  expect(r).toEqual(["TODO"]);
+  expect(r).toEqual([
+    "0x0dbe671f" // a()
+  ]);
 })
