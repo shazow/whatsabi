@@ -18,14 +18,15 @@ export declare class BytecodeIter {
     value(): Uint8Array;
     valueAt(posOrRelativeStep: number): Uint8Array;
 }
-export declare type Function = {
+export declare class Function {
     byteOffset: number;
     opTags: Set<OpCode>;
     start: number;
     jumps: Array<number>;
     end?: number;
-};
-export declare type Program = {
+    constructor(byteOffset?: number, start?: number);
+}
+export declare class Program {
     dests: {
         [key: number]: Function;
     };
@@ -36,6 +37,8 @@ export declare type Program = {
         [key: number]: number;
     };
     eventCandidates: Array<string>;
-};
+    init?: Program;
+    constructor(init?: Program);
+}
 export declare function abiFromBytecode(bytecode: string): ABI;
 export declare function disasm(bytecode: string): Program;
