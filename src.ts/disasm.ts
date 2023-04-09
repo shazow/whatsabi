@@ -121,19 +121,35 @@ const interestingOpCodes : Set<OpCode> = new Set([
     // TODO: Add LOGs to track event emitters?
 ]);
 
-export type Function = {
-    byteOffset: number // JUMPDEST byte offset
+export class Function {
+    byteOffset: number; // JUMPDEST byte offset
     opTags: Set<OpCode>; // Track whether function uses interesting opcodes
     start: number; // JUMPDEST instruction offset
     jumps: Array<number>; // JUMPDEST instruction offsets this function can jump to
     end?: number; // Last instruction offset before the next JUMPDEST
-};
 
-export type Program = {
+    constructor(byteOffset: number = 0, start: number = 0) {
+        this.byteOffset = byteOffset;
+        this.start = start;
+        this.opTags = new Set();
+        this.jumps = [];
+    }
+}
+
+export class Program {
     dests: { [key: number]: Function }; // instruction offset -> Function
     selectors: { [key: string]: number }; // function hash -> instruction offset
     notPayable: { [key: number]: number }; // instruction offset -> bytes offset
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
+    init?: Program; // Program embedded as init code
+
+    constructor(init?: Program) {
+        this.dests = {};
+        this.selectors = {};
+        this.notPayable = {};
+        this.eventCandidates = [];
+        this.init = init;
+    }
 }
 
 export function abiFromBytecode(bytecode: string): ABI {
@@ -197,25 +213,16 @@ export function abiFromBytecode(bytecode: string): ABI {
 const _EmptyArray = new Uint8Array();
 
 export function disasm(bytecode: string): Program {
-    const p = {
-        dests: {},
-        selectors: {},
-        notPayable: {},
-        eventCandidates: [],
-    } as Program;
+    let p : Program = new Program();
 
     const selectorDests = new Set<number>();
 
     let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
     let checkJumpTable: boolean = true;
     let resumeJumpTable = new Set<number>();
+    let runtimeOffset = 0; // Non-zero if init deploy code is included
 
-    let currentFunction: Function = {
-        byteOffset: 0,
-        start: 0,
-        opTags: new Set(),
-        jumps: new Array<number>(),
-    } as Function;
+    let currentFunction: Function = new Function();
     p.dests[0] = currentFunction;
 
     const code = new BytecodeIter(bytecode, { bufferSize: 5 });
@@ -239,13 +246,8 @@ export function disasm(bytecode: string): Program {
         if (inst === opcodes.JUMPDEST) {
             // End of the function, or disjoint function?
             if (isHalt(code.at(-2)) || code.at(-2) === opcodes.JUMP) {
-                if (currentFunction) currentFunction.end = pos - 1;
-                currentFunction = {
-                    byteOffset: step,
-                    start: pos,
-                    opTags: new Set(),
-                    jumps: new Array<number>(),
-                } as Function;
+                if (currentFunction) currentFunction.end = pos - 1 - runtimeOffset;
+                currentFunction = new Function(step, pos);
 
                 // We don't stop looking for jump tables until we find at least one selector
                 if (checkJumpTable && Object.keys(p.selectors).length > 0) {
@@ -259,7 +261,7 @@ export function disasm(bytecode: string): Program {
             } // Otherwise it's just a simple branch, we continue
 
             // Index jump destinations so we can check against them later
-            p.dests[pos] = currentFunction;
+            p.dests[pos - runtimeOffset] = currentFunction;
 
             // Check whether a JUMPDEST has non-payable guards
             //
@@ -289,13 +291,36 @@ export function disasm(bytecode: string): Program {
             // Detect simple JUMP/JUMPI helper subroutines
             if ((inst === opcodes.JUMP || inst === opcodes.JUMPI) && isPush(code.at(-2))) {
                 const jumpOffset = valueToOffset(code.valueAt(-2));
-                currentFunction.jumps.push(jumpOffset);
+                currentFunction.jumps.push(jumpOffset - runtimeOffset);
             }
 
             // Tag current function with interesting opcodes (not including above)
             if (interestingOpCodes.has(inst)) {
                 currentFunction.opTags.add(inst);
             }
+        }
+
+        // Did we just copy code that might be the runtime code?
+        // PUSH2 <RUNTIME OFFSET> PUSH1 0x00 CODECOPY
+        if (code.at(-1) === opcodes.CODECOPY &&
+            code.at(-2) === opcodes.PUSH1 &&
+            code.at(-3) === opcodes.PUSH2
+        ) {
+            const offsetDest: number = valueToOffset(code.valueAt(-3));
+            resumeJumpTable.add(offsetDest);
+            runtimeOffset = offsetDest;
+            continue;
+        }
+
+        if (pos === runtimeOffset &&
+            currentFunction.opTags.has(opcodes.RETURN) &&
+            !currentFunction.opTags.has(opcodes.CALLDATALOAD)
+        ) {
+            // Reset state, embed program as init
+            p = new Program(p);
+            currentFunction = new Function();
+            p.dests[0] = currentFunction;
+            checkJumpTable = true;
         }
 
         if (!checkJumpTable) continue; // Skip searching for function selectors at this point
@@ -374,9 +399,11 @@ export function disasm(bytecode: string): Program {
 
         // In some cases, the sequence can get optimized such as for 0x00000000:
         //    DUP1 ISZERO PUSHN <OFFSET> JUMPI
+        // But need to avoid CALLVALUE being checked ahead
         if (
             code.at(-3) === opcodes.ISZERO &&
-            code.at(-4) === opcodes.DUP1
+            code.at(-4) === opcodes.DUP1 &&
+            code.at(-5) !== opcodes.CALLVALUE
         ) {
             const selector = "0x00000000";
             p.selectors[selector] = offsetDest;
