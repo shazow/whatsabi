@@ -4,12 +4,8 @@
 
 Guess an ABI from an Ethereum contract address, even if it's unverified.
 
-We parse EVM bytecode to find 4-byte `JUMPI` instructions and confirm that
-they're valid internal `JUMPDEST` targets.
-
-By getting the 4-byte function signature hash selectors, we can use them to
-call functions on unverified contracts that were compiled using bytecode layout
-techniques similar to Solidity.
+We started with parsing EVM bytecode to find 4-byte `JUMPI` instructions, but
+one thing led to another and now we're a bit more sophisticated.
 
 We can also look up the 4-byte selectors on APIs like
 [4byte.directory](https://www.4byte.directory/) to discover possible original
