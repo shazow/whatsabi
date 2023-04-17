@@ -66,6 +66,7 @@ console.log(abi);
 
 ## See Also
 
+* [WhatsABI? - Seminar for Spearbit](https://www.youtube.com/watch?v=sfgassm8SKw) (April 2023)
 * [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/) - A frontend for whatsabi by [@w1nt3r_eth](https://twitter.com/w1nt3r_eth) - https://github.com/w1nt3r-eth/abi.w1nt3r.xyz
 * [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, uses whatsabi for unverified contracts - https://github.com/verynifty/ethcmd
 
