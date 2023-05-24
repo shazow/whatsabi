@@ -4,8 +4,8 @@
 
 Guess an ABI from an Ethereum contract address, even if it's unverified.
 
-We started with parsing EVM bytecode to find 4-byte `JUMPI` instructions, but
-one thing led to another and now we're a bit more sophisticated.
+WhatsABI does bounded-complexity static analysis to disassemble EVM bytecode and map out the possible call flows,
+which allows us to discover function selectors and other metadata about the contract.
 
 We can also look up the 4-byte selectors on APIs like
 [4byte.directory](https://www.4byte.directory/) to discover possible original
@@ -71,22 +71,33 @@ console.log(abi);
 * [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, [uses whatsabi for unverified contracts](https://github.com/verynifty/ethcmd)
 * [monobase.xyz](https://monobase.xyz) - Universal frontend, [uses whatsabi for unverified contracts](https://twitter.com/nazar_ilamanov/status/1659648915195707392)
 
+## Some Cool People Said...
+
+> Omg WhatsABI by @shazow is so good that it can solve CTFs.
+> In one of my CTFs, students are supposed to find calldata that doesn’t revert
+> WhatsABI just spits out the solution automatically😂 I’m impressed!👏
+>
+> 🗣️ [Nazar Ilamanov](https://twitter.com/nazar_ilamanov/status/1661240265955495936), creator of [monobase.xyz](https://monobase.xyz/)
+
+> WhatsABI by @shazow takes contract bytecode, disassembled it into a set of EVM instructions, and then looks for the common Solidity's dispatch pattern.
+> Check out the source, it's actually very elegant!
+>
+> 🗣️ [WINTΞR](https://twitter.com/w1nt3r_eth/status/1575848038223921152), creator of [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/)
+
+> really cool stuff from @shazow
+> deduce a contract's ABI purely from bytecode
+>
+> 🗣️ [t11s](https://twitter.com/transmissions11/status/1574851435971215360), from Paradigm
+
 ## Caveats
 
+* Finding valid function selectors works great!
+* Detecting Solidity-style function modifiers (view, payable, etc) is still unreliable.
+* There's some minimal attempts at guessing the presence of arguments, but also unreliable.
+* Call graph traversal only supports static jumps right now. Dynamic jumps are skipped until we add abstract stack tracing, this is the main cause of above's unreliability.
 * Event parsing is janky, haven't found a reliable pattern so assume it's best
   effort. Feel free to open an issue with good failure examples, especially
   false negatives.
-* This technique of parsing function selectors from the EVM bytecode only works
-  if the bytecode layout is similar to how Solidity compiles it. It's possible
-  to write assembly/bytecode that does not conform to this layout, which will
-  fail to detect function selectors. Note that functions are not a native thing
-  in the EVM, but rather it's an abstraction layer built on top of it by
-  compilers.
-* ~~This library does not try to guess the function arguments, if any. That would
-  be a cool addition in the future!~~ There are some attempts to guess the
-  presence of inputs and outputs, but no types yet. The `bytes` type is used as
-  a placeholder for now.
-
 
 ## Development
 
