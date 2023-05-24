@@ -73,20 +73,20 @@ console.log(abi);
 
 ## Some Cool People Said...
 
-> Omg WhatsABI by @shazow is so good that it can solve CTFs.
-> In one of my CTFs, students are supposed to find calldata that doesn’t revert
+> Omg WhatsABI by @shazow is so good that it can solve CTFs.  
+> In one of my CTFs, students are supposed to find calldata that doesn’t revert  
 > WhatsABI just spits out the solution automatically😂 I’m impressed!👏
->
+>  
 > 🗣️ [Nazar Ilamanov](https://twitter.com/nazar_ilamanov/status/1661240265955495936), creator of [monobase.xyz](https://monobase.xyz/)
 
-> WhatsABI by @shazow takes contract bytecode, disassembled it into a set of EVM instructions, and then looks for the common Solidity's dispatch pattern.
+> WhatsABI by @shazow takes contract bytecode, disassembled it into a set of EVM instructions, and then looks for the common Solidity's dispatch pattern.  
 > Check out the source, it's actually very elegant!
->
+>  
 > 🗣️ [WINTΞR](https://twitter.com/w1nt3r_eth/status/1575848038223921152), creator of [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/)
 
-> really cool stuff from @shazow
+> really cool stuff from @shazow  
 > deduce a contract's ABI purely from bytecode
->
+>  
 > 🗣️ [t11s](https://twitter.com/transmissions11/status/1574851435971215360), from Paradigm
 
 ## Caveats
