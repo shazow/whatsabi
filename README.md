@@ -11,6 +11,15 @@ We can also look up the 4-byte selectors on APIs like
 [4byte.directory](https://www.4byte.directory/) to discover possible original
 function signatures.
 
+## Features
+
+WhatsABI is different from other EVM analysis tools in some important ways:
+- Built in Typescript with minimal dependencies, so that it is **runnable in the browser and embeddable in wallets.**
+- Algorithms used are limited to `O(instructions)` with a small constant factor, so that **complex contracts don't cause it to time out or use unbounded memory.**
+- Does not rely on source code, so it **works with unverified contracts.**
+- Does not assume the source language, so it can work for source languages other than Solidity (Vyper, or even hand-written assembly).
+- Permissive open source (MIT-licensed), so that anyone can use it.
+
 ## Usage
 
 ```typescript
