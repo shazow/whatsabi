@@ -1,0 +1,21 @@
+name: "Run Tests"
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    strategy:
+      fail-fast: true
+
+    name: "Project Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install Nix
+        uses: cachix/install-nix-action@v22
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: ./.cache
+      - name: Run tests
+        run: nix develop -c sh -c "make test"
