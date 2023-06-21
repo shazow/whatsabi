@@ -16,8 +16,8 @@ jobs:
         uses: cachix/install-nix-action@v22
       - name: Cache
         uses: actions/cache@v3
-        key: api-result-cache
         with:
+          key: api-result-cache
           path: ./.cache
       - name: Run tests
         run: nix develop -c sh -c "make test"
