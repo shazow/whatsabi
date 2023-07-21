@@ -49,7 +49,7 @@ export class SourcifyABILoader implements ABILoader {
     // Sourcify doesn't like it when the address is not checksummed
     address = getAddress(address);
 
-    const url = "https://repo.sourcify.dev/contracts/partial_match/1/" + address + "/metadata.json";
+    const url = "https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json";
     const r = await fetchJson(url);
     return r.output.abi;
   }
