@@ -11,8 +11,8 @@ async function main() {
 
     const r = await whatsabi.autoload(address, {
         provider,
-        onProgress: (phase: string) => {
-            console.debug("progress:", phase);
+        onProgress: (phase: string, ...args: string[]) => {
+            console.debug("progress:", phase, ...args);
         }
     });
 
