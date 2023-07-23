@@ -39,6 +39,14 @@ export class EtherscanABILoader implements ABILoader {
     if (this.apiKey) url += "&apikey=" + this.apiKey;
 
     const r = await fetchJson(url);
+    if (r.status !== "1") {
+        throw new Error("Etherscan error: " + r.result, {
+            cause: {
+                url: url,
+                response: r,
+            },
+        });
+    }
     return JSON.parse(r.result);
   }
 }
@@ -50,8 +58,13 @@ export class SourcifyABILoader implements ABILoader {
     address = getAddress(address);
 
     const url = "https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json";
-    const r = await fetchJson(url);
-    return r.output.abi;
+    try {
+      const r = await fetchJson(url);
+      return r.output.abi;
+    } catch (error: any) {
+      if (error.status === 404) return [];
+      throw error;
+    }
   }
 }
 
