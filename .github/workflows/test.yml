@@ -4,9 +4,6 @@ on: workflow_dispatch
 
 jobs:
   check:
-    strategy:
-      fail-fast: true
-
     name: "Project Tests"
     runs-on: ubuntu-latest
     steps:
@@ -22,5 +19,6 @@ jobs:
       - name: Run tests
         run: nix develop -c sh -c "make test"
         env:
+          ONLINE: 1
           INFURA_API_KEY: ${{ secrets.INFURA_API_KEY }}
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
