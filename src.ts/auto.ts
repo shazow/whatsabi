@@ -50,7 +50,8 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     // Attempt to load the ABI from a contract database, if exists
     onProgress("abiLoader", {address});
     try {
-      return await abiLoader.loadABI(address);
+      const abi = await abiLoader.loadABI(address);
+      if (abi.length > 0) return abi;
     } catch (error: any) {
       // TODO: Catch useful errors
       if (onError("abiLoad", error) === true) return [];

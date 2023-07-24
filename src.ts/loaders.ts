@@ -39,7 +39,9 @@ export class EtherscanABILoader implements ABILoader {
     if (this.apiKey) url += "&apikey=" + this.apiKey;
 
     const r = await fetchJson(url);
-    if (r.status !== "1") {
+    if (r.status === "0") {
+        if (r.result === "Contract source code not verified") return [];
+
         throw new Error("Etherscan error: " + r.result, {
             cause: {
                 url: url,
