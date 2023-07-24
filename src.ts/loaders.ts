@@ -39,6 +39,16 @@ export class EtherscanABILoader implements ABILoader {
     if (this.apiKey) url += "&apikey=" + this.apiKey;
 
     const r = await fetchJson(url);
+    if (r.status === "0") {
+        if (r.result === "Contract source code not verified") return [];
+
+        throw new Error("Etherscan error: " + r.result, {
+            cause: {
+                url: url,
+                response: r,
+            },
+        });
+    }
     return JSON.parse(r.result);
   }
 }
@@ -49,9 +59,14 @@ export class SourcifyABILoader implements ABILoader {
     // Sourcify doesn't like it when the address is not checksummed
     address = getAddress(address);
 
-    const url = "https://repo.sourcify.dev/contracts/partial_match/1/" + address + "/metadata.json";
-    const r = await fetchJson(url);
-    return r.output.abi;
+    const url = "https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json";
+    try {
+      const r = await fetchJson(url);
+      return r.output.abi;
+    } catch (error: any) {
+      if (error.status === 404) return [];
+      throw error;
+    }
   }
 }
 

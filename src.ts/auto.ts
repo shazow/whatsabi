@@ -5,33 +5,74 @@ import { ABI } from "./abi";
 import { ABILoader, SignatureLookup, defaultABILoader, defaultSignatureLookup } from "./loaders";
 import { abiFromBytecode } from "./disasm";
 
+function isAddress(address: string) {
+    return address.length === 42 && address.startsWith("0x");
+}
+
+export const defaultConfig = {
+    onProgress: (_: string) => {},
+    onError: (phase: string, err: Error) => { console.error(phase + ":", err); return false; },
+}
+
+export type AutoloadConfig = {
+    provider: Provider;
+
+    abiLoader?: ABILoader|false;
+    signatureLookup?: SignatureLookup|false;
+
+    // Hooks
+    onProgress?: (phase: string, ...args: any[]) => void;
+    onError?: (phase: string, error: Error) => boolean|void; // Return true-y to abort, undefined/false-y to continue
+
+    // Enable pulling additional metadata from WhatsABI's static analysis, still unreliable
+    enableExperimentalMetadata?: boolean;
+}
+
 // auto is a convenience helper for doing All The Things to load an ABI of a contract.
 // FIXME: It's kinda half-done, not parallelized
-export async function autoload(address:string, config: {provider: Provider, abiLoader?: ABILoader|false, signatureLookup?: SignatureLookup|false}): Promise<ABI> {
+export async function autoload(address: string, config: AutoloadConfig): Promise<ABI> {
+  const onProgress = config.onProgress || defaultConfig.onProgress;
+  const onError = config.onError || defaultConfig.onError;
+  const provider = config.provider;
+
   if (config === undefined) {
     throw new Error("autoload: config is undefined, must include 'provider'");
   }
   let abiLoader = config.abiLoader;
   if (abiLoader === undefined) abiLoader = defaultABILoader;
 
+  if (!isAddress(address)) {
+    onProgress("resolveName", {address});
+    address = await provider.resolveName(address) || address;
+  }
+
   if (abiLoader) {
     // Attempt to load the ABI from a contract database, if exists
+    onProgress("abiLoader", {address});
     try {
-      return await abiLoader.loadABI(address);
+      const abi = await abiLoader.loadABI(address);
+      if (abi.length > 0) return abi;
     } catch (error: any) {
       // TODO: Catch useful errors
+      if (onError("abiLoad", error) === true) return [];
     }
   }
 
   // Load from code
-  const code = await config.provider.getCode(address);
+  onProgress("getCode", {address});
+  const code = await provider.getCode(address);
   let abi = abiFromBytecode(code);
+
+  if (!config.enableExperimentalMetadata) {
+      abi = stripUnreliableABI(abi);
+  }
 
   let signatureLookup = config.signatureLookup;
   if (signatureLookup === undefined) signatureLookup = defaultSignatureLookup;
   if (!signatureLookup) return abi; // Bail
 
   // Load signatures from a database
+  onProgress("signatureLookup", {abiItems: abi.length});
   for (const a of abi) {
     if (a.type === "function") {
       const r = await signatureLookup.loadFunctions(a.selector);
@@ -66,3 +107,16 @@ export async function autoload(address:string, config: {provider: Provider, abiL
 
   return abi;
 }
+
+function stripUnreliableABI(abi: ABI): ABI {
+    const r: ABI = [];
+    for (const a of abi) {
+        if (a.type !== "function") continue;
+        r.push({
+            type: "function",
+            selector: a.selector,
+        });
+    }
+    return r;
+}
+
