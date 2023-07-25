@@ -59,14 +59,22 @@ export class SourcifyABILoader implements ABILoader {
     // Sourcify doesn't like it when the address is not checksummed
     address = getAddress(address);
 
-    const url = "https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json";
     try {
-      const r = await fetchJson(url);
-      return r.output.abi;
+      // Full match index includes verification settings that matches exactly
+      return (await fetchJson("https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json")).output.abi;
     } catch (error: any) {
-      if (error.status === 404) return [];
-      throw error;
+      if (error.status !== 404) throw error;
     }
+
+    
+    try {
+      // Partial match index is for verified contracts whose settings didn't match exactly
+      return (await fetchJson("https://repo.sourcify.dev/contracts/partial_match/1/" + address + "/metadata.json")).output.abi;
+    } catch (error: any) {
+      if (error.status !== 404) throw error;
+    }
+
+    return [];
   }
 }
 
