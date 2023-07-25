@@ -68,7 +68,7 @@ online_test('README autoload', async () => {
       // signatureLoader: whatsabi.loaders.defaultSignatureLookup, // Optional
     });
     expect(abi).toContainEqual(
-      {"constant": false, "inputs": [], "name": "name", "outputs": [{"type": "bytes"}], "payable": false, "selector": "0x06fdde03", "sig": "name()", "stateMutability": "payable", "type": "function"}
+      {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"contractName","type":"string"}],"stateMutability":"pure","type":"function"}
     );
   }
 });
