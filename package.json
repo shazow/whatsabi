@@ -2,7 +2,6 @@
   "name": "@shazow/whatsabi",
   "version": "0.6.0",
   "description": "Guess an ABI from an Ethereum contract address, even if it's unverified",
-  "main": "lib/index.js",
   "directories": {
     "lib": "lib"
   },
@@ -20,7 +19,12 @@
   ],
   "author": "Andrey Petrov <shazow.net>",
   "license": "MIT",
+  "main": "lib/index.js",
   "types": "./lib/index.d.ts",
+  "files": [
+    "lib", "src.ts",
+    "package.json", "README.md", "LICENSE"
+  ],
   "bugs": {
     "url": "https://github.com/shazow/whatsabi/issues"
   },
