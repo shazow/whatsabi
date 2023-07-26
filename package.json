@@ -1,6 +1,6 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Guess an ABI from an Ethereum contract address, even if it's unverified",
   "main": "lib/index.js",
   "directories": {
