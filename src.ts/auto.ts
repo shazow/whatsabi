@@ -31,81 +31,85 @@ export type AutoloadConfig = {
 // auto is a convenience helper for doing All The Things to load an ABI of a contract.
 // FIXME: It's kinda half-done, not parallelized
 export async function autoload(address: string, config: AutoloadConfig): Promise<ABI> {
-  const onProgress = config.onProgress || defaultConfig.onProgress;
-  const onError = config.onError || defaultConfig.onError;
-  const provider = config.provider;
+    const onProgress = config.onProgress || defaultConfig.onProgress;
+    const onError = config.onError || defaultConfig.onError;
+    const provider = config.provider;
 
-  if (config === undefined) {
-    throw new Error("autoload: config is undefined, must include 'provider'");
-  }
-  let abiLoader = config.abiLoader;
-  if (abiLoader === undefined) abiLoader = defaultABILoader;
-
-  if (!isAddress(address)) {
-    onProgress("resolveName", {address});
-    address = await provider.resolveName(address) || address;
-  }
-
-  if (abiLoader) {
-    // Attempt to load the ABI from a contract database, if exists
-    onProgress("abiLoader", {address});
-    try {
-      const abi = await abiLoader.loadABI(address);
-      if (abi.length > 0) return abi;
-    } catch (error: any) {
-      // TODO: Catch useful errors
-      if (onError("abiLoad", error) === true) return [];
+    if (config === undefined) {
+        throw new Error("autoload: config is undefined, must include 'provider'");
     }
-  }
+    let abiLoader = config.abiLoader;
+    if (abiLoader === undefined) abiLoader = defaultABILoader;
 
-  // Load from code
-  onProgress("getCode", {address});
-  const code = await provider.getCode(address);
-  let abi = abiFromBytecode(code);
+    if (!isAddress(address)) {
+        onProgress("resolveName", {address});
+        address = await provider.resolveName(address) || address;
+    }
 
-  if (!config.enableExperimentalMetadata) {
-      abi = stripUnreliableABI(abi);
-  }
-
-  let signatureLookup = config.signatureLookup;
-  if (signatureLookup === undefined) signatureLookup = defaultSignatureLookup;
-  if (!signatureLookup) return abi; // Bail
-
-  // Load signatures from a database
-  onProgress("signatureLookup", {abiItems: abi.length});
-  for (const a of abi) {
-    if (a.type === "function") {
-      const r = await signatureLookup.loadFunctions(a.selector);
-
-      if (r.length >= 1) {
-        a.sig = r[0];
-
-        // Let ethers.js extract as much metadata as it can from the signature
-        const extracted = JSON.parse(Fragment.from("function " + a.sig).format("json"));
-        if (extracted.outputs.length === 0) {
-          // Outputs not included in signature databases -_- (unless something changed)
-          // Let whatsabi keep its best guess, if any.
-          delete(extracted.outputs);
+    if (abiLoader) {
+        // Attempt to load the ABI from a contract database, if exists
+        onProgress("abiLoader", {address});
+        try {
+            const abi = await abiLoader.loadABI(address);
+            if (abi.length > 0) return abi;
+        } catch (error: any) {
+            // TODO: Catch useful errors
+            if (onError("abiLoad", error) === true) return [];
         }
-
-        Object.assign(a, extracted)
-      }
-      if (r.length > 1) a.sigAlts = r.slice(1);
-
-    } else if (a.type === "event") {
-      const r = await signatureLookup.loadEvents(a.hash);
-
-      if (r.length >= 1) {
-        a.sig = r[0];
-
-        // Let ethers.js extract as much metadata as it can from the signature
-        Object.assign(a, JSON.parse(Fragment.from("event " + a.sig).format("json")))
-      }
-      if (r.length > 1) a.sigAlts = r.slice(1);
     }
-  }
 
-  return abi;
+    // Load from code
+    onProgress("getCode", {address});
+    const code = await provider.getCode(address);
+    let abi = abiFromBytecode(code);
+
+    if (!config.enableExperimentalMetadata) {
+        abi = stripUnreliableABI(abi);
+    }
+
+    let signatureLookup = config.signatureLookup;
+    if (signatureLookup === undefined) signatureLookup = defaultSignatureLookup;
+    if (!signatureLookup) return abi; // Bail
+
+    // Load signatures from a database
+    onProgress("signatureLookup", {abiItems: abi.length});
+
+    let promises : Promise<void>[] = [];
+
+    for (const a of abi) {
+        if (a.type === "function") {
+            promises.push(signatureLookup.loadFunctions(a.selector).then((r) => {
+                if (r.length >= 1) {
+                    a.sig = r[0];
+
+                    // Let ethers.js extract as much metadata as it can from the signature
+                    const extracted = JSON.parse(Fragment.from("function " + a.sig).format("json"));
+                    if (extracted.outputs.length === 0) {
+                        // Outputs not included in signature databases -_- (unless something changed)
+                        // Let whatsabi keep its best guess, if any.
+                        delete(extracted.outputs);
+                    }
+
+                    Object.assign(a, extracted)
+                }
+                if (r.length > 1) a.sigAlts = r.slice(1);
+            }));
+        } else if (a.type === "event") {
+            promises.push(signatureLookup.loadEvents(a.hash).then((r) => {
+                if (r.length >= 1) {
+                    a.sig = r[0];
+
+                    // Let ethers.js extract as much metadata as it can from the signature
+                    Object.assign(a, JSON.parse(Fragment.from("event " + a.sig).format("json")))
+                }
+                if (r.length > 1) a.sigAlts = r.slice(1);
+            }));
+        }
+    }
+
+    await Promise.all(promises);
+
+    return abi;
 }
 
 function stripUnreliableABI(abi: ABI): ABI {
