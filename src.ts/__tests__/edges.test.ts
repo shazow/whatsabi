@@ -50,3 +50,12 @@ test('code with immutable in solidity', () => {
     "0x0dbe671f" // a()
   ]);
 })
+
+test('issue 42', () => {
+  // https://github.com/shazow/whatsabi/issues/42
+  // https://etherscan.io/address/0x37c6e59e1ae39d81828db1a8e8233d6b2afcb9a8
+  const bytecode = "0x5b602960346000f073032be5d2772329c11a72dadb32ce03806bb26f0a3160005760006000600060003031335af15060006000f36000600060206000600073032be5d2772329c11a72dadb32ce03806bb26f0a5a6069600052f15033ff";
+  const r = selectorsFromBytecode(bytecode);
+  expect(r).toEqual([
+  ]);
+});

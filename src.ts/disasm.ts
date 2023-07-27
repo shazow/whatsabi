@@ -73,12 +73,13 @@ export class BytecodeIter {
     }
 
     // asPos returns an absolute position for a given position that could be relative.
+    // Returns -1 if out of bounds.
     asPos(posOrRelativeStep: number): number {
         let pos = posOrRelativeStep;
         if (pos < 0) {
             pos = this.posBuffer[this.posBuffer.length + pos];
             if (pos === undefined) {
-                throw new Error("buffer does not contain relative step");
+                return -1;
             }
         }
         return pos;
