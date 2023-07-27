@@ -23,7 +23,8 @@
   "types": "./lib/index.d.ts",
   "files": [
     "lib", "src.ts",
-    "package.json", "README.md", "LICENSE"
+    "package.json", "README.md", "LICENSE",
+    "*config.*"
   ],
   "bugs": {
     "url": "https://github.com/shazow/whatsabi/issues"
