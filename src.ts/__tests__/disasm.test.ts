@@ -57,11 +57,11 @@ describe('BytecodeIter', () => {
     const code = new BytecodeIter("604260005260206000F3", { bufferSize: 1 });
 
     // Exceed buffer
-    expect(() => code.at(-1)).toThrow("buffer does not contain relative step");
-    expect(() => code.at(-2)).toThrow("buffer does not contain relative step");
-    expect(() => code.valueAt(-1)).toThrow("buffer does not contain relative step");
-    expect(() => code.at(-999)).toThrow("buffer does not contain relative step");
-    expect(() => code.valueAt(-999)).toThrow("buffer does not contain relative step");
+    expect(code.at(-1)).toBe(undefined);
+    expect(code.at(-2)).toBe(undefined);
+    expect(code.valueAt(-1)).toEqual(new Uint8Array());
+    expect(code.at(-999)).toBe(undefined);
+    expect(code.valueAt(-999)).toEqual(new Uint8Array());
 
     expect(code.pos()).toBe(-1);
     expect(code.step()).toBe(-1);
@@ -69,7 +69,7 @@ describe('BytecodeIter', () => {
     expect(code.next()).toBe(0x60);
     expect(code.at(-1)).toBe(0x60);
     expect(code.valueAt(-1)).toEqual(new Uint8Array([0x42]));
-    expect(() => code.at(-2)).toThrow("buffer does not contain relative step");
+    expect(code.at(-2)).toBe(undefined);
 
     expect(code.pos()).toBe(0);
     expect(code.step()).toBe(0);
