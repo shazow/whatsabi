@@ -16,7 +16,8 @@ async function main() {
         }
     });
 
-    console.log("autoload:", r);
+    const iface = new ethers.utils.Interface(r);
+    console.log("autoload", iface.format(ethers.utils.FormatTypes.full));
 }
 
 main().then().catch(err => {
