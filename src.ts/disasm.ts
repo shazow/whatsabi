@@ -4,6 +4,8 @@ import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
 import { opcodes, OpCode, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes";
 
+import { knownProxySlots } from "./proxies";
+
 
 function valueToOffset(value: Uint8Array): number {
     // FIXME: Should be a cleaner way to do this...
@@ -16,6 +18,7 @@ function valueToOffset(value: Uint8Array): number {
 // instructions.
 export class BytecodeIter {
     bytecode: Uint8Array;
+    hexcode: string;
 
     nextStep: number; // Instruction count
     nextPos: number; // Byte-wise instruction position (takes variable width into account)
@@ -37,6 +40,7 @@ export class BytecodeIter {
         this.posBuffer = [];
 
         this.bytecode = arrayify(bytecode, { allowMissingPrefix: true });
+        this.hexcode = bytecode; // We need hexcode for hexAt
     }
 
     hasMore(): boolean {
@@ -107,6 +111,13 @@ export class BytecodeIter {
         const width = pushWidth(instruction);
         return this.bytecode.slice(pos + 1, pos + 1 + width);
     }
+
+    // hexAt returns the width-sized hex value for PUSH-like instructions at byte-wise pos.
+    // XXX: Do we actually need this?
+    hexAt(pos: number, width: number): string {
+        // Convert byte offsets to hex offset
+        return this.hexcode.slice(pos * 2 + 2, pos * 2 + 2 + width * 2).toLowerCase();
+    }
 }
 
 // Opcodes that tell us something interesting about the function they're in
@@ -120,32 +131,6 @@ const interestingOpCodes : Set<OpCode> = new Set([
     opcodes.SSTORE, // Not view
     opcodes.REVERT,
     // TODO: Add LOGs to track event emitters?
-]);
-
-// BYTE32's representing references to known proxy storage slots.
-const interestingProxySlots : Set<Uint8Array> = new Set([
-    // ERC-1967: Proxy Storage Slots
-    // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
-    // 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc
-
-    // EPI-1967
-    // Beacon slot is a fallback if implementation is not set.
-    // bytes32(uint256(keccak256('eip1967.proxy.beacon')) - 1)).
-    // 0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50 
-    //
-    // Beacon fallback has selectors:
-    // - implementation()
-    // - childImplementation()
-    // - masterCopy() in Gnosis Safe
-    // - comptrollerImplementation() in Compound
-
-    // https://github.com/OpenZeppelin/openzeppelin-labs/blob/54ad91472fdd0ac4c34aa97d3a3da45c28245510/initializer_with_sol_editing/contracts/UpgradeabilityProxy.sol
-    // bytes32(uint256(keccak256("org.zeppelinos.proxy.implementation")))
-    // 0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3
-
-    // ERC-1822: Universal Upgradeable Proxy Standard (UUPS)
-    // bytes32(uint256(keccak256("PROXIABLE")))
-    // 0xc5f16f0fcc639fa48a6947836d9850f504798523bf8c9a3a87d5876cf622bcf7
 ]);
 
 export class Function {
@@ -168,6 +153,7 @@ export class Program {
     selectors: { [key: string]: number }; // function hash -> instruction offset
     notPayable: { [key: number]: number }; // instruction offset -> bytes offset
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
+    proxySlots: Array<string>; // PUSH32 found that match known proxy slots
     init?: Program; // Program embedded as init code
 
     constructor(init?: Program) {
@@ -175,6 +161,7 @@ export class Program {
         this.selectors = {};
         this.notPayable = {};
         this.eventCandidates = [];
+        this.proxySlots = [];
         this.init = init;
     }
 }
@@ -262,7 +249,13 @@ export function disasm(bytecode: string): Program {
         // Track last PUSH32 to find LOG topics
         // This is probably not bullet proof but seems like a good starting point
         if (inst === opcodes.PUSH32) {
-            lastPush32 = code.value();
+            const v = code.value();
+            const push32Hex = hexlify(v);
+            if (knownProxySlots[push32Hex]) {
+                p.proxySlots.push(push32Hex);
+            } else {
+                lastPush32 = v;
+            }
             continue
         } else if (isLog(inst) && lastPush32.length > 0) {
             p.eventCandidates.push(hexlify(lastPush32));
