@@ -27,4 +27,3 @@ export const knownProxySlots : Record<string, string> = {
     // Not actually a slot, but there's a PUSH32 to the masterCopy() selector
     "0xa619486e00000000000000000000000000000000000000000000000000000000": "masterCopy()",
 };
-

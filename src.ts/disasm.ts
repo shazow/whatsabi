@@ -127,6 +127,7 @@ const interestingOpCodes : Set<OpCode> = new Set([
     opcodes.CALLDATALOAD, // Has arguments
     opcodes.CALLDATASIZE, // FIXME: Is it superfluous to have these two?
     opcodes.CALLDATACOPY,
+    opcodes.DELEGATECALL, // We use this to detect proxies
     opcodes.SLOAD, // Not pure
     opcodes.SSTORE, // Not view
     opcodes.REVERT,
