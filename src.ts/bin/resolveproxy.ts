@@ -24,7 +24,7 @@ async function main() {
     const program = disasm(code);
 
     for (const proxySlot of program.proxySlots) {
-        console.log("Proxy slot found:", proxySlot, "=>", knownProxySlots[proxySlot]);
+        console.log("Proxy slot found:", proxySlot, "=>", knownProxySlots[proxySlot].toString());
     }
 
     let hasDelegateCall = false;
