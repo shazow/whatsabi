@@ -18,7 +18,6 @@ function valueToOffset(value: Uint8Array): number {
 // instructions.
 export class BytecodeIter {
     bytecode: Uint8Array;
-    hexcode: string;
 
     nextStep: number; // Instruction count
     nextPos: number; // Byte-wise instruction position (takes variable width into account)
@@ -40,7 +39,6 @@ export class BytecodeIter {
         this.posBuffer = [];
 
         this.bytecode = arrayify(bytecode, { allowMissingPrefix: true });
-        this.hexcode = bytecode; // We need hexcode for hexAt
     }
 
     hasMore(): boolean {
@@ -110,13 +108,6 @@ export class BytecodeIter {
         const instruction = this.bytecode[pos];
         const width = pushWidth(instruction);
         return this.bytecode.slice(pos + 1, pos + 1 + width);
-    }
-
-    // hexAt returns the width-sized hex value for PUSH-like instructions at byte-wise pos.
-    // XXX: Do we actually need this?
-    hexAt(pos: number, width: number): string {
-        // Convert byte offsets to hex offset
-        return this.hexcode.slice(pos * 2 + 2, pos * 2 + 2 + width * 2).toLowerCase();
     }
 }
 
