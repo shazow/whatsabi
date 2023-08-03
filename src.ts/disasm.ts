@@ -256,7 +256,7 @@ export function disasm(bytecode: string): Program {
         if (inst === opcodes.PUSH32) {
             const v = code.value();
             const push32Hex = hexlify(v);
-            if (knownProxySlots[push32Hex]) {
+            if (push32Hex in knownProxySlots) {
                 p.proxySlots.push(push32Hex);
             } else {
                 lastPush32 = v;

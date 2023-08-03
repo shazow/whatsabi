@@ -2,6 +2,8 @@ import { test, describe, expect } from '@jest/globals';
 
 import { disasm } from '../disasm';
 
+import { ZEPPELINOS_USDC } from './__fixtures__/proxies'
+
 describe('proxy detection', () => {
     test('Minimal Proxy Pattern', async () => {
         // https://eips.ethereum.org/EIPS/eip-1167
@@ -17,6 +19,12 @@ describe('proxy detection', () => {
 
         const program = disasm(bytecode);
         expect(program.proxySlots).toContain("0xa619486e00000000000000000000000000000000000000000000000000000000");
+    });
+
+    test('ZeppelinOS Proxy', async () => {
+        const bytecode = ZEPPELINOS_USDC;
+        const program = disasm(bytecode);
+        expect(program.proxySlots).toContain("0x7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3");
     });
 });
 
