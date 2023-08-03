@@ -92,4 +92,6 @@ export const knownProxySlots : Record<string, ProxyResolver> = {
     // Not actually a slot, but there's a PUSH32 to the masterCopy() selector
     // masterCopy value lives in the 0th slot on the contract
     "0xa619486e00000000000000000000000000000000000000000000000000000000": GnosisSafeProxyResolver,
+
+    // TODO: EIP-1167 minimal proxy standard
 };

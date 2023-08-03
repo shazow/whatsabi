@@ -36,6 +36,8 @@ async function main() {
     }
 
     console.log("Has DELEGATECALL opcode?", hasDelegateCall);
+
+    console.log("DELEGATECALL addresses detected:", program.delegateAddresses);
 }
 
 main().then().catch(err => {

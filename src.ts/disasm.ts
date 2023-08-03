@@ -153,8 +153,11 @@ export class Program {
     dests: { [key: number]: Function }; // instruction offset -> Function
     selectors: { [key: string]: number }; // function hash -> instruction offset
     notPayable: { [key: number]: number }; // instruction offset -> bytes offset
+
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
     proxySlots: Array<string>; // PUSH32 found that match known proxy slots
+    delegateAddresses: Array<string>; // Addresses found sent to DELEGATECALLs
+
     init?: Program; // Program embedded as init code
 
     constructor(init?: Program) {
@@ -163,6 +166,7 @@ export class Program {
         this.notPayable = {};
         this.eventCandidates = [];
         this.proxySlots = [];
+        this.delegateAddresses = [];
         this.init = init;
     }
 }
@@ -261,6 +265,14 @@ export function disasm(bytecode: string): Program {
         } else if (isLog(inst) && lastPush32.length > 0) {
             p.eventCandidates.push(hexlify(lastPush32));
             continue
+        }
+
+        // Possible minimal proxy pattern? EIP-1167
+        if (inst === opcodes.DELEGATECALL &&
+            code.at(-2) === opcodes.GAS &&
+            isPush(code.at(-3))
+        ) {
+            p.delegateAddresses.push(hexlify(zeroPad(code.valueAt(-3), 20)));
         }
 
         // Find JUMPDEST labels
