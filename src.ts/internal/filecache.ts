@@ -4,7 +4,11 @@ import { Console } from "console";
 const CACHE_DIR = process.env["CACHE_DIR"] || ".cache";
 const logger = new Console(process.stderr);
 
-export async function withCache(
+export type Cache = {
+  (cacheKey: string, cacheGetter: () => Promise<any>): Promise<any>;
+};
+
+export const withCache : Cache = async function(
   cacheKey: string,
   cacheGetter: () => Promise<any>,
 ): Promise<any> {

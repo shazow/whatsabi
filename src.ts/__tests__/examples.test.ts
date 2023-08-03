@@ -1,17 +1,12 @@
 import { expect, jest } from "@jest/globals";
 
-import { ethers } from "ethers";
 import { whatsabi } from "../index";
 
-import { withCache } from "../internal/filecache";
 import { cached_test, online_test } from "./env";
-
-const { INFURA_API_KEY } = process.env;
-const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();
 
 jest.setTimeout(15000);
 
-cached_test('README usage', async () => {
+cached_test('README usage', async ({ provider, withCache }) => {
 
   const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
 
@@ -58,7 +53,7 @@ cached_test('README usage', async () => {
 
 })
 
-online_test('README autoload', async () => {
+online_test('README autoload', async ({ provider }) => {
   const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
 
   {
