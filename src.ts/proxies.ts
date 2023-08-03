@@ -1,13 +1,22 @@
-//import { Provider } from "@ethersproject/abstract-provider";
-
 interface StorageProvider {
     getStorageAt(address: string, slot: number|string, block?: string): Promise<string>
+}
+
+interface CallProvider {
+    call(transaction: {to: string, data: string}): Promise<string>;
 }
 
 interface ProxyResolver {
     resolve(provider: StorageProvider, address: string): Promise<string>
 
     toString(): string,
+}
+
+const _zeroAddress = "0x0000000000000000000000000000000000000000";
+
+// Convert 32 byte hex slot to a 20 byte hex address
+function slotToAddress(data:string): string {
+    return "0x" + data.slice(26);
 }
 
 export const GnosisSafeProxyResolver : ProxyResolver = {
@@ -21,8 +30,29 @@ export const GnosisSafeProxyResolver : ProxyResolver = {
 }
 
 export const EIP1967ProxyResolver : ProxyResolver = {
-    resolve(provider: StorageProvider, address: string): Promise<string> {
-        return provider.getStorageAt(address, slots.EIP1967_IMPL);
+    async resolve(provider: StorageProvider & CallProvider, address: string): Promise<string> {
+        // Is there an implementation defined?
+        const implAddr = await provider.getStorageAt(address, slots.EIP1967_IMPL);
+        if (implAddr !== _zeroAddress) {
+            return implAddr;
+        }
+
+        // Gotta find the fallback...
+        const fallbackAddr = await provider.getStorageAt(address, slots.EIP1967_BEACON);
+        if (fallbackAddr === _zeroAddress) {
+            return "";
+        }
+
+        // TODO: We could optimize this by doing getCode and finding the correct selector
+        // but not sure it's worth it with a small number of calls.
+        for (const selector of fallbackSelectors) {
+            const addr = slotToAddress(await provider.call({
+                to: fallbackAddr,
+                data: selector,
+            }));
+            if (addr !== _zeroAddress) return addr;
+        }
+        return "";
     },
 
     toString(): string {
@@ -65,6 +95,8 @@ export const SequenceWalletProxyResolver : ProxyResolver = {
     }
 }
 
+//export const FixedProxyResolver : ProxyResolver = {};
+
 
 function NotImplemented(name: string) : ProxyResolver {
     return {
@@ -77,6 +109,15 @@ function NotImplemented(name: string) : ProxyResolver {
         }
     }
 }
+
+
+const fallbackSelectors = [
+    "0x5c60da1b", // implementation()
+    "0xda525716", // childImplementation()
+    "0xa619486e", // masterCopy()
+    "0xbb82aa5e", // comptrollerImplementation()
+];
+
 
 // BYTE32's representing references to known proxy storage slots.
 const slots : Record<string, string> = {
