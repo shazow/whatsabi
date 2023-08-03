@@ -1,8 +1,13 @@
 import { test, describe, expect } from '@jest/globals';
 
+import { online_test } from './env';
+
 import { disasm } from '../disasm';
+import * as proxies from '../proxies';
 
 import { ZEPPELINOS_USDC } from './__fixtures__/proxies'
+
+// TODO: Test for proxy factories to not match
 
 describe('proxy detection', () => {
     test('Minimal Proxy Pattern', async () => {
@@ -11,6 +16,15 @@ describe('proxy detection', () => {
 
         const program = disasm(bytecode);
         expect(program.delegateAddresses).toContain("0xbebebebebebebebebebebebebebebebebebebebe");
+    });
+
+    test.skip('SequenceWallet Proxy', async() => {
+        // Gas-optimized version of EIP-1167
+        // https://github.com/0xsequence/wallet-contracts/blob/master/contracts/Wallet.sol
+        // FIXME: Need to refactor proxySlots, since the slot is dynamic
+        const bytecode = "0x363d3d373d3d3d363d30545af43d82803e903d91601857fd5bf3";
+        const program = disasm(bytecode);
+        expect(program.proxySlots).toContain("TODO");
     });
 
     test('Gnosis Safe Proxy Factory', async () => {
@@ -33,5 +47,17 @@ describe('proxy resolving', () => {
     //    const address = "0x655a9e6b044d6b62f393f9990ec3ea877e966e18";
     //    // Need to call masterCopy() or getStorageAt for 0th slot
     //    const want = "0x34CfAC646f301356fAa8B21e94227e3583Fe3F5F";
+    //});
+    
+    online_test('EIP-1967 Proxy', async ({ provider }) => {
+        const address = "0xa1a3cf8593cab3ea4c3a0b729d2c9fa2ad04e4b0";
+        const got = proxies.EIP1967ProxyResolver.resolve(provider, address);
+        const wantImplementation = "0x4a5ad53ed70357961e58faf304ccfd06180d2c30,";
+
+        expect(got).toEqual(wantImplementation);
+    });
+    
+    // FIXME: Is there one on mainnet? Seems they're all on polygon
+    //online_test('SequenceWallet Proxy', async() => {
     //});
 });
