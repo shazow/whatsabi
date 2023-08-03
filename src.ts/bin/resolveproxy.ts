@@ -3,7 +3,7 @@
 import { ethers } from "ethers";
 
 import { disasm } from '../disasm';
-import { knownProxySlots } from '../proxies';
+import { slotResolvers } from '../proxies';
 import { withCache } from "../internal/filecache";
 import { opcodes } from "../opcodes";
 
@@ -24,7 +24,7 @@ async function main() {
     const program = disasm(code);
 
     for (const proxySlot of program.proxySlots) {
-        console.log("Proxy slot found:", proxySlot, "=>", knownProxySlots[proxySlot].toString());
+        console.log("Proxy slot found:", proxySlot, "=>", slotResolvers[proxySlot].toString());
     }
 
     let hasDelegateCall = false;
