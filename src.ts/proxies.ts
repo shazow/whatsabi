@@ -8,7 +8,6 @@ interface CallProvider {
 
 interface ProxyResolver {
     resolve(provider: StorageProvider, address: string): Promise<string>
-
     toString(): string,
 }
 
@@ -19,17 +18,25 @@ function slotToAddress(data:string): string {
     return "0x" + data.slice(26);
 }
 
-export const GnosisSafeProxyResolver : ProxyResolver = {
-    resolve(provider: StorageProvider, address: string): Promise<string> {
-        return provider.getStorageAt(address, 0); // masterCopy() is always first slot
-    },
+export class BaseProxyResolver {
+    name: string;
+
+    constructor(name: string) {
+        this.name = name;
+    }
 
     toString(): string {
-        return "GnosisSafeProxy";
+        return this.name;
     }
 }
 
-export const EIP1967ProxyResolver : ProxyResolver = {
+export class GnosisSafeProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    resolve(provider: StorageProvider, address: string): Promise<string> {
+        return provider.getStorageAt(address, 0); // masterCopy() is always first slot
+    }
+}
+
+export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider & CallProvider, address: string): Promise<string> {
         // Is there an implementation defined?
         const implAddr = await provider.getStorageAt(address, slots.EIP1967_IMPL);
@@ -53,27 +60,19 @@ export const EIP1967ProxyResolver : ProxyResolver = {
             if (addr !== _zeroAddress) return addr;
         }
         return "";
-    },
-
-    toString(): string {
-        return "EIP1967Proxy";
     }
 }
 
-export const ZeppelinOSProxyResolver : ProxyResolver = {
+export class ZeppelinOSProxyResolver extends BaseProxyResolver implements ProxyResolver {
     resolve(provider: StorageProvider, address: string): Promise<string> {
         return provider.getStorageAt(address, slots.ZEPPELINOS_IMPL);
-    },
-
-    toString(): string {
-        return "ZeppelinOSProxy";
     }
 }
 
-export const PROXIABLEProxyResolver : ProxyResolver = {
+export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyResolver {
     resolve(provider: StorageProvider, address: string): Promise<string> {
         return provider.getStorageAt(address, slots.PROXIABLE);
-    },
+    }
 
     toString(): string {
         return "PROXIABLEProxy";
@@ -82,33 +81,33 @@ export const PROXIABLEProxyResolver : ProxyResolver = {
 
 // https://github.com/0xsequence/wallet-contracts/blob/master/contracts/Wallet.sol
 // Implementation pointer is stored in slot keyed on the deployed address.
-export const SequenceWalletProxyResolver : ProxyResolver = {
+export class SequenceWalletProxyResolver extends BaseProxyResolver implements ProxyResolver {
     resolve(provider: StorageProvider, address: string): Promise<string> {
         return provider.getStorageAt(address, address.toLowerCase().slice(2)).then((r) => {
             // This is going to return 0-padded 32 bytes, need to pull out the 20 bytes at the end.
             return r.slice(26);
         });
-    },
+    }
 
     toString(): string {
         return "SequenceWalletProxy";
     }
 }
 
-//export const FixedProxyResolver : ProxyResolver = {};
+// FixedProxyResolver is used when we already know the resolved address
+// No additional resolving required
+export class FixedProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    readonly resolvedAddress : string;
 
-
-function NotImplemented(name: string) : ProxyResolver {
-    return {
-        resolve(provider: StorageProvider, address: string): Promise<string> {
-            throw "NotImplemented: " + name;
-        },
-
-        toString(): string {
-            return name;
-        }
+    constructor(name: string, resolvedAddress: string) {
+        super(name);
+        this.resolvedAddress = resolvedAddress;
     }
-}
+
+    resolve(provider?: StorageProvider, address?: string): string {
+        return this.resolvedAddress;
+    }
+};
 
 
 const fallbackSelectors = [
@@ -152,10 +151,11 @@ const slots : Record<string, string> = {
     // Parsed in disasm
 }
 
+
 export const slotResolvers : Record<string, ProxyResolver> = {
-    [slots.EIP1967_IMPL]: EIP1967ProxyResolver,
-    [slots.EIP1967_BEACON]: NotImplemented("eip1967.proxy.beacon"),
-    [slots.ZEPPELINOS_IMPL]: ZeppelinOSProxyResolver,
-    [slots.PROXIABLE]: PROXIABLEProxyResolver,
-    [slots.GNOSIS_SAFE_SELECTOR]: GnosisSafeProxyResolver,
+    [slots.EIP1967_IMPL]: new EIP1967ProxyResolver("EIP1967Proxy"),
+    [slots.EIP1967_BEACON]: new EIP1967ProxyResolver("EIP1967Proxy"),
+    [slots.ZEPPELINOS_IMPL]: new ZeppelinOSProxyResolver("ZeppelinOSProxy"),
+    [slots.PROXIABLE]: new PROXIABLEProxyResolver("PROXIABLE"),
+    [slots.GNOSIS_SAFE_SELECTOR]: new GnosisSafeProxyResolver("GnosisSafeProxy"),
 };
