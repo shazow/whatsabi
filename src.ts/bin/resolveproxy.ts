@@ -23,10 +23,6 @@ async function main() {
 
     const program = disasm(code);
 
-    for (const proxySlot of program.proxySlots) {
-        console.log("Proxy slot found:", proxySlot, "=>", slotResolvers[proxySlot].toString());
-    }
-
     let hasDelegateCall = false;
     for (const fn of Object.values(program.dests)) {
         if (fn.opTags.has(opcodes.DELEGATECALL)) {
@@ -35,9 +31,25 @@ async function main() {
         }
     }
 
-    console.log("Has DELEGATECALL opcode?", hasDelegateCall);
+    if (program.delegateAddresses.length > 0) {
+        console.log("DELEGATECALL hardcoded addresses detected:", program.delegateAddresses);
+    } else if (hasDelegateCall) {
+        console.log("DELEGATECALL detected but no hardcoded addresses found");
+    } else {
+        console.log("No DELEGATECALL detected");
+        return;
+    }
 
-    console.log("DELEGATECALL addresses detected:", program.delegateAddresses);
+    for (const proxySlot of new Set(program.proxySlots)) {
+        const resolver = slotResolvers[proxySlot];
+        console.log("Known proxy slot found:", proxySlot, "=>", resolver.toString());
+
+        const addr = await resolver.resolve(provider, address);
+        if (addr === "0x0000000000000000000000000000000000000000") continue;
+
+        console.log("Resolved to address:", addr);
+        return;
+    }
 }
 
 main().then().catch(err => {

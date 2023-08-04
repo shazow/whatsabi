@@ -49,16 +49,21 @@ describe('proxy resolving', () => {
     //    const want = "0x34CfAC646f301356fAa8B21e94227e3583Fe3F5F";
     //});
     
-    cached_test('EIP-1967 Proxy', async ({ provider }) => {
-        const address = "0xa1a3cf8593cab3ea4c3a0b729d2c9fa2ad04e4b0";
+    cached_test('EIP-1967 Proxy: Aztec TransparentUpgradeableProxy', async ({ provider }) => {
+        const address = "0xff1f2b4adb9df6fc8eafecdcbf96a2b351680455";
         const resolver = new proxies.EIP1967ProxyResolver();
         expect(resolver.toString()).toEqual("EIP1967ProxyResolver");
         const got = await resolver.resolve(provider, address);
-        const wantImplementation = "0x4a5ad53ed70357961e58faf304ccfd06180d2c30";
+        const wantImplementation = "0x8430be7b8fd28cc58ea70a25c9c7a624f26f5d09";
 
         expect(got).toEqual(wantImplementation);
     });
-    
+
+    //cached_test('EIP-1167 Proxy: Uniswap v1', async ({ provider }) => {
+    //    const address = "0x09cabec1ead1c0ba254b09efb3ee13841712be14";
+    //    const wantImplementation = "0x2157a7894439191e520825fe9399ab8655e0f708";
+    //});
+
     // FIXME: Is there one on mainnet? Seems they're all on polygon
     //online_test('SequenceWallet Proxy', async() => {
     //});

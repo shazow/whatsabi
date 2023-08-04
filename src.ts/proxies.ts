@@ -7,7 +7,7 @@ interface CallProvider {
 }
 
 interface ProxyResolver {
-    resolve(provider: StorageProvider|CallProvider, address: string): Promise<string>
+    resolve(provider: StorageProvider|CallProvider, address: string, selector?: string): Promise<string>
     toString(): string,
 }
 
@@ -44,6 +44,21 @@ export class GnosisSafeProxyResolver extends BaseProxyResolver implements ProxyR
     }
 }
 
+// 2016-era upgradeable proxy by Nick Johnson
+// https://gist.github.com/Arachnid/4ca9da48d51e23e5cfe0f0e14dd6318f
+export class LegacyUpgradeableProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    resolve(provider: StorageProvider, address: string): Promise<string> {
+        return provider.getStorageAt(address, 1); // _dist is in the second slot
+    }
+}
+
+const EIP1967FallbackSelectors = [
+    "0x5c60da1b", // implementation()
+    "0xda525716", // childImplementation()
+    "0xa619486e", // masterCopy()
+    "0xbb82aa5e", // comptrollerImplementation()
+];
+
 export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider & CallProvider, address: string): Promise<string> {
         // Is there an implementation defined?
@@ -61,7 +76,7 @@ export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyReso
         // Possible optimizations for the future:
         // 1. We could getCode and finding the correct selector using disasm, but maybe not worth it with small number of calls.
         // 2. We could use multicall3 (if available)
-        for (const selector of fallbackSelectors) {
+        for (const selector of EIP1967FallbackSelectors) {
             const addr = callToAddress(await provider.call({
                 to: fallbackAddr,
                 data: selector,
@@ -105,6 +120,7 @@ export class SequenceWalletProxyResolver extends BaseProxyResolver implements Pr
 
 // FixedProxyResolver is used when we already know the resolved address
 // No additional resolving required
+// Example: EIP-1167
 export class FixedProxyResolver extends BaseProxyResolver implements ProxyResolver {
     readonly resolvedAddress : string;
 
@@ -120,14 +136,6 @@ export class FixedProxyResolver extends BaseProxyResolver implements ProxyResolv
 
 
 // Lookups:
-
-
-const fallbackSelectors = [
-    "0x5c60da1b", // implementation()
-    "0xda525716", // childImplementation()
-    "0xa619486e", // masterCopy()
-    "0xbb82aa5e", // comptrollerImplementation()
-];
 
 
 // BYTE32's representing references to known proxy storage slots.
@@ -171,3 +179,4 @@ export const slotResolvers : Record<string, ProxyResolver> = {
     [slots.PROXIABLE]: new PROXIABLEProxyResolver("PROXIABLE"),
     [slots.GNOSIS_SAFE_SELECTOR]: new GnosisSafeProxyResolver("GnosisSafeProxy"),
 };
+
