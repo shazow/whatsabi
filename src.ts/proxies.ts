@@ -21,7 +21,7 @@ const _zeroAddress = "0x0000000000000000000000000000000000000000";
 
 // Convert 32 byte hex to a 20 byte hex address
 function callToAddress(data:string): string {
-    return "0x" + data.slice(26);
+    return "0x" + data.slice(data.length - 40);
 }
 
 
@@ -79,11 +79,16 @@ export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyReso
         // 1. We could getCode and finding the correct selector using disasm, but maybe not worth it with small number of calls.
         // 2. We could use multicall3 (if available)
         for (const selector of EIP1967FallbackSelectors) {
-            const addr = callToAddress(await provider.call({
-                to: fallbackAddr,
-                data: selector,
-            }));
-            if (addr !== _zeroAddress) return addr;
+            try {
+                const addr = callToAddress(await provider.call({
+                    to: fallbackAddr,
+                    data: selector,
+                }));
+                if (addr !== _zeroAddress) return addr;
+            } catch (e: any) {
+                if (e.toString().includes("reverted")) continue;
+                throw e;
+            }
         }
         return _zeroAddress;
     }
@@ -125,7 +130,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
                 }));
                 if (addr !== _zeroAddress) return addr;
             } catch (e: any) {
-                if (e.error.body.includes("execution reverted")) continue;
+                if (e.toString().includes("reverted")) continue;
                 throw e;
             }
         }
