@@ -12,6 +12,7 @@ const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestea
 
 async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
+    const selector = process.env["SELECTOR"] || process.argv[3];
 
     console.debug("Loading code for address:", address);
     const code = await withCache(
@@ -44,7 +45,7 @@ async function main() {
         const resolver = slotResolvers[proxySlot];
         console.log("Known proxy slot found:", proxySlot, "=>", resolver.toString());
 
-        const addr = await resolver.resolve(provider, address);
+        const addr = await resolver.resolve(provider, address, selector);
         if (addr === "0x0000000000000000000000000000000000000000") continue;
 
         console.log("Resolved to address:", addr);

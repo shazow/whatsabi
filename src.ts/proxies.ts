@@ -1,3 +1,5 @@
+import { ethers } from "ethers";
+
 interface StorageProvider {
     getStorageAt(address: string, slot: number|string, block?: string): Promise<string>
 }
@@ -87,6 +89,50 @@ export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyReso
     }
 }
 
+const diamondSelectors = [
+    "0xcdffacc6", // Diamond Loupe uses selector "0xcdffacc6": facetAddress(bytes4 _functionSelector)
+    "0x0d741577", // Some implementations (OpenZeppelin) use selector "0x0d741577": implementation(bytes4 func)
+];
+
+// ERC2535 - Diamond/Facet Proxy
+export class DiamondProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    async resolve(provider: StorageProvider & CallProvider, address: string, selector: string): Promise<string> {
+        if (!selector) {
+            throw "DiamondProxy requires a selector to resolve to a specific facet";
+        } else if (selector.startsWith("0x")) {
+            selector = selector.slice(2);
+        }
+
+        const facetMappingSlot = ethers.utils.keccak256(
+            // ethers.utils.defaultAbiCoder.encode(["bytes4", "bytes32"], ["0x" + selector, slots.DIAMOND_STORAGE])
+            "0x" + selector.padEnd(64, "0") + slots.DIAMOND_STORAGE.slice(2)
+        );
+
+        const facet = await provider.getStorageAt(address, facetMappingSlot);
+
+        // It's a struct with a few fields, take the right 20 bytes
+        const storageAddr = "0x" + facet.slice(facet.length - 40);
+        if (storageAddr !== _zeroAddress) {
+            return storageAddr;
+        }
+
+        // Try the selectors are a fallback
+        for (const facetSelector of diamondSelectors) {
+            try {
+                const addr = callToAddress(await provider.call({
+                    to: address,
+                    data: facetSelector + selector,
+                }));
+                if (addr !== _zeroAddress) return addr;
+            } catch (e: any) {
+                if (e.error.body.includes("execution reverted")) continue;
+                throw e;
+            }
+        }
+        return _zeroAddress;
+    }
+}
+
 export class ZeppelinOSProxyResolver extends BaseProxyResolver implements ProxyResolver {
     resolve(provider: StorageProvider, address: string): Promise<string> {
         return provider.getStorageAt(address, slots.ZEPPELINOS_IMPL);
@@ -96,10 +142,6 @@ export class ZeppelinOSProxyResolver extends BaseProxyResolver implements ProxyR
 export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyResolver {
     resolve(provider: StorageProvider, address: string): Promise<string> {
         return provider.getStorageAt(address, slots.PROXIABLE);
-    }
-
-    toString(): string {
-        return "PROXIABLEProxy";
     }
 }
 
@@ -167,6 +209,11 @@ export const slots : Record<string, string> = {
     // masterCopy value lives in the 0th slot on the contract
     GNOSIS_SAFE_SELECTOR: "0xa619486e00000000000000000000000000000000000000000000000000000000",
 
+    // Diamond Proxy, as used by ZkSync Era contract
+    // https://etherscan.io/address/0x32400084c286cf3e17e7b677ea9583e60a000324#code
+    // keccak256("diamond.standard.diamond.storage") - 1;
+    DIAMOND_STORAGE: "0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b",
+
     // EIP-1167 minimal proxy standard
     // Parsed in disasm
 }
@@ -178,5 +225,10 @@ export const slotResolvers : Record<string, ProxyResolver> = {
     [slots.ZEPPELINOS_IMPL]: new ZeppelinOSProxyResolver("ZeppelinOSProxy"),
     [slots.PROXIABLE]: new PROXIABLEProxyResolver("PROXIABLE"),
     [slots.GNOSIS_SAFE_SELECTOR]: new GnosisSafeProxyResolver("GnosisSafeProxy"),
+    [slots.DIAMOND_STORAGE]: new DiamondProxyResolver("DiamondProxy"),
+
+    // Not sure why, there's a compiler optimization that adds 2 to the normal slot?
+    // Would love to understand this, if people have ideas
+    ["0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131d"]: new DiamondProxyResolver("DiamondProxy"),
 };
 

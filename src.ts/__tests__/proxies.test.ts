@@ -52,9 +52,18 @@ describe('proxy resolving', () => {
     cached_test('EIP-1967 Proxy: Aztec TransparentUpgradeableProxy', async ({ provider }) => {
         const address = "0xff1f2b4adb9df6fc8eafecdcbf96a2b351680455";
         const resolver = new proxies.EIP1967ProxyResolver();
-        expect(resolver.toString()).toEqual("EIP1967ProxyResolver");
         const got = await resolver.resolve(provider, address);
         const wantImplementation = "0x8430be7b8fd28cc58ea70a25c9c7a624f26f5d09";
+
+        expect(got).toEqual(wantImplementation);
+    });
+
+    cached_test('EIP-2535 Diamond Proxy: ZkSync Era', async({ provider }) => {
+        const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
+        const resolver = new proxies.DiamondProxyResolver();
+        const selector = "0xeb672419"; // requestL2Transaction(address _contractL2,uint256 _l2Value,bytes _calldata,uint256 _l2GasLimit,uint256 _l2GasPerPubdataByteLimit,bytes[] _factoryDeps,address _refundRecipient)
+        const got = await resolver.resolve(provider, address, selector);
+        const wantImplementation = "0xb2097dbe4410b538a45574b1fcd767e2303c7867";
 
         expect(got).toEqual(wantImplementation);
     });
