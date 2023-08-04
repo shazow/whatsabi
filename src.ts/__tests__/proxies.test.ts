@@ -49,10 +49,12 @@ describe('proxy resolving', () => {
     //    const want = "0x34CfAC646f301356fAa8B21e94227e3583Fe3F5F";
     //});
     
-    cached_test('EIP-1967 Proxy', async ({ provider, withCache }) => {
+    cached_test('EIP-1967 Proxy', async ({ provider }) => {
         const address = "0xa1a3cf8593cab3ea4c3a0b729d2c9fa2ad04e4b0";
-        const got = proxies.EIP1967ProxyResolver.resolve(provider, address);
-        const wantImplementation = "0x4a5ad53ed70357961e58faf304ccfd06180d2c30,";
+        const resolver = new proxies.EIP1967ProxyResolver();
+        expect(resolver.toString()).toEqual("EIP1967ProxyResolver");
+        const got = await resolver.resolve(provider, address);
+        const wantImplementation = "0x4a5ad53ed70357961e58faf304ccfd06180d2c30";
 
         expect(got).toEqual(wantImplementation);
     });

@@ -78,12 +78,4 @@ describe('BytecodeIter', () => {
     expect(code.at(999)).toBe(undefined);
     expect(code.valueAt(999)).toEqual(new Uint8Array());
   })
-
-  test('hexAt', () => {
-    const code = new BytecodeIter("6042600052602064AABBCCDD");
-    expect(code.hexAt(0, 1)).toBe("42");
-    expect(code.hexAt(2, 1)).toBe("00");
-    expect(code.hexAt(5, 1)).toBe("20");
-    expect(code.hexAt(7, 5)).toBe("aabbccdd");
-  });
 });

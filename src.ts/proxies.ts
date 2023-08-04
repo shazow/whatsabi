@@ -7,22 +7,30 @@ interface CallProvider {
 }
 
 interface ProxyResolver {
-    resolve(provider: StorageProvider, address: string): Promise<string>
+    resolve(provider: StorageProvider|CallProvider, address: string): Promise<string>
     toString(): string,
 }
 
+
+// Some helpers:
+
+
 const _zeroAddress = "0x0000000000000000000000000000000000000000";
 
-// Convert 32 byte hex slot to a 20 byte hex address
-function slotToAddress(data:string): string {
+// Convert 32 byte hex to a 20 byte hex address
+function callToAddress(data:string): string {
     return "0x" + data.slice(26);
 }
+
+
+// Resolvers:
+
 
 export class BaseProxyResolver {
     name: string;
 
-    constructor(name: string) {
-        this.name = name;
+    constructor(name?: string) {
+        this.name = name || this.constructor.name;
     }
 
     toString(): string {
@@ -39,27 +47,28 @@ export class GnosisSafeProxyResolver extends BaseProxyResolver implements ProxyR
 export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider & CallProvider, address: string): Promise<string> {
         // Is there an implementation defined?
-        const implAddr = await provider.getStorageAt(address, slots.EIP1967_IMPL);
+        const implAddr = callToAddress(await provider.getStorageAt(address, slots.EIP1967_IMPL));
         if (implAddr !== _zeroAddress) {
             return implAddr;
         }
 
         // Gotta find the fallback...
-        const fallbackAddr = await provider.getStorageAt(address, slots.EIP1967_BEACON);
+        const fallbackAddr = callToAddress(await provider.getStorageAt(address, slots.EIP1967_BEACON));
         if (fallbackAddr === _zeroAddress) {
-            return "";
+            return _zeroAddress;
         }
 
-        // TODO: We could optimize this by doing getCode and finding the correct selector
-        // but not sure it's worth it with a small number of calls.
+        // Possible optimizations for the future:
+        // 1. We could getCode and finding the correct selector using disasm, but maybe not worth it with small number of calls.
+        // 2. We could use multicall3 (if available)
         for (const selector of fallbackSelectors) {
-            const addr = slotToAddress(await provider.call({
+            const addr = callToAddress(await provider.call({
                 to: fallbackAddr,
                 data: selector,
             }));
             if (addr !== _zeroAddress) return addr;
         }
-        return "";
+        return _zeroAddress;
     }
 }
 
@@ -104,10 +113,13 @@ export class FixedProxyResolver extends BaseProxyResolver implements ProxyResolv
         this.resolvedAddress = resolvedAddress;
     }
 
-    resolve(provider?: StorageProvider, address?: string): string {
+    async resolve(provider: StorageProvider, address: string): Promise<string> {
         return this.resolvedAddress;
     }
 };
+
+
+// Lookups:
 
 
 const fallbackSelectors = [
@@ -119,7 +131,7 @@ const fallbackSelectors = [
 
 
 // BYTE32's representing references to known proxy storage slots.
-const slots : Record<string, string> = {
+export const slots : Record<string, string> = {
     // EIP-1967: Proxy Storage Slots
     // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
     EIP1967_IMPL: "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
