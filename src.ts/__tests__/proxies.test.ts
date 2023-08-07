@@ -18,6 +18,13 @@ describe('proxy detection', () => {
         expect(program.delegateAddresses).toContain("0xbebebebebebebebebebebebebebebebebebebebe");
     });
 
+    test('Solady Minimal Proxy: CWIA', async () => {
+        // https://github.com/Vectorized/solady/blob/main/src/utils/LibClone.sol
+        const bytecode = "0x36602c57343d527f9e4ac34f21c619cefc926c8bd93b54bf5a39c7ab2127a895af1cc0691d7e3dff593da1005b363d3d373d3d3d3d610016806062363936013d73bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb5af43d3d93803e606057fd5bf3e127ce638293fa123be79c25782a5652581db2340016";
+        const program = disasm(bytecode);
+        expect(program.delegateAddresses).toContain("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    });
+
     test.skip('SequenceWallet Proxy', async() => {
         // Gas-optimized version of EIP-1167
         // https://github.com/0xsequence/wallet-contracts/blob/master/contracts/Wallet.sol
