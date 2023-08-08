@@ -94,6 +94,10 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
             onError("followProxies", new Error("failed to resolve proxy"));
             return result;
         };
+
+        if (config.followProxies) {
+            return await result.followProxies();
+        }
     }
 
     if (abiLoader) {

@@ -70,4 +70,13 @@ online_test('README autoload', async ({ provider }) => {
         result = await result.followProxies();
     }
   }
+
+  {
+      const { abi, address } = await whatsabi.autoload("0x4f8AD938eBA0CD19155a835f617317a6E788c868", {
+          provider,
+          followProxies: true,
+      });
+      expect(abi.length).toBeGreaterThan(0);
+      expect(address).toBe("0x964f84048f0d9bb24b82413413299c0a1d61ea9f");
+  }
 });

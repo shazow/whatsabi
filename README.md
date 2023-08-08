@@ -93,6 +93,22 @@ if (result.followProxies) {
 }
 ```
 
+Or we can auto-follow resolved proxies, and expand parts of the result object:
+
+```typescript
+const { abi, address } = await whatsabi.autoload("0x4f8AD938eBA0CD19155a835f617317a6E788c868", {
+    provider,
+
+    followProxies: true,
+});
+
+console.log("Resolved to:", address);
+// -> "0x964f84048f0d9bb24b82413413299c0a1d61ea9f"
+```
+
+```
+
+
 ## See Also
 
 * [WhatsABI? - Seminar for Spearbit](https://www.youtube.com/watch?v=sfgassm8SKw) (April 2023)
