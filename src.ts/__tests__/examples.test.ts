@@ -1,17 +1,12 @@
 import { expect, jest } from "@jest/globals";
 
-import { ethers } from "ethers";
 import { whatsabi } from "../index";
 
-import { withCache } from "../internal/filecache";
 import { cached_test, online_test } from "./env";
-
-const { INFURA_API_KEY } = process.env;
-const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();
 
 jest.setTimeout(15000);
 
-cached_test('README usage', async () => {
+cached_test('README usage', async ({ provider, withCache }) => {
 
   const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
 
@@ -58,17 +53,30 @@ cached_test('README usage', async () => {
 
 })
 
-online_test('README autoload', async () => {
+online_test('README autoload', async ({ provider }) => {
   const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
 
   {
-    const abi = await whatsabi.autoload(address, {
+    let result = await whatsabi.autoload(address, {
       provider: provider,
       // abiLoader: whatsabi.loaders.defaultABILoader, // Optional
       // signatureLoader: whatsabi.loaders.defaultSignatureLookup, // Optional
     });
-    expect(abi).toContainEqual(
+    expect(result.abi).toContainEqual(
       {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"contractName","type":"string"}],"stateMutability":"pure","type":"function"}
     );
+
+    if (result.followProxies) {
+        result = await result.followProxies();
+    }
+  }
+
+  {
+      const { abi, address } = await whatsabi.autoload("0x4f8AD938eBA0CD19155a835f617317a6E788c868", {
+          provider,
+          followProxies: true,
+      });
+      expect(abi.length).toBeGreaterThan(0);
+      expect(address).toBe("0x964f84048f0d9bb24b82413413299c0a1d61ea9f");
   }
 });

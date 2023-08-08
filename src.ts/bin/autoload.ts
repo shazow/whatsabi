@@ -9,15 +9,22 @@ const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestea
 async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
 
-    const r = await whatsabi.autoload(address, {
+    let r = await whatsabi.autoload(address, {
         provider,
         onProgress: (phase: string, ...args: string[]) => {
             console.debug("progress:", phase, ...args);
         }
     });
 
-    const iface = new ethers.utils.Interface(r);
-    console.log("autoload", iface.format(ethers.utils.FormatTypes.full));
+    while (true) {
+        const iface = new ethers.utils.Interface(r.abi);
+        console.log("autoload", iface.format(ethers.utils.FormatTypes.full));
+
+        if (!r.followProxies) break;
+
+        console.log("following proxies...");
+        r = await r.followProxies();
+    }
 }
 
 main().then().catch(err => {

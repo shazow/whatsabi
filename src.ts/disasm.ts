@@ -4,6 +4,8 @@ import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
 import { opcodes, OpCode, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes";
 
+import { slotResolvers, ProxyResolver, SequenceWalletProxyResolver, FixedProxyResolver } from "./proxies";
+
 
 function valueToOffset(value: Uint8Array): number {
     // FIXME: Should be a cleaner way to do this...
@@ -116,6 +118,7 @@ const interestingOpCodes : Set<OpCode> = new Set([
     opcodes.CALLDATALOAD, // Has arguments
     opcodes.CALLDATASIZE, // FIXME: Is it superfluous to have these two?
     opcodes.CALLDATACOPY,
+    opcodes.DELEGATECALL, // We use this to detect proxies
     opcodes.SLOAD, // Not pure
     opcodes.SSTORE, // Not view
     opcodes.REVERT,
@@ -141,7 +144,11 @@ export class Program {
     dests: { [key: number]: Function }; // instruction offset -> Function
     selectors: { [key: string]: number }; // function hash -> instruction offset
     notPayable: { [key: number]: number }; // instruction offset -> bytes offset
+
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
+    proxySlots: Array<string>; // PUSH32 found that match known proxy slots
+    proxies: Array<ProxyResolver>;
+
     init?: Program; // Program embedded as init code
 
     constructor(init?: Program) {
@@ -149,12 +156,14 @@ export class Program {
         this.selectors = {};
         this.notPayable = {};
         this.eventCandidates = [];
+        this.proxySlots = [];
+        this.proxies = [];
         this.init = init;
     }
 }
 
-export function abiFromBytecode(bytecode: string): ABI {
-    const p = disasm(bytecode);
+export function abiFromBytecode(bytecodeOrProgram: string|Program): ABI {
+    const p = typeof bytecodeOrProgram === "string" ? disasm(bytecodeOrProgram) : bytecodeOrProgram;
 
     const abi: ABI = [];
     for (const [selector, offset] of Object.entries(p.selectors)) {
@@ -236,11 +245,37 @@ export function disasm(bytecode: string): Program {
         // Track last PUSH32 to find LOG topics
         // This is probably not bullet proof but seems like a good starting point
         if (inst === opcodes.PUSH32) {
-            lastPush32 = code.value();
+            const v = code.value();
+            const resolver = slotResolvers[hexlify(v)];
+            if (resolver !== undefined) {
+                // While we're looking at PUSH32, let's find proxy slots
+                p.proxies.push(resolver);
+            } else {
+                lastPush32 = v;
+            }
             continue
         } else if (isLog(inst) && lastPush32.length > 0) {
             p.eventCandidates.push(hexlify(lastPush32));
             continue
+        }
+
+        // Possible minimal proxy pattern? EIP-1167
+        if (inst === opcodes.DELEGATECALL &&
+            code.at(-2) === opcodes.GAS) {
+
+            if (isPush(code.at(-3))) {
+                // Hardcoded delegate address
+                // TODO: We can probably do more here to determine which kind? Do we care?
+                const addr = hexlify(zeroPad(code.valueAt(-3), 20));
+                p.proxies.push(new FixedProxyResolver("HardcodedDelegateProxy", addr));
+
+            } else if (
+                code.at(-3) === opcodes.SLOAD &&
+                code.at(-4) === opcodes.ADDRESS
+            ) {
+                // SequenceWallet-style proxy (keyed on address)
+                p.proxies.push(new SequenceWalletProxyResolver());
+            }
         }
 
         // Find JUMPDEST labels

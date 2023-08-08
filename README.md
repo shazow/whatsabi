@@ -62,16 +62,52 @@ Bonus do-all-the-things helper:
 ```typescript
 ...
 
-const abi = await whatsabi.autoload(address, {
+let result = await whatsabi.autoload(address, {
   provider: provider,
-  // abiLoader: whatsabi.loaders.defaultABILoader, // Optional
-  // signatureLoader: whatsabi.loaders.defaultSignatureLookup, // Optional
+
+  // * Optional loaders:
+  // abiLoader: whatsabi.loaders.defaultABILoader,
+  // signatureLoader: whatsabi.loaders.defaultSignatureLookup,
+
+  // * Optional hooks:
+  // onProgress: (phase: string) => { ... }
+  // onError: (phase: string, context: any) => { ... }
+
+  // * Optional settings:
+  // followProxies: false,
+  // enableExperimentalMetadata: false,
 });
-console.log(abi);
+
+console.log(result.abi);
+
 // Detail will vary depending on whether `address` source code was available,
 // or if bytecode-loaded selector signatures were available, or
 // if WhatsABI had to guess everything from just bytecode.
+
+// We can even detect and resolve proxies!
+if (result.followProxies) {
+    console.log("Proxies detected:", result.proxies);
+
+    result = await result.followProxies();
+    console.log(result.abi);
+}
 ```
+
+Or we can auto-follow resolved proxies, and expand parts of the result object:
+
+```typescript
+const { abi, address } = await whatsabi.autoload("0x4f8AD938eBA0CD19155a835f617317a6E788c868", {
+    provider,
+
+    followProxies: true,
+});
+
+console.log("Resolved to:", address);
+// -> "0x964f84048f0d9bb24b82413413299c0a1d61ea9f"
+```
+
+```
+
 
 ## See Also
 
