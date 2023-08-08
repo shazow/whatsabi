@@ -1,12 +1,6 @@
 import { ethers } from "ethers";
 
-interface StorageProvider {
-    getStorageAt(address: string, slot: number|string, block?: string): Promise<string>
-}
-
-interface CallProvider {
-    call(transaction: {to: string, data: string}): Promise<string>;
-}
+import { StorageProvider, CallProvider } from "./types";
 
 export interface ProxyResolver {
     resolve(provider: StorageProvider|CallProvider, address: string, selector?: string): Promise<string>
