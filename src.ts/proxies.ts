@@ -8,7 +8,7 @@ interface CallProvider {
     call(transaction: {to: string, data: string}): Promise<string>;
 }
 
-interface ProxyResolver {
+export interface ProxyResolver {
     resolve(provider: StorageProvider|CallProvider, address: string, selector?: string): Promise<string>
     toString(): string,
 }
@@ -268,4 +268,3 @@ export const slotResolvers : Record<string, ProxyResolver> = {
     // Would love to understand this, if people have ideas
     ["0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131d"]: new DiamondProxyResolver("DiamondProxy"),
 };
-

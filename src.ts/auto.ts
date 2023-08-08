@@ -3,7 +3,8 @@ import { Fragment } from "@ethersproject/abi";
 
 import { ABI } from "./abi";
 import { ABILoader, SignatureLookup, defaultABILoader, defaultSignatureLookup } from "./loaders";
-import { abiFromBytecode } from "./disasm";
+import { abiFromBytecode, disasm } from "./disasm";
+import { ProxyResolver, slotResolvers, FixedProxyResolver } from "./proxies";
 
 function isAddress(address: string) {
     return address.length === 42 && address.startsWith("0x");
@@ -14,15 +15,39 @@ export const defaultConfig = {
     onError: (phase: string, err: Error) => { console.error(phase + ":", err); return false; },
 }
 
+export type AutoloadResult = {
+    address: string,
+    abi: ABI;
+
+    // List of resolveable proxies detected in the contract
+    proxies: ProxyResolver[],
+
+    // Follow proxies to next result.
+    // If multiple proxies were detected, some reasonable ordering of attempts will be made.
+    // Note: Some proxies operate relative to a specific selector (such as DiamondProxy facets), in this case we'll need to specify a selector that we care about.
+    followProxies?: (selector?: string) => Promise<AutoloadResult>,
+}
+
 export type AutoloadConfig = {
     provider: Provider;
 
     abiLoader?: ABILoader|false;
     signatureLookup?: SignatureLookup|false;
 
-    // Hooks
+    // Hooks:
+
+    // Called during various phases: resolveName, getCode, abiLoader, signatureLookup, followProxies
     onProgress?: (phase: string, ...args: any[]) => void;
+
+    // Called during any encountered errors during a given phase
     onError?: (phase: string, error: Error) => boolean|void; // Return true-y to abort, undefined/false-y to continue
+
+
+    // Settings:
+
+    // Enable following proxies automagically, if possible. Return the final result.
+    // Note that some proxies are relative to a specific selector (such as DiamondProxies), so they will not be followed
+    followProxies?: boolean;
 
     // Enable pulling additional metadata from WhatsABI's static analysis, still unreliable
     enableExperimentalMetadata?: boolean;
@@ -30,10 +55,16 @@ export type AutoloadConfig = {
 
 // auto is a convenience helper for doing All The Things to load an ABI of a contract.
 // FIXME: It's kinda half-done, not parallelized
-export async function autoload(address: string, config: AutoloadConfig): Promise<ABI> {
+export async function autoload(address: string, config: AutoloadConfig): Promise<AutoloadResult> {
     const onProgress = config.onProgress || defaultConfig.onProgress;
     const onError = config.onError || defaultConfig.onError;
     const provider = config.provider;
+
+    const result : AutoloadResult = {
+        address,
+        abi: [],
+        proxies: [],
+    };
 
     if (config === undefined) {
         throw new Error("autoload: config is undefined, must include 'provider'");
@@ -46,37 +77,61 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         address = await provider.resolveName(address) || address;
     }
 
+    // Load code, we need to disasm to find proxies
+    onProgress("getCode", {address});
+    const program = disasm(await provider.getCode(address));
+
+    for (const slot of program.proxySlots) {
+        const resolver = slotResolvers[slot];
+        if (resolver !== undefined) result.proxies.push(resolver);
+    }
+    for (const delegatedAddr of program.delegateAddresses) {
+        const name = "FixedProxyResolver"; // TODO: We can be more specific if we want to analyze the bytecode
+        result.proxies.push(new FixedProxyResolver(name, delegatedAddr));
+    }
+
+    if (result.proxies.length > 0) {
+        result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
+            for (const resolver of result.proxies) {
+                onProgress("followProxies", {resolver: resolver, address});
+                const resolved = await resolver.resolve(provider, address, selector);
+                if (resolved !== undefined) return await autoload(resolved, config);
+            }
+            onError("followProxies", new Error("failed to resolve proxy"));
+            return result;
+        };
+    }
+
     if (abiLoader) {
         // Attempt to load the ABI from a contract database, if exists
         onProgress("abiLoader", {address});
         try {
-            const abi = await abiLoader.loadABI(address);
-            if (abi.length > 0) return abi;
+            result.abi = await abiLoader.loadABI(address);
+            if (result.abi.length > 0) return result;
         } catch (error: any) {
             // TODO: Catch useful errors
-            if (onError("abiLoad", error) === true) return [];
+            if (onError("abiLoad", error) === true) return result;
         }
     }
 
     // Load from code
     onProgress("getCode", {address});
-    const code = await provider.getCode(address);
-    let abi = abiFromBytecode(code);
+    result.abi = abiFromBytecode(program);
 
     if (!config.enableExperimentalMetadata) {
-        abi = stripUnreliableABI(abi);
+        result.abi = stripUnreliableABI(result.abi);
     }
 
     let signatureLookup = config.signatureLookup;
     if (signatureLookup === undefined) signatureLookup = defaultSignatureLookup;
-    if (!signatureLookup) return abi; // Bail
+    if (!signatureLookup) return result; // Bail
 
     // Load signatures from a database
-    onProgress("signatureLookup", {abiItems: abi.length});
+    onProgress("signatureLookup", {abiItems: result.abi.length});
 
     let promises : Promise<void>[] = [];
 
-    for (const a of abi) {
+    for (const a of result.abi) {
         if (a.type === "function") {
             promises.push(signatureLookup.loadFunctions(a.selector).then((r) => {
                 if (r.length >= 1) {
@@ -109,7 +164,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
 
     await Promise.all(promises);
 
-    return abi;
+    return result;
 }
 
 function stripUnreliableABI(abi: ABI): ABI {

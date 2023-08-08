@@ -162,8 +162,8 @@ export class Program {
     }
 }
 
-export function abiFromBytecode(bytecode: string): ABI {
-    const p = disasm(bytecode);
+export function abiFromBytecode(bytecodeOrProgram: string|Program): ABI {
+    const p = typeof bytecodeOrProgram === "string" ? disasm(bytecodeOrProgram) : bytecodeOrProgram;
 
     const abi: ABI = [];
     for (const [selector, offset] of Object.entries(p.selectors)) {
