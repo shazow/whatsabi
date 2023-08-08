@@ -19,6 +19,7 @@ WhatsABI is different from other EVM analysis tools in some important ways:
 - Does not rely on source code, so it **works with unverified contracts.**
 - Does not assume the source language, so it can work for source languages other than Solidity (Vyper, or even hand-written assembly).
 - Permissive open source (MIT-licensed), so that anyone can use it.
+- ✨ Resolves proxies!
 
 ## Usage
 
