@@ -1,6 +1,6 @@
-import { Provider } from "@ethersproject/abstract-provider";
 import { Fragment } from "@ethersproject/abi";
 
+import { Provider } from "./types";
 import { ABI } from "./abi";
 import { ABILoader, SignatureLookup, defaultABILoader, defaultSignatureLookup } from "./loaders";
 import { abiFromBytecode, disasm } from "./disasm";
@@ -53,6 +53,24 @@ export type AutoloadConfig = {
     enableExperimentalMetadata?: boolean;
 }
 
+// Shim to resolve an ENS name by trying various provider functions (ethers.js, viem, etc)
+async function resolveENS(provider: any, name: string): Promise<string> {
+    // Ethers.js
+    if (typeof provider.resolveName === "function") {
+        return await provider.resolveName(name);
+    }
+    // Viem
+    if (typeof provider.getEnsAddress === "function") {
+        return await provider.getEnsAddress({name});
+    }
+    // ensjs, web3.js, etc.
+    if (typeof provider.getAddress === "function") {
+        return await provider.getAddress(name);
+    }
+    // Give up and hope for the best 🙃
+    return name;
+}
+
 // auto is a convenience helper for doing All The Things to load an ABI of a contract.
 // FIXME: It's kinda half-done, not parallelized
 export async function autoload(address: string, config: AutoloadConfig): Promise<AutoloadResult> {
@@ -74,7 +92,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
 
     if (!isAddress(address)) {
         onProgress("resolveName", {address});
-        address = await provider.resolveName(address) || address;
+        address = await resolveENS(provider, address);
     }
 
     // Load code, we need to disasm to find proxies
