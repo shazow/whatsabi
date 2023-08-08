@@ -13,3 +13,4 @@ export {
 } from "./auto";
 
 export * as loaders from "./loaders";
+export * as proxies from "./proxies";
