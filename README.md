@@ -106,8 +106,6 @@ console.log("Resolved to:", address);
 // -> "0x964f84048f0d9bb24b82413413299c0a1d61ea9f"
 ```
 
-```
-
 
 ## See Also
 
