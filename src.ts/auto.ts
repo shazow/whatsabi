@@ -4,7 +4,7 @@ import { Fragment } from "@ethersproject/abi";
 import { ABI } from "./abi";
 import { ABILoader, SignatureLookup, defaultABILoader, defaultSignatureLookup } from "./loaders";
 import { abiFromBytecode, disasm } from "./disasm";
-import { ProxyResolver, slotResolvers, FixedProxyResolver } from "./proxies";
+import { ProxyResolver } from "./proxies";
 
 function isAddress(address: string) {
     return address.length === 42 && address.startsWith("0x");
@@ -81,14 +81,8 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     onProgress("getCode", {address});
     const program = disasm(await provider.getCode(address));
 
-    for (const slot of program.proxySlots) {
-        const resolver = slotResolvers[slot];
-        if (resolver !== undefined) result.proxies.push(resolver);
-    }
-    for (const delegatedAddr of program.delegateAddresses) {
-        const name = "FixedProxyResolver"; // TODO: We can be more specific if we want to analyze the bytecode
-        result.proxies.push(new FixedProxyResolver(name, delegatedAddr));
-    }
+    // FIXME: Sort them in some reasonable way
+    result.proxies = program.proxies;
 
     if (result.proxies.length > 0) {
         result.followProxies = async function(selector?: string): Promise<AutoloadResult> {

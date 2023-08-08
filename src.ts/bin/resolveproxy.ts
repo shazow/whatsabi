@@ -3,7 +3,6 @@
 import { ethers } from "ethers";
 
 import { disasm } from '../disasm';
-import { slotResolvers } from '../proxies';
 import { withCache } from "../internal/filecache";
 import { opcodes } from "../opcodes";
 
@@ -32,18 +31,8 @@ async function main() {
         }
     }
 
-    if (program.delegateAddresses.length > 0) {
-        console.log("DELEGATECALL hardcoded addresses detected:", program.delegateAddresses);
-    } else if (hasDelegateCall) {
-        console.log("DELEGATECALL detected but no hardcoded addresses found");
-    } else {
-        console.log("No DELEGATECALL detected");
-        return;
-    }
-
-    for (const proxySlot of new Set(program.proxySlots)) {
-        const resolver = slotResolvers[proxySlot];
-        console.log("Known proxy slot found:", proxySlot, "=>", resolver.toString());
+    for (const resolver of program.proxies) {
+        console.log("Proxy found:", resolver.toString());
 
         const addr = await resolver.resolve(provider, address, selector);
         if (addr === "0x0000000000000000000000000000000000000000") continue;
@@ -51,6 +40,14 @@ async function main() {
         console.log("Resolved to address:", addr);
         return;
     }
+
+    if (hasDelegateCall && program.proxies.length === 0) {
+        console.log("DELEGATECALL detected but no proxies found");
+    } else {
+        console.log("No DELEGATECALL detected");
+        return;
+    }
+
 }
 
 main().then().catch(err => {

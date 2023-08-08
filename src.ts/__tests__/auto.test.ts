@@ -1,5 +1,6 @@
 import { expect, jest } from "@jest/globals";
 
+
 import { whatsabi } from "../index";
 import { autoload } from "../auto";
 
@@ -8,7 +9,7 @@ import { online_test } from "./env";
 
 online_test('autoload selectors', async ({ provider }) => {
   const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
-  const abi = await autoload(address, {
+  const { abi } = await autoload(address, {
     provider: provider,
     abiLoader: false,
     signatureLookup: false,
@@ -19,7 +20,7 @@ online_test('autoload selectors', async ({ provider }) => {
 
 online_test('autoload selectors with experimental metadata', async ({ provider }) => {
   const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
-  const abi = await autoload(address, {
+  const { abi } = await autoload(address, {
     provider: provider,
     abiLoader: false,
     signatureLookup: false,
@@ -33,7 +34,7 @@ jest.setTimeout(15000);
 
 online_test('autoload full', async ({ provider, env }) => {
   const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
-  const abi = await autoload(address, {
+  const { abi } = await autoload(address, {
     provider: provider,
     abiLoader: new whatsabi.loaders.MultiABILoader([
       new whatsabi.loaders.SourcifyABILoader(),

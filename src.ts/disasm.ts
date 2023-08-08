@@ -4,7 +4,7 @@ import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
 import { opcodes, OpCode, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes";
 
-import { slotResolvers } from "./proxies";
+import { slotResolvers, ProxyResolver, SequenceWalletProxyResolver, FixedProxyResolver } from "./proxies";
 
 
 function valueToOffset(value: Uint8Array): number {
@@ -147,7 +147,7 @@ export class Program {
 
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
     proxySlots: Array<string>; // PUSH32 found that match known proxy slots
-    delegateAddresses: Array<string>; // Addresses found sent to DELEGATECALLs
+    proxies: Array<ProxyResolver>;
 
     init?: Program; // Program embedded as init code
 
@@ -157,7 +157,7 @@ export class Program {
         this.notPayable = {};
         this.eventCandidates = [];
         this.proxySlots = [];
-        this.delegateAddresses = [];
+        this.proxies = [];
         this.init = init;
     }
 }
@@ -246,10 +246,10 @@ export function disasm(bytecode: string): Program {
         // This is probably not bullet proof but seems like a good starting point
         if (inst === opcodes.PUSH32) {
             const v = code.value();
-            const push32Hex = hexlify(v);
-            if (push32Hex in slotResolvers) {
+            const resolver = slotResolvers[hexlify(v)];
+            if (resolver !== undefined) {
                 // While we're looking at PUSH32, let's find proxy slots
-                p.proxySlots.push(push32Hex);
+                p.proxies.push(resolver);
             } else {
                 lastPush32 = v;
             }
@@ -261,10 +261,21 @@ export function disasm(bytecode: string): Program {
 
         // Possible minimal proxy pattern? EIP-1167
         if (inst === opcodes.DELEGATECALL &&
-            code.at(-2) === opcodes.GAS &&
-            isPush(code.at(-3))
-        ) {
-            p.delegateAddresses.push(hexlify(zeroPad(code.valueAt(-3), 20)));
+            code.at(-2) === opcodes.GAS) {
+
+            if (isPush(code.at(-3))) {
+                // Hardcoded delegate address
+                // TODO: We can probably do more here to determine which kind? Do we care?
+                const addr = hexlify(zeroPad(code.valueAt(-3), 20));
+                p.proxies.push(new FixedProxyResolver("HardcodedDelegateProxy", addr));
+
+            } else if (
+                code.at(-3) === opcodes.SLOAD &&
+                code.at(-4) === opcodes.ADDRESS
+            ) {
+                // SequenceWallet-style proxy (keyed on address)
+                p.proxies.push(new SequenceWalletProxyResolver());
+            }
         }
 
         // Find JUMPDEST labels

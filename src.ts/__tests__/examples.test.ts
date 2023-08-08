@@ -57,13 +57,17 @@ online_test('README autoload', async ({ provider }) => {
   const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
 
   {
-    const abi = await whatsabi.autoload(address, {
+    let result = await whatsabi.autoload(address, {
       provider: provider,
       // abiLoader: whatsabi.loaders.defaultABILoader, // Optional
       // signatureLoader: whatsabi.loaders.defaultSignatureLookup, // Optional
     });
-    expect(abi).toContainEqual(
+    expect(result.abi).toContainEqual(
       {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"contractName","type":"string"}],"stateMutability":"pure","type":"function"}
     );
+
+    if (result.followProxies) {
+        result = await result.followProxies();
+    }
   }
 });

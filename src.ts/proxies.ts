@@ -41,16 +41,18 @@ export class BaseProxyResolver {
 }
 
 export class GnosisSafeProxyResolver extends BaseProxyResolver implements ProxyResolver {
-    resolve(provider: StorageProvider, address: string): Promise<string> {
-        return provider.getStorageAt(address, 0); // masterCopy() is always first slot
+    async resolve(provider: StorageProvider, address: string): Promise<string> {
+        const slotPosition = 0; // masterCopy() is always first slot
+        return callToAddress(await provider.getStorageAt(address, slotPosition));
     }
 }
 
 // 2016-era upgradeable proxy by Nick Johnson
 // https://gist.github.com/Arachnid/4ca9da48d51e23e5cfe0f0e14dd6318f
 export class LegacyUpgradeableProxyResolver extends BaseProxyResolver implements ProxyResolver {
-    resolve(provider: StorageProvider, address: string): Promise<string> {
-        return provider.getStorageAt(address, 1); // _dist is in the second slot
+    async resolve(provider: StorageProvider, address: string): Promise<string> {
+        const slotPosition = 1; // // _dist is in the second slot
+        return callToAddress(await provider.getStorageAt(address, slotPosition));
     }
 }
 
@@ -171,25 +173,22 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
 }
 
 export class ZeppelinOSProxyResolver extends BaseProxyResolver implements ProxyResolver {
-    resolve(provider: StorageProvider, address: string): Promise<string> {
-        return provider.getStorageAt(address, slots.ZEPPELINOS_IMPL);
+    async resolve(provider: StorageProvider, address: string): Promise<string> {
+        return callToAddress(await provider.getStorageAt(address, slots.ZEPPELINOS_IMPL));
     }
 }
 
 export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyResolver {
-    resolve(provider: StorageProvider, address: string): Promise<string> {
-        return provider.getStorageAt(address, slots.PROXIABLE);
+    async resolve(provider: StorageProvider, address: string): Promise<string> {
+        return callToAddress(await provider.getStorageAt(address, slots.PROXIABLE));
     }
 }
 
 // https://github.com/0xsequence/wallet-contracts/blob/master/contracts/Wallet.sol
 // Implementation pointer is stored in slot keyed on the deployed address.
 export class SequenceWalletProxyResolver extends BaseProxyResolver implements ProxyResolver {
-    resolve(provider: StorageProvider, address: string): Promise<string> {
-        return provider.getStorageAt(address, address.toLowerCase().slice(2)).then((r) => {
-            // This is going to return 0-padded 32 bytes, need to pull out the 20 bytes at the end.
-            return r.slice(26);
-        });
+    async resolve(provider: StorageProvider, address: string): Promise<string> {
+        return callToAddress(await provider.getStorageAt(address, address.toLowerCase().slice(2)));
     }
 
     toString(): string {
