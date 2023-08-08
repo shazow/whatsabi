@@ -136,6 +136,38 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         }
         return _zeroAddress;
     }
+
+    // TODO: Would be cool if we could read the private facets storage and return known selectors too
+    //
+    // Notes:
+    // 0x32400084c286cf3e17e7b677ea9583e60a000324 (ZkSync Era)
+    // - The struct that contains the facet storage lives in 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b:
+    //     struct DiamondStorage {
+    //       mapping(bytes4 => SelectorToFacet) selectorToFacet;
+    //       mapping(address => FacetToSelectors) facetToSelectors;
+    //       address[] facets;
+    //       bool isFrozen;
+    //     }
+    // - There's an address[] in the 3rd position that we can read (slot 2 because 0-indexed)
+    // - Adding 2 to the storage pointer, we get ending with d instead of b, reading that storage we get:
+    //   cast storage $ADDRESS 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131d
+    //   0x0000000000000000000000000000000000000000000000000000000000000005
+    //   ^ Length of the array
+    // - We hash the pointer to get the position of the first element:
+    // - cast keccak 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131d
+    //   0xc0d727610ea16241eff4447d08bb1b4595f7d2ec4515282437a13b7d0df4b922
+    //   ^ first element position
+    //   cast storage 0xc0d727610ea16241eff4447d08bb1b4595f7d2ec4515282437a13b7d0df4b922
+    //   0x000000000000000000000000f1fb730b7f8e8391b27b91f8f791e10e4a53cecc
+    //   ^ first element
+    //   cast storage 0xc0d727610ea16241eff4447d08bb1b4595f7d2ec4515282437a13b7d0df4b923
+    //   0x0000000000000000000000006df4a6d71622860dcc64c1fd9645d9a5be96f088
+    //   ^ second element, etc
+    // - Next we need to read slot 1 for each address: mapping(address => FacetToSelectors) facetToSelectors; 
+    // - TODO: The rest of the owl
+    //
+    //async selectors(provider: StorageProvider, address: string): Promise<string[]> {
+    //}
 }
 
 export class ZeppelinOSProxyResolver extends BaseProxyResolver implements ProxyResolver {
