@@ -72,7 +72,6 @@ async function resolveENS(provider: any, name: string): Promise<string> {
 }
 
 // auto is a convenience helper for doing All The Things to load an ABI of a contract.
-// FIXME: It's kinda half-done, not parallelized
 export async function autoload(address: string, config: AutoloadConfig): Promise<AutoloadResult> {
     const onProgress = config.onProgress || defaultConfig.onProgress;
     const onError = config.onError || defaultConfig.onError;
