@@ -1,5 +1,4 @@
-import { ethers } from "ethers";
-
+import { keccak256 } from "./utils";
 import { StorageProvider, CallProvider } from "./types";
 
 export interface ProxyResolver {
@@ -104,7 +103,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
             selector = selector.slice(2);
         }
 
-        const facetMappingSlot = ethers.utils.keccak256(
+        const facetMappingSlot = keccak256(
             // ethers.utils.defaultAbiCoder.encode(["bytes4", "bytes32"], ["0x" + selector, slots.DIAMOND_STORAGE])
             "0x" + selector.padEnd(64, "0") + slots.DIAMOND_STORAGE.slice(2)
         );
