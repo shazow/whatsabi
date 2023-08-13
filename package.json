@@ -22,7 +22,7 @@
   "main": "lib/index.js",
   "types": "./lib/index.d.ts",
   "files": [
-    "lib", "src.ts",
+    "lib", "src",
     "package.json", "README.md", "LICENSE",
     "*config.*"
   ],
