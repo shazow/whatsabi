@@ -2,9 +2,9 @@
 
 import { ethers } from "ethers";
 
-import { disasm } from '../disasm';
-import { withCache } from "../internal/filecache";
-import { opcodes } from "../opcodes";
+import { disasm } from '../src/disasm';
+import { withCache } from "../src/internal/filecache";
+import { opcodes } from "../src/opcodes";
 
 const { INFURA_API_KEY } = process.env;
 const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();

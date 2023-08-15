@@ -6,11 +6,11 @@
 import { ethers } from "ethers";
 import { readFileSync } from "fs";
 
-import { withCache } from "../internal/filecache";
-import { Program, Function } from "../disasm";
-import { disasm } from '../disasm';
-import { mnemonics } from "../opcodes";
-import { defaultSignatureLookup } from "../loaders";
+import { withCache } from "../src/internal/filecache";
+import { Program, Function } from "../src/disasm";
+import { disasm } from '../src/disasm';
+import { mnemonics } from "../src/opcodes";
+import { defaultSignatureLookup } from "../src/loaders";
 
 const { INFURA_API_KEY, SKIP_SELECTOR_LOOKUP, SKIP_TAGS } = process.env;
 const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();
