@@ -9,7 +9,7 @@ export function hexToBytes(hex: string): Uint8Array {
 
   const length = hex.length;
   if (length % 2 !== 0) {
-    throw new Error('Odd input length, must be even');
+    throw new Error('hexToBytes: odd input length, must be even: ' + hex);
   }
 
   const r = new Uint8Array(length / 2);
@@ -42,9 +42,8 @@ export function keccak256(data: Uint8Array|string): string {
   if (typeof data !== "string") {
     return bytesToHex(keccak_256(data));
   }
-
   if (data.startsWith("0x")) {
-    data = data.slice(2);
+    data = hexToBytes(data.slice(2));
   }
-  return bytesToHex(keccak_256(hexToBytes(data)));
+  return bytesToHex(keccak_256(data));
 }
