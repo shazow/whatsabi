@@ -30,7 +30,7 @@ export function bytesToHex(bytes: Uint8Array): string {
 }
 
 
-import { keccak_256 } from '@noble/hashes/sha3'
+import { keccak_256 } from '@noble/hashes/sha3';
 
 export function keccak256(data: Uint8Array|string): string {
   if (typeof data !== "string") {
