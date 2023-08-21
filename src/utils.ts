@@ -49,12 +49,24 @@ export function keccak256(data: Uint8Array|string): string {
 }
 
 
+class FetchError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 export async function fetchJSON(url: string): Promise<any> {
   const response = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
     },
   });
+  if (!response.ok) {
+      throw new FetchError(response.statusText, response.status);
+  }
   return response.json();
 }
 
