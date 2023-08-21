@@ -1,7 +1,6 @@
-import { ethers } from "ethers";
-
 import { mnemonics, OpCode, isPush }  from "../opcodes";
 import { BytecodeIter } from "../disasm";
+import { bytesToHex } from "../utils";
 
 // Debug helper:
 
@@ -10,11 +9,11 @@ const hexpads = "0x0000";
 export function BytecodeIterString(code : BytecodeIter): string {
     const step = code.step();
     const pos = code.pos();
-    let hexpos = ethers.utils.hexlify(pos);
+    let hexpos = bytesToHex(pos);
     if (hexpos.length < hexpads.length) hexpos = hexpads.slice(0, hexpos.length - hexpads.length) + hexpos.slice(2);
     const inst = code.at(pos);
-    const value = isPush(inst) ? ethers.utils.hexlify(code.valueAt(pos)) : "";
-    const name = mnemonics[inst] || ethers.utils.hexlify(inst);
+    const value = isPush(inst) ? bytesToHex(code.valueAt(pos)) : "";
+    const name = mnemonics[inst] || bytesToHex(inst);
 
     return `${String(step).padStart(6, " ")}\t${hexpos}\t${name}\t${value}`
 }
