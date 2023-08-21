@@ -23,10 +23,14 @@ export function hexToBytes(hex: string): Uint8Array {
   return r;
 }
 
-export function bytesToHex(bytes: Uint8Array): string {
-  return "0x" + Array.prototype.map.call(bytes, function(n: number) {
+export function bytesToHex(bytes: Uint8Array, padToBytes?: number): string {
+  const hex = Array.prototype.map.call(bytes, function(n: number) {
     return n.toString(16).padStart(2, "0");
   }).join("");
+  if (padToBytes !== undefined && hex.length < padToBytes * 2) {
+    return "0x" + hex.padStart(padToBytes * 2, "0");
+  }
+  return "0x" + hex;
 }
 
 

@@ -6,14 +6,20 @@ import { hexToBytes, bytesToHex, keccak256 } from "../utils";
 
 describe('Utils', () => {
   test.each([
-    [new Uint8Array([0,1,2,3]), "0x00010203"],
-    [new Uint8Array([42,69,255]), "0x2a45ff"],
-    [new Uint8Array([255]), "0xff"],
-    [new Uint8Array([255,255]), "0xffff"],
-    [new Uint8Array([0,255,0,255]), "0x00ff00ff"],
+    new Uint8Array([0,1,2,3]),
+    new Uint8Array([42,69,255]),
+    new Uint8Array([255]),
+    new Uint8Array([255,255]),
+    new Uint8Array([0,255,0,255]),
   ])("bytesToHex %s", (bytes) => {
     expect(bytesToHex(bytes)).toStrictEqual(ethers.utils.hexlify(bytes));
   });
+
+  test("bytesToHex padding", () => {
+    expect(bytesToHex(new Uint8Array([0]), 20)).toStrictEqual("0x0000000000000000000000000000000000000000");
+    expect(bytesToHex(new Uint8Array([255,255,255]), 20)).toStrictEqual("0x0000000000000000000000000000000000ffffff");
+  });
+
 
   test.each([
     "0x00010203",
@@ -30,6 +36,8 @@ describe('Utils', () => {
     "0x00010203",
     "0xffff",
     "0xffff0000111122223333444455556666777788889999aaaabbbbccccddddeeee",
+    new Uint8Array([0,1,2,3]),
+    new Uint8Array([255,0,255,0,255,0]),
   ])("keccak256 %s", (hex) => {
     expect(keccak256(hex)).toStrictEqual(ethers.utils.keccak256(hex));
   });
