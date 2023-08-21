@@ -1,5 +1,4 @@
-import { fetchJson } from "@ethersproject/web";
-import { getAddress } from "@ethersproject/address";
+import { addressWithChecksum, fetchJSON } from "./utils";
 
 export interface ABILoader {
   loadABI(address: string): Promise<any[]>;
@@ -38,7 +37,7 @@ export class EtherscanABILoader implements ABILoader {
     let url = this.baseURL + '?module=contract&action=getabi&address=' + address;
     if (this.apiKey) url += "&apikey=" + this.apiKey;
 
-    const r = await fetchJson(url);
+    const r = await fetchJSON(url);
     if (r.status === "0") {
         if (r.result === "Contract source code not verified") return [];
 
@@ -57,11 +56,11 @@ export class EtherscanABILoader implements ABILoader {
 export class SourcifyABILoader implements ABILoader {
   async loadABI(address: string): Promise<any[]> {
     // Sourcify doesn't like it when the address is not checksummed
-    address = getAddress(address);
+    address = addressWithChecksum(address);
 
     try {
       // Full match index includes verification settings that matches exactly
-      return (await fetchJson("https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json")).output.abi;
+      return (await fetchJSON("https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json")).output.abi;
     } catch (error: any) {
       if (error.status !== 404) throw error;
     }
@@ -69,7 +68,7 @@ export class SourcifyABILoader implements ABILoader {
     
     try {
       // Partial match index is for verified contracts whose settings didn't match exactly
-      return (await fetchJson("https://repo.sourcify.dev/contracts/partial_match/1/" + address + "/metadata.json")).output.abi;
+      return (await fetchJSON("https://repo.sourcify.dev/contracts/partial_match/1/" + address + "/metadata.json")).output.abi;
     } catch (error: any) {
       if (error.status !== 404) throw error;
     }
@@ -116,7 +115,7 @@ export class MultiSignatureLookup implements SignatureLookup {
 export class FourByteSignatureLookup implements SignatureLookup {
   async load(url: string): Promise<string[]> {
     try {
-      const r = await fetchJson(url);
+      const r = await fetchJSON(url);
       if (r.results === undefined) return [];
       return r.results.map((r: any): string => { return r.text_signature });
     } catch (error: any) {
@@ -139,7 +138,7 @@ export class FourByteSignatureLookup implements SignatureLookup {
 export class OpenChainSignatureLookup implements SignatureLookup {
   async load(url: string): Promise<any> {
     try {
-      const r = await fetchJson(url);
+      const r = await fetchJSON(url);
       if (!r.ok) throw new Error("OpenChain API bad response: " + JSON.stringify(r));
       return r;
     } catch (error: any) {
