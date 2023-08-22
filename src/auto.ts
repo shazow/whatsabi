@@ -1,4 +1,4 @@
-import { Fragment } from "@ethersproject/abi";
+import { Fragment } from "ethers";
 
 import { Provider } from "./types";
 import { ABI } from "./abi";

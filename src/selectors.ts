@@ -1,4 +1,4 @@
-import { FunctionFragment } from "@ethersproject/abi";
+import { FunctionFragment } from "ethers";
 
 import { keccak256 } from "./utils";
 import { abiFromBytecode } from "./disasm";

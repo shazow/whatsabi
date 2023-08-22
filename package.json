@@ -35,14 +35,15 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "@ethersproject/abi": "^5",
-    "@noble/hashes": "^1.3.1",
-    "@size-limit/esbuild-why": "^8.2.6",
-    "size-limit": "^8.2.6"
+    "ethers": "^6.7.1"
+  },
+  "peerDependencies": {
+    "@noble/hashes": "^1"
   },
   "devDependencies": {
+    "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
-    "ethers": "^5",
+    "size-limit": "^8.2.6",
     "ts-jest": "^29",
     "ts-node": "^10.9.1"
   },
