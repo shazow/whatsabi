@@ -17,6 +17,20 @@ function callToAddress(data:string): string {
     return "0x" + data.slice(data.length - 40);
 }
 
+function getStorage(provider: any, address: string, slot: number|string): Promise<string> {
+    // Ethers v5, viem, etc.
+    if (typeof provider.getStorageAt === "function") {
+        return provider.getStorageAt(address, slot);
+    }
+
+    // Ethers v6
+    if (typeof provider.getStorage === "function") {
+        return provider.getStorage(address, slot);
+    }
+
+    throw new Error("Unsupported storage provider: Must have getStorageAt or getStorage function");
+}
+
 
 // Resolvers:
 
@@ -36,7 +50,7 @@ export class BaseProxyResolver {
 export class GnosisSafeProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider, address: string): Promise<string> {
         const slotPosition = 0; // masterCopy() is always first slot
-        return callToAddress(await provider.getStorageAt(address, slotPosition));
+        return callToAddress(await getStorage(provider, address, slotPosition));
     }
 }
 
@@ -45,7 +59,7 @@ export class GnosisSafeProxyResolver extends BaseProxyResolver implements ProxyR
 export class LegacyUpgradeableProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider, address: string): Promise<string> {
         const slotPosition = 1; // // _dist is in the second slot
-        return callToAddress(await provider.getStorageAt(address, slotPosition));
+        return callToAddress(await getStorage(provider, address, slotPosition));
     }
 }
 
@@ -59,13 +73,13 @@ const EIP1967FallbackSelectors = [
 export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider & CallProvider, address: string): Promise<string> {
         // Is there an implementation defined?
-        const implAddr = callToAddress(await provider.getStorageAt(address, slots.EIP1967_IMPL));
+        const implAddr = callToAddress(await getStorage(provider, address, slots.EIP1967_IMPL));
         if (implAddr !== _zeroAddress) {
             return implAddr;
         }
 
         // Gotta find the fallback...
-        const fallbackAddr = callToAddress(await provider.getStorageAt(address, slots.EIP1967_BEACON));
+        const fallbackAddr = callToAddress(await getStorage(provider, address, slots.EIP1967_BEACON));
         if (fallbackAddr === _zeroAddress) {
             return _zeroAddress;
         }
@@ -108,7 +122,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
             "0x" + selector.padEnd(64, "0") + slots.DIAMOND_STORAGE.slice(2)
         );
 
-        const facet = await provider.getStorageAt(address, facetMappingSlot);
+        const facet = await getStorage(provider, address, facetMappingSlot);
 
         // It's a struct with a few fields, take the right 20 bytes
         const storageAddr = "0x" + facet.slice(facet.length - 40);
@@ -167,13 +181,13 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
 
 export class ZeppelinOSProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider, address: string): Promise<string> {
-        return callToAddress(await provider.getStorageAt(address, slots.ZEPPELINOS_IMPL));
+        return callToAddress(await getStorage(provider, address, slots.ZEPPELINOS_IMPL));
     }
 }
 
 export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider, address: string): Promise<string> {
-        return callToAddress(await provider.getStorageAt(address, slots.PROXIABLE));
+        return callToAddress(await getStorage(provider, address, slots.PROXIABLE));
     }
 }
 
@@ -181,7 +195,7 @@ export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyRe
 // Implementation pointer is stored in slot keyed on the deployed address.
 export class SequenceWalletProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider, address: string): Promise<string> {
-        return callToAddress(await provider.getStorageAt(address, address.toLowerCase().slice(2)));
+        return callToAddress(await getStorage(provider, address, address.toLowerCase().slice(2)));
     }
 
     toString(): string {
