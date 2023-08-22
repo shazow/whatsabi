@@ -1,8 +1,9 @@
 build:
-	tsc
+	tsc --project tsconfig.esm.json
+	size-limit
 
 watch:
-	tsc -w
+	tsc --project tsconfig.esm.json -w
 
 test:
 	jest
