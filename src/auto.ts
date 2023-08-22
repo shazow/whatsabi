@@ -160,6 +160,11 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
                         delete(extracted.outputs);
                     }
 
+                    // Remove empty names
+                    for (const input of extracted.inputs) {
+                        if (input.name === "") delete(input.name);
+                    }
+
                     Object.assign(a, extracted)
                 }
                 if (r.length > 1) a.sigAlts = r.slice(1);
