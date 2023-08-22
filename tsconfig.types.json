@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "exclude": [
+    "src/__tests__"
+  ],
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    "declarationDir": "./lib.types",
+    "emitDeclarationOnly": true,
+    "moduleResolution": "node"
+  }
+}

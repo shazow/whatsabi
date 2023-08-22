@@ -7,5 +7,11 @@ watch:
 test:
 	jest
 
-publish:
-	rm -rf ./lib; tsc; npm pack
+clean:
+	rm -rf ./lib ./lib.*
+
+publish: clean
+	npm run build:esm
+	npm run build:cjs
+	npm run build:types
+	npm pack
