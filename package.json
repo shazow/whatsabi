@@ -40,6 +40,9 @@
   "peerDependencies": {
     "@noble/hashes": "^1"
   },
+  "optionalDependencies": {
+    "viem": "^1.6.7"
+  },
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
