@@ -12,7 +12,7 @@ describe('Utils', () => {
     new Uint8Array([255,255]),
     new Uint8Array([0,255,0,255]),
   ])("bytesToHex %s", (bytes) => {
-    expect(bytesToHex(bytes)).toStrictEqual(ethers.utils.hexlify(bytes));
+    expect(bytesToHex(bytes)).toStrictEqual(ethers.hexlify(bytes));
   });
 
   test("bytesToHex padding", () => {
@@ -29,7 +29,7 @@ describe('Utils', () => {
     "0xffff",
     "0x00ff00ff",
   ])("hexToBytes %s", (hex) => {
-    expect(hexToBytes(hex)).toStrictEqual(ethers.utils.arrayify(hex));
+    expect(hexToBytes(hex)).toStrictEqual(ethers.getBytes(hex));
   });
 
   test.each([
@@ -39,7 +39,7 @@ describe('Utils', () => {
     new Uint8Array([0,1,2,3]),
     new Uint8Array([255,0,255,0,255,0]),
   ])("keccak256 %s", (hex) => {
-    expect(keccak256(hex)).toStrictEqual(ethers.utils.keccak256(hex));
+    expect(keccak256(hex)).toStrictEqual(ethers.keccak256(hex));
   });
 
 });

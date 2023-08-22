@@ -8,7 +8,7 @@ const env = {
     ETHERSCAN_API_KEY: process.env.ETHERSCAN_API_KEY,
 };
 
-const provider = env.INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider();
+const provider = env.INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
 
 type ItConcurrent = typeof test.skip;
 

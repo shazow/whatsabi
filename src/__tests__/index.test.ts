@@ -36,14 +36,14 @@ test.skip('WIP: abiFromBytecode functions', () => {
 // toKnown converts a traditional ABI object to a subset that we know how to
 // extract, so that we can make comparisons within our limitations.
 function toKnown(abi: any[]) {
-  const iface = new ethers.utils.Interface(abi);
+  const iface = new ethers.Interface(abi);
 
   return abi.map(a => {
     if (a.type === "event") {
       return a;
     }
     if (a.type === "function") {
-      a.selector = iface.getSighash(a.name);
+      a.selector = iface.getFunction(a.name)?.selector;
     }
 
     // We can only tell iff there are inputs/outputs, not what they are
