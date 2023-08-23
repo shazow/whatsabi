@@ -1,4 +1,4 @@
-import { arrayify, hexlify, zeroPad } from "@ethersproject/bytes";
+import { hexToBytes, bytesToHex } from "./utils";
 
 import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
 
@@ -9,7 +9,7 @@ import { slotResolvers, ProxyResolver, SequenceWalletProxyResolver, FixedProxyRe
 
 function valueToOffset(value: Uint8Array): number {
     // FIXME: Should be a cleaner way to do this...
-    return parseInt(hexlify(value), 16);
+    return parseInt(bytesToHex(value), 16);
 }
 
 // BytecodeIter takes EVM bytecode and handles iterating over it with correct
@@ -38,7 +38,7 @@ export class BytecodeIter {
         this.posBufferSize = Math.max(config.bufferSize || 1, 1);
         this.posBuffer = [];
 
-        this.bytecode = arrayify(bytecode, { allowMissingPrefix: true });
+        this.bytecode = hexToBytes(bytecode);
     }
 
     hasMore(): boolean {
@@ -246,7 +246,7 @@ export function disasm(bytecode: string): Program {
         // This is probably not bullet proof but seems like a good starting point
         if (inst === opcodes.PUSH32) {
             const v = code.value();
-            const resolver = slotResolvers[hexlify(v)];
+            const resolver = slotResolvers[bytesToHex(v)];
             if (resolver !== undefined) {
                 // While we're looking at PUSH32, let's find proxy slots
                 p.proxies.push(resolver);
@@ -255,7 +255,7 @@ export function disasm(bytecode: string): Program {
             }
             continue
         } else if (isLog(inst) && lastPush32.length > 0) {
-            p.eventCandidates.push(hexlify(lastPush32));
+            p.eventCandidates.push(bytesToHex(lastPush32));
             continue
         }
 
@@ -266,7 +266,7 @@ export function disasm(bytecode: string): Program {
             if (isPush(code.at(-3))) {
                 // Hardcoded delegate address
                 // TODO: We can probably do more here to determine which kind? Do we care?
-                const addr = hexlify(zeroPad(code.valueAt(-3), 20));
+                const addr = bytesToHex(code.valueAt(-3), 20);
                 p.proxies.push(new FixedProxyResolver("HardcodedDelegateProxy", addr));
 
             } else if (
@@ -401,12 +401,8 @@ export function disasm(bytecode: string): Program {
         ) {
             // Found a function selector sequence, save it to check against JUMPDEST table later
             let value = code.valueAt(-4)
-            if (value.length < 4) {
-                // 0-prefixed comparisons get optimized to a smaller width than PUSH4
-                // FIXME: Could just use ethers.utils.hexzeropad
-                value = zeroPad(value, 4);
-            }
-            const selector: string = hexlify(value);
+            // 0-prefixed comparisons get optimized to a smaller width than PUSH4
+            const selector: string = bytesToHex(value, 4);
             p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
 
@@ -422,11 +418,8 @@ export function disasm(bytecode: string): Program {
         ) {
             // Found a function selector sequence, save it to check against JUMPDEST table later
             let value = code.valueAt(-5)
-            if (value.length < 4) {
-                // 0-prefixed comparisons get optimized to a smaller width than PUSH4
-                value = zeroPad(value, 4);
-            }
-            const selector: string = hexlify(value);
+            // 0-prefixed comparisons get optimized to a smaller width than PUSH4
+            const selector: string = bytesToHex(value, 4);
             p.selectors[selector] = offsetDest;
             selectorDests.add(offsetDest);
 

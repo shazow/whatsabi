@@ -1,11 +1,18 @@
 build:
-	tsc
+	tsc --project tsconfig.esm.json
+	size-limit
 
 watch:
-	tsc -w
+	tsc --project tsconfig.esm.json -w
 
 test:
 	jest
 
-publish:
-	rm -rf ./lib; tsc; npm pack
+clean:
+	rm -rf ./lib ./lib.*
+
+publish: clean
+	npm run build:esm
+	npm run build:cjs
+	npm run build:types
+	npm pack

@@ -6,7 +6,10 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build:cjs": "tsc --project tsconfig.cjs.json",
+    "build:esm": "tsc --project tsconfig.esm.json",
+    "build:types": "tsc --project tsconfig.types.json"
   },
   "repository": {
     "type": "git",
@@ -19,11 +22,12 @@
   ],
   "author": "Andrey Petrov <shazow.net>",
   "license": "MIT",
-  "main": "lib/index.js",
-  "types": "./lib/index.d.ts",
   "files": [
-    "lib", "src",
-    "package.json", "README.md", "LICENSE",
+    "lib.*",
+    "src",
+    "package.json",
+    "README.md",
+    "LICENSE",
     "*config.*"
   ],
   "bugs": {
@@ -31,16 +35,29 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "@ethersproject/abi": "^5",
-    "@ethersproject/abstract-provider": "^5",
-    "@ethersproject/address": "^5",
-    "@ethersproject/bytes": "^5",
-    "@ethersproject/hash": "^5",
-    "@ethersproject/web": "^5"
+    "ethers": "^6.7.1"
+  },
+  "peerDependencies": {
+    "@noble/hashes": "^1"
+  },
+  "optionalDependencies": {
+    "viem": "^1.6.7"
   },
   "devDependencies": {
-    "ethers": "^5",
+    "@size-limit/esbuild-why": "^8.2.6",
+    "@size-limit/preset-small-lib": "^8.2.6",
+    "size-limit": "^8.2.6",
     "ts-jest": "^29",
     "ts-node": "^10.9.1"
+  },
+  "main": "./lib.cjs/index.js",
+  "module": "./lib.esm/index.js",
+  "types": "./lib.types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./lib.esm/index.js",
+      "default": "./lib.cjs/index.js",
+      "types": "./lib.types/index.d.ts"
+    }
   }
 }

@@ -1,6 +1,6 @@
-import { FunctionFragment } from "@ethersproject/abi";
-import { id } from "@ethersproject/hash";
+import { FunctionFragment } from "ethers";
 
+import { keccak256 } from "./utils";
 import { abiFromBytecode } from "./disasm";
 
 // Load function selectors mapping from ABI, parsed using ethers.js
@@ -11,7 +11,7 @@ export function selectorsFromABI(abi: any[]): {[key: string]: string} {
     for (const el of abi) {
       if (typeof(el) !== "string" && el.type !== "function") continue;
       const f = FunctionFragment.from(el).format();
-      r[id(f).substring(0, 10)] = f;
+      r[keccak256(f).substring(0, 10)] = f;
     }
 
     return r;

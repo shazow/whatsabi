@@ -1,14 +1,24 @@
 import { ethers } from "ethers";
+import { createPublicClient, http } from 'viem'
 import { test } from '@jest/globals';
 
 import { withCache } from "../internal/filecache";
+import { CompatibleProvider } from "../types";
 
 const env = {
     INFURA_API_KEY: process.env.INFURA_API_KEY,
     ETHERSCAN_API_KEY: process.env.ETHERSCAN_API_KEY,
+    PROVIDER: process.env.PROVIDER,
 };
 
-const provider = env.INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider();
+const provider = CompatibleProvider(function() {
+    if (env.PROVIDER === "viem") {
+        return createPublicClient({
+            transport: http(env.INFURA_API_KEY ? "https://mainnet.infura.io/v3/" + env.INFURA_API_KEY : undefined),
+        });
+    }
+    return env.INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
+}());
 
 type ItConcurrent = typeof test.skip;
 
