@@ -7,9 +7,7 @@ Guess an ABI from an Ethereum contract address, even if it's unverified.
 WhatsABI does bounded-complexity static analysis to disassemble EVM bytecode and map out the possible call flows,
 which allows us to discover function selectors and other metadata about the contract.
 
-We can also look up the 4-byte selectors on APIs like
-[4byte.directory](https://www.4byte.directory/) to discover possible original
-function signatures.
+WhatsABI is perfect for building procedural frontends, embedding in wallets, block explorers, or doing bytecode analysis.
 
 ## Features
 
@@ -19,7 +17,12 @@ WhatsABI is different from other EVM analysis tools in some important ways:
 - Does not rely on source code, so it **works with unverified contracts.**
 - Does not assume the source language, so it can work for source languages other than Solidity (Vyper, or even hand-written assembly).
 - Permissive open source (MIT-licensed), so that anyone can use it.
-- ✨ Resolves proxies!
+
+What can WhatsABI do?
+- Return selectors from bytecode.
+- Look up function signatures from selectors.
+- ✨ Resolve proxy contracts!
+- Small bundle (less than 15 KB) that works with Ethers.js, Viem, and others.
 
 ## Usage
 
