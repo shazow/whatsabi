@@ -81,7 +81,7 @@ export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyReso
                 }));
                 if (addr !== _zeroAddress) return addr;
             } catch (e: any) {
-                if (e.toString().includes("reverted")) continue;
+                if (e.toString().includes("revert")) continue;
                 throw e;
             }
         }
@@ -125,7 +125,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
                 }));
                 if (addr !== _zeroAddress) return addr;
             } catch (e: any) {
-                if (e.toString().includes("reverted")) continue;
+                if (e.toString().includes("revert")) continue;
                 throw e;
             }
         }

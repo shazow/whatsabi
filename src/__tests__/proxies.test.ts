@@ -1,6 +1,6 @@
 import { test, describe, expect } from '@jest/globals';
 
-import {online_test } from './env';
+import { cached_test, online_test } from './env';
 
 import { disasm } from '../disasm';
 import * as proxies from '../proxies';
@@ -64,7 +64,7 @@ describe('proxy detection', () => {
     });
 });
 
-describe('proxy resolving', () => {
+describe('known proxy resolving', () => {
     online_test('Safe: Proxy Factory 1.1.1', async ({ provider }) => {
         const address = "0x655a9e6b044d6b62f393f9990ec3ea877e966e18";
         // Need to call masterCopy() or getStorageAt for 0th slot
@@ -83,6 +83,15 @@ describe('proxy resolving', () => {
         expect(got).toEqual(wantImplementation);
     });
 
+    online_test('EIP-1967 Proxy: NFTX', async ({ provider }) => {
+        const address = "0x3E135c3E981fAe3383A5aE0d323860a34CfAB893";
+        const resolver = new proxies.EIP1967ProxyResolver();
+        const got = await resolver.resolve(provider, address);
+        const wantImplementation = "0xccb1cfc9caa2b73a82ad23a9b3219da900485880";
+
+        expect(got).toEqual(wantImplementation);
+    });
+
     online_test('EIP-2535 Diamond Proxy: ZkSync Era', async({ provider }) => {
         const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
         const resolver = new proxies.DiamondProxyResolver();
@@ -95,4 +104,45 @@ describe('proxy resolving', () => {
     // FIXME: Is there one on mainnet? Seems they're all on polygon
     //online_test('SequenceWallet Proxy', async() => {
     //});
+});
+
+
+describe('contract proxy resolving', () => {
+    cached_test('Create2Beacon Proxy', async ({ provider, withCache }) => {
+        const address = "0x581acd618ba7ef6d3585242423867adc09e8ed60";
+        const code = await withCache(
+          `${address}_code`,
+          async () => {
+            return await provider.getCode(address)
+          },
+        )
+
+        const program = disasm(code);
+        expect(program.proxies.length).toEqual(1);
+
+        const resolver = program.proxies[0];
+        const got = await resolver.resolve(provider, address);
+
+        const wantImplementation = "0xaddc3e67a500f7037cd622b11df291a6351bfb64";
+        expect(got).toEqual(wantImplementation);
+    });
+
+    cached_test('Vyper Minimal Proxy', async ({ provider, withCache }) => {
+        const address = "0x2d5d4869381c4fce34789bc1d38acce747e295ae";
+        const code = await withCache(
+          `${address}_code`,
+          async () => {
+            return await provider.getCode(address)
+          },
+        )
+
+        const program = disasm(code);
+        expect(program.proxies.length).toEqual(1);
+
+        const resolver = program.proxies[0];
+        const got = await resolver.resolve(provider, address);
+
+        const wantImplementation = "0x9c13e225ae007731caa49fd17a41379ab1a489f4";
+        expect(got).toEqual(wantImplementation);
+    });
 });
