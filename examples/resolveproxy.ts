@@ -5,9 +5,10 @@ import { ethers } from "ethers";
 import { disasm } from '../src/disasm';
 import { withCache } from "../src/internal/filecache";
 import { opcodes } from "../src/opcodes";
+import { CompatibleProvider } from "../src/types";
 
 const { INFURA_API_KEY } = process.env;
-const provider = INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
+const provider = CompatibleProvider(INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead"));
 
 async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
