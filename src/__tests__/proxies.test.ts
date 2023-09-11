@@ -83,6 +83,15 @@ describe('proxy resolving', () => {
         expect(got).toEqual(wantImplementation);
     });
 
+    online_test('EIP-1967 Proxy: NFTX', async ({ provider }) => {
+        const address = "0x3E135c3E981fAe3383A5aE0d323860a34CfAB893";
+        const resolver = new proxies.EIP1967ProxyResolver();
+        const got = await resolver.resolve(provider, address);
+        const wantImplementation = "0xccb1cfc9caa2b73a82ad23a9b3219da900485880";
+
+        expect(got).toEqual(wantImplementation);
+    });
+
     online_test('EIP-2535 Diamond Proxy: ZkSync Era', async({ provider }) => {
         const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
         const resolver = new proxies.DiamondProxyResolver();
