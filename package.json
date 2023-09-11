@@ -23,8 +23,10 @@
   "author": "Andrey Petrov <shazow.net>",
   "license": "MIT",
   "files": [
-    "lib.*",
-    "src",
+    "lib.esm/",
+    "lib.cjs/",
+    "lib.types/",
+    "src/",
     "package.json",
     "README.md",
     "LICENSE",
