@@ -27,6 +27,7 @@
     "lib.cjs/",
     "lib.types/",
     "src/",
+    "examples/",
     "package.json",
     "README.md",
     "LICENSE",
