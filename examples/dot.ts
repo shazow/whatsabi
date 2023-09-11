@@ -11,9 +11,10 @@ import { Program, Function } from "../src/disasm";
 import { disasm } from '../src/disasm';
 import { mnemonics } from "../src/opcodes";
 import { defaultSignatureLookup } from "../src/loaders";
+import { bytesToHex } from "../src/utils";
 
 const { INFURA_API_KEY, SKIP_SELECTOR_LOOKUP, SKIP_TAGS } = process.env;
-const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();
+const provider = INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
 
 
 export function* programToDotGraph(p: Program, lookup: { [key: string]: string }) {
@@ -24,7 +25,7 @@ export function* programToDotGraph(p: Program, lookup: { [key: string]: string }
     const nameLookup = Object.fromEntries(Object.entries(p.selectors).map(([k, v]) => [v, k]));
 
     function toID(n: number): string {
-        return (nameLookup[n] || ethers.utils.hexlify(n));
+        return (nameLookup[n] || bytesToHex(n));
     }
     yield "\tsubgraph cluster_0 {"
     yield "\t\tlabel = Selectors;";

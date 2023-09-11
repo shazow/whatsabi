@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import { whatsabi } from "../src/index";
 
 const { INFURA_API_KEY } = process.env;
-const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();
+const provider = INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
 
 async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
@@ -17,8 +17,8 @@ async function main() {
     });
 
     while (true) {
-        const iface = new ethers.utils.Interface(r.abi);
-        console.log("autoload", iface.format(ethers.utils.FormatTypes.full));
+        const iface = new ethers.Interface(r.abi);
+        console.log("autoload", iface.format());
 
         if (!r.followProxies) break;
 

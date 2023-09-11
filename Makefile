@@ -16,3 +16,9 @@ publish: clean
 	npm run build:cjs
 	npm run build:types
 	npm pack
+
+run-examples:
+	./examples/autoload.ts $(ADDRESS)
+	./examples/bytecode.ts $(ADDRESS)
+	./examples/dot.ts $(ADDRESS)
+	./examples/resolveproxy.ts $(ADDRESS)

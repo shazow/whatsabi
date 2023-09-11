@@ -7,7 +7,7 @@ import { withCache } from "../src/internal/filecache";
 import { opcodes } from "../src/opcodes";
 
 const { INFURA_API_KEY } = process.env;
-const provider = INFURA_API_KEY ? (new ethers.providers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider();
+const provider = INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
 
 async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
