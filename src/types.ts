@@ -19,6 +19,8 @@ export interface ENSProvider {
 
 export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider {};
 
+export interface AnyProvider {}; // TODO: Can we narrow this more?
+
 
 // Abstract away web3 provider inconsistencies
 

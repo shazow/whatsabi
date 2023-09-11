@@ -1,6 +1,6 @@
 import { Fragment } from "ethers";
 
-import { Provider, CompatibleProvider } from "./types";
+import { AnyProvider, CompatibleProvider } from "./types";
 import { ABI } from "./abi";
 import { ABILoader, SignatureLookup, defaultABILoader, defaultSignatureLookup } from "./loaders";
 import { abiFromBytecode, disasm } from "./disasm";
@@ -29,7 +29,7 @@ export type AutoloadResult = {
 }
 
 export type AutoloadConfig = {
-    provider: Provider;
+    provider: AnyProvider;
 
     abiLoader?: ABILoader|false;
     signatureLookup?: SignatureLookup|false;
@@ -140,11 +140,6 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
                         // Outputs not included in signature databases -_- (unless something changed)
                         // Let whatsabi keep its best guess, if any.
                         delete(extracted.outputs);
-                    }
-
-                    // Remove empty names
-                    for (const input of extracted.inputs) {
-                        if (input.name === "") delete(input.name);
                     }
 
                     Object.assign(a, extracted)
