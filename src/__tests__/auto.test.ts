@@ -46,7 +46,7 @@ online_test('autoload full', async ({ provider, env }) => {
     ]),
     //onProgress: (phase: string, ...args: any[]) => { console.debug("PROGRESS", phase, args); },
   });
-  expect(abi).toContainEqual({"constant": false, "inputs": [{"type": "address"}, {"type": "uint256"}, {"type": "bytes"}], "name": "call", "payable": false, "selector": "0x6dbf2fa0", "sig": "call(address,uint256,bytes)", "type": "function"})
+  expect(abi).toContainEqual({"constant": false, "inputs": [{"type": "address", "name": ""}, {"type": "uint256", "name": ""}, {"type": "bytes", "name": ""}], "name": "call", "payable": false, "selector": "0x6dbf2fa0", "sig": "call(address,uint256,bytes)", "type": "function"})
 
   expect(abi).toContainEqual({"selector": "0xec0ab6a7", "type": "function"});
 });
