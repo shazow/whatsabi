@@ -16,6 +16,7 @@
 
           pkgs.graphviz  # For debugging
           pkgs.gnumake
+          pkgs.bun
         ];
 
         shellHook = ''
