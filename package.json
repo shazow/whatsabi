@@ -48,7 +48,8 @@
     "@size-limit/preset-small-lib": "^8.2.6",
     "size-limit": "^8.2.6",
     "ts-jest": "^29",
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.1",
+    "viem": "^1.10.9"
   },
   "main": "./lib.cjs/index.js",
   "module": "./lib.esm/index.js",
