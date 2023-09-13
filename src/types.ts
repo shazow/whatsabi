@@ -86,11 +86,12 @@ class ViemProvider extends Web3Provider {
     }
 
     call(transaction: {to: string, data: string}): Promise<string> {
-        return this.provider.call({
-            account: "0x0",
+        // Note: We can't use viem's provider.call because it does some fun dynamic module loading optimizations (maybe also related to auto batching?) which segfaults on some enviornments.
+        return this.provider.transport.request({method: "eth_call", params: [{
+            from: "0x0000000000000000000000000000000000000001",
             to: transaction.to,
             data: transaction.data,
-        });
+        }, "latest"]});
     }
 
     getCode(address: string): Promise<string> {
