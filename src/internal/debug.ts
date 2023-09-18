@@ -1,6 +1,6 @@
-import { mnemonics, OpCode, isPush }  from "../opcodes";
-import { BytecodeIter } from "../disasm";
-import { bytesToHex } from "../utils";
+import { mnemonics, OpCode, isPush }  from "../opcodes.js";
+import { BytecodeIter } from "../disasm.js";
+import { bytesToHex } from "../utils.js";
 
 // Debug helper:
 

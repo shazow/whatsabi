@@ -1,10 +1,10 @@
-import { hexToBytes, bytesToHex } from "./utils";
+import { hexToBytes, bytesToHex } from "./utils.js";
 
-import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi";
+import { ABI, ABIFunction, ABIEvent, StateMutability } from "./abi.js";
 
-import { opcodes, OpCode, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes";
+import { opcodes, OpCode, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes.js";
 
-import { slotResolvers, ProxyResolver, SequenceWalletProxyResolver, FixedProxyResolver } from "./proxies";
+import { slotResolvers, ProxyResolver, SequenceWalletProxyResolver, FixedProxyResolver } from "./proxies.js";
 
 
 function valueToOffset(value: Uint8Array): number {
