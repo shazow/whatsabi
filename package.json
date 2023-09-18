@@ -1,6 +1,7 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "0.8.3",
+  "version": "0.8.4",
+  "type": "module",
   "description": "Guess an ABI from Ethereum bytecode, even if it's unverified",
   "directories": {
     "lib": "lib"
