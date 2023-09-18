@@ -2,11 +2,18 @@
   "compilerOptions": {
     "outDir": "./lib/",
     "rootDir": "./src",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    "declarationMap": true,
     "declaration": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
@@ -16,8 +23,8 @@
     "preserveWatchOutput": true,
     "pretty": false,
     "sourceMap": true,
-    "strict": true,
-    "target": "es2022"
+    "allowJs": false,
+    "strict": true
   },
   "include": [
     "./src/*.ts"

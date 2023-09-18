@@ -12,10 +12,12 @@ clean:
 	rm -rf ./lib ./lib.*
 
 publish: clean
+	npm i
 	npm run build:esm
 	npm run build:cjs
 	npm run build:types
 	npm pack
+	size-limit
 
 run-examples:
 	./examples/autoload.ts $(ADDRESS)

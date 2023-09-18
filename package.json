@@ -1,10 +1,7 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "description": "Guess an ABI from Ethereum bytecode, even if it's unverified",
-  "directories": {
-    "lib": "lib"
-  },
   "scripts": {
     "test": "jest",
     "build:cjs": "tsc --project tsconfig.cjs.json",

@@ -41,13 +41,9 @@ export class EtherscanABILoader implements ABILoader {
     if (r.status === "0") {
         if (r.result === "Contract source code not verified") return [];
 
-        throw new Error("Etherscan error: " + r.result, {
-            cause: {
-                url: url,
-                response: r,
-            },
-        });
+        throw new Error("Etherscan error: " + r.result);
     }
+
     return JSON.parse(r.result);
   }
 }
