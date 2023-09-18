@@ -1,5 +1,5 @@
-import * as whatsabi from "./whatsabi";
+import * as whatsabi from "./whatsabi.js";
 
 export { whatsabi };
 
-export * from "./whatsabi";
+export * from "./whatsabi.js";

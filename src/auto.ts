@@ -1,10 +1,10 @@
 import { Fragment } from "ethers";
 
-import { AnyProvider, CompatibleProvider } from "./types";
-import { ABI } from "./abi";
-import { ABILoader, SignatureLookup, defaultABILoader, defaultSignatureLookup } from "./loaders";
-import { abiFromBytecode, disasm } from "./disasm";
-import { ProxyResolver } from "./proxies";
+import { AnyProvider, CompatibleProvider } from "./types.js";
+import { ABI } from "./abi.js";
+import { ABILoader, SignatureLookup, defaultABILoader, defaultSignatureLookup } from "./loaders.js";
+import { abiFromBytecode, disasm } from "./disasm.js";
+import { ProxyResolver } from "./proxies.js";
 
 function isAddress(address: string) {
     return address.length === 42 && address.startsWith("0x");

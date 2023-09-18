@@ -1,4 +1,4 @@
-import { addressWithChecksum, fetchJSON } from "./utils";
+import { addressWithChecksum, fetchJSON } from "./utils.js";
 
 export interface ABILoader {
   loadABI(address: string): Promise<any[]>;

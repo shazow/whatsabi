@@ -1,16 +1,16 @@
 export {
     selectorsFromABI,
     selectorsFromBytecode,
-} from "./selectors";
+} from "./selectors.js";
 
 export {
     BytecodeIter,
     abiFromBytecode,
-} from "./disasm";
+} from "./disasm.js";
 
 export {
     autoload,
-} from "./auto";
+} from "./auto.js";
 
-export * as loaders from "./loaders";
-export * as proxies from "./proxies";
+export * as loaders from "./loaders.js";
+export * as proxies from "./proxies.js";

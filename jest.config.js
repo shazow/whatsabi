@@ -7,4 +7,7 @@ module.exports = {
     "**/?(*.)+(spec|test).[jt]s?(x)",
     "!**/__fixtures__/**",
   ],
+  "moduleNameMapper": {
+    "^(\\.\\.?\\/.+)\\.js$": "$1",
+  },
 };

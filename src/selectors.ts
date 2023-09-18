@@ -1,7 +1,7 @@
 import { FunctionFragment } from "ethers";
 
-import { keccak256 } from "./utils";
-import { abiFromBytecode } from "./disasm";
+import { keccak256 } from "./utils.js";
+import { abiFromBytecode } from "./disasm.js";
 
 // Load function selectors mapping from ABI, parsed using ethers.js
 // Mapping is selector hash to signature

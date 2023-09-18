@@ -1,5 +1,5 @@
-import { keccak256 } from "./utils";
-import { StorageProvider, CallProvider } from "./types";
+import { keccak256 } from "./utils.js";
+import { StorageProvider, CallProvider } from "./types.js";
 
 export interface ProxyResolver {
     resolve(provider: StorageProvider|CallProvider, address: string, selector?: string): Promise<string>

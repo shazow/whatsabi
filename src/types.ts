@@ -1,4 +1,4 @@
-import { bytesToHex } from "./utils";
+import { bytesToHex } from "./utils.js";
 
 
 export interface StorageProvider {
