@@ -7,10 +7,9 @@
       "DOM"
     ],
     "target": "es2021",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "es2020",
+    "moduleResolution": "node",
 
-    "verbatimModuleSyntax": true,
     "declaration": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,

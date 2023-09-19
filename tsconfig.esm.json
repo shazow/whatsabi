@@ -4,8 +4,9 @@
     "src/__tests__"
   ],
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "verbatimModuleSyntax": true,
+    "module": "es2020",
+    "moduleResolution": "node",
     "outDir": "./lib.esm"
   }
 }
