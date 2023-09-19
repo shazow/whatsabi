@@ -1,5 +1,3 @@
-import { expect, jest } from "@jest/globals";
-
 import { whatsabi } from "../index";
 
 import { cached_test, online_test } from "./env";

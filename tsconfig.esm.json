@@ -4,6 +4,8 @@
     "src/__tests__"
   ],
   "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "outDir": "./lib.esm"
   }
 }

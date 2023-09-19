@@ -2,6 +2,7 @@
   "name": "@shazow/whatsabi",
   "version": "0.8.5",
   "description": "Guess an ABI from Ethereum bytecode, even if it's unverified",
+  "type": "module",
   "scripts": {
     "test": "jest",
     "build:cjs": "tsc --project tsconfig.cjs.json",
@@ -43,6 +44,7 @@
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
+    "@types/jest": "^29.5.5",
     "size-limit": "^8.2.6",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",

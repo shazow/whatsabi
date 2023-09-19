@@ -1,5 +1,3 @@
-import { test, describe, expect } from '@jest/globals';
-
 import { cached_test, online_test } from './env';
 
 import { disasm } from '../disasm';

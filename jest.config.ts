@@ -1,5 +1,4 @@
-/** @type {import('ts-jest/dist/types').InitialOptionsTsJest} */
-module.exports = {
+export default {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: [ // Defaults + fixture negation
@@ -7,7 +6,7 @@ module.exports = {
     "**/?(*.)+(spec|test).[jt]s?(x)",
     "!**/__fixtures__/**",
   ],
-  "moduleNameMapper": {
+  moduleNameMapper: {
     "^(\\.\\.?\\/.+)\\.js$": "$1",
   },
 };

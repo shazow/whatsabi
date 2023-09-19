@@ -1,5 +1,3 @@
-import { expect } from '@jest/globals';
-
 import { selectorsFromBytecode } from '../index';
 
 import { cached_test } from "./env";

@@ -1,7 +1,5 @@
 import { ethers } from "ethers";
 
-import { expect, test } from '@jest/globals';
-
 import { SAMPLE_CODE, SAMPLE_ABI } from "./__fixtures__/sample";
 
 import { selectorsFromBytecode, selectorsFromABI, abiFromBytecode } from '../index';

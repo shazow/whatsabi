@@ -1,5 +1,3 @@
-import { describe, expect } from '@jest/globals';
-
 import {
   defaultABILoader,
   defaultSignatureLookup,

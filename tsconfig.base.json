@@ -1,16 +1,15 @@
 {
   "compilerOptions": {
-    "outDir": "./lib/",
+    "outDir": "./lib",
     "rootDir": "./src",
     "lib": [
       "ES2022",
       "DOM"
     ],
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "target": "es2021",
+    "module": "commonjs",
+    "moduleResolution": "node",
 
-    "declarationMap": true,
     "declaration": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -26,8 +25,6 @@
     "allowJs": false,
     "strict": true
   },
-  "include": [
-    "./src/*.ts"
-  ],
+  "include": [ ],
   "exclude": [ ]
 }

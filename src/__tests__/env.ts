@@ -1,6 +1,5 @@
 import { ethers } from "ethers";
 import { createPublicClient, http } from 'viem'
-import { test } from '@jest/globals';
 
 import { withCache } from "../internal/filecache";
 import { CompatibleProvider } from "../types";

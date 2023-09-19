@@ -1,5 +1,3 @@
-import { test, expect } from "@jest/globals";
-
 import { selectorsFromBytecode } from '../index';
 
 //const address = "0xbadc0defafcf6d4239bdf0b66da4d7bd36fcf05a";

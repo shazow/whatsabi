@@ -1,6 +1,3 @@
-import { expect, jest } from "@jest/globals";
-
-
 import { whatsabi } from "../index";
 import { autoload } from "../auto";
 
