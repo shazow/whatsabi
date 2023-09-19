@@ -7,9 +7,10 @@
       "DOM"
     ],
     "target": "es2021",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
 
+    "verbatimModuleSyntax": true,
     "declaration": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -25,6 +26,8 @@
     "allowJs": false,
     "strict": true
   },
-  "include": [ ],
+  "include": [
+    "./src/*.ts"
+  ],
   "exclude": [ ]
 }

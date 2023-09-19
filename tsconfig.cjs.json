@@ -4,6 +4,8 @@
     "src/__tests__"
   ],
   "compilerOptions": {
+    "verbatimModuleSyntax": false,
+    "removeComments": true,
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "./lib.cjs"
