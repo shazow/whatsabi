@@ -1,8 +1,10 @@
+import { expect } from 'vitest';
+
 import { whatsabi } from "../index";
 
 import { cached_test, online_test } from "./env";
 
-jest.setTimeout(15000);
+const TIMEOUT = 15000;
 
 cached_test('README usage', async ({ provider, withCache }) => {
 
@@ -48,8 +50,7 @@ cached_test('README usage', async ({ provider, withCache }) => {
 
   const event = await signatureLookup.loadEvents("0x721c20121297512b72821b97f5326877ea8ecf4bb9948fea5bfcb6453074d37f");
   expect(event).toContainEqual("CounterIncremented(uint256,address)")
-
-})
+}, TIMEOUT)
 
 online_test('README autoload', async ({ provider }) => {
   const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
@@ -77,4 +78,4 @@ online_test('README autoload', async ({ provider }) => {
       expect(abi.length).toBeGreaterThan(0);
       expect(address).toBe("0x964f84048f0d9bb24b82413413299c0a1d61ea9f");
   }
-});
+}, TIMEOUT);

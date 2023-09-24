@@ -6,17 +6,17 @@ watch:
 	tsc --project tsconfig.esm.json -w
 
 test:
-	jest
+	vitest run
 
 clean:
 	rm -rf ./lib ./lib.*
 
 publish: clean
-	npm i
-	npm run build:esm
-	npm run build:cjs
-	npm run build:types
-	npm pack
+	pnpm i
+	pnpm run build:esm
+	pnpm run build:cjs
+	pnpm run build:types
+	pnpm pack
 	size-limit
 
 run-examples:

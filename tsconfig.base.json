@@ -1,29 +1,39 @@
+// Reference: https://www.totaltypescript.com/tsconfig-cheat-sheet
 {
   "compilerOptions": {
     "outDir": "./lib",
     "rootDir": "./src",
-    "lib": [
-      "ES2022",
-      "DOM"
-    ],
-    "target": "es2021",
-    "module": "es2020",
-    "moduleResolution": "node",
 
-    "declaration": true,
+    /* Base Options: */
     "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "es2022",
+    "verbatimModuleSyntax": true,
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+
+    /* Strictness */
+    "strict": true,
+    // TODO: "noUncheckedIndexedAccess": true,
+
+    /* If transpiling with TypeScript: */
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "sourceMap": true,
+
+    /* If your code runs in the DOM: */
+    "lib": ["es2022", "dom", "dom.iterable"],
+
+    /* If you're building for a library: */
+    "declaration": true,
+
     "forceConsistentCasingInFileNames": true,
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
     "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "preserveSymlinks": true,
-    "preserveWatchOutput": true,
-    "pretty": false,
-    "sourceMap": true,
-    "allowJs": false,
-    "strict": true
+    "noUnusedLocals": true
   },
   "include": [
     "./src/*.ts"

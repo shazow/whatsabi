@@ -1,10 +1,10 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "description": "Guess an ABI from Ethereum bytecode, even if it's unverified",
   "type": "module",
   "scripts": {
-    "test": "jest",
+    "test": "vitest run",
     "build:cjs": "tsc --project tsconfig.cjs.json && cp package.cjs.json lib.cjs/package.json",
     "build:esm": "tsc --project tsconfig.esm.json && cp package.esm.json lib.esm/package.json",
     "build:types": "tsc --project tsconfig.types.json"
@@ -44,20 +44,19 @@
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
-    "@types/jest": "^29.5.5",
     "size-limit": "^8.2.6",
-    "ts-jest": "^29",
     "ts-node": "^10.9.1",
-    "viem": "^1.10.9"
+    "viem": "^1.12.2",
+    "vitest": "^0.34.5"
   },
   "main": "./lib.cjs/index.js",
   "module": "./lib.esm/index.js",
   "types": "./lib.types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./lib.types/index.d.ts",
       "import": "./lib.esm/index.js",
-      "default": "./lib.cjs/index.js",
-      "types": "./lib.types/index.d.ts"
+      "default": "./lib.cjs/index.js"
     }
   }
 }

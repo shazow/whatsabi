@@ -1,3 +1,5 @@
+import { expect, test } from 'vitest';
+
 import { selectorsFromBytecode } from '../index';
 
 //const address = "0xbadc0defafcf6d4239bdf0b66da4d7bd36fcf05a";

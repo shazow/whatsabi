@@ -1,3 +1,5 @@
+import { expect, test, describe } from 'vitest';
+
 import { BytecodeIter } from "../disasm";
 import { pushWidth } from "../opcodes";
 

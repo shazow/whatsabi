@@ -1,3 +1,5 @@
+import { expect, test } from 'vitest';
+
 import { ethers } from "ethers";
 
 import { SAMPLE_CODE, SAMPLE_ABI } from "./__fixtures__/sample";

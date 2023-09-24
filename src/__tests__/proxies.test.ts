@@ -1,3 +1,5 @@
+import { expect, describe, test } from 'vitest';
+
 import { cached_test, online_test } from './env';
 
 import { disasm } from '../disasm';
