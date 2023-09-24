@@ -1,3 +1,5 @@
+import { expect, describe } from 'vitest';
+
 import {
   defaultABILoader,
   defaultSignatureLookup,

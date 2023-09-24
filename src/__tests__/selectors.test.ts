@@ -1,3 +1,5 @@
+import { expect } from 'vitest';
+
 import { selectorsFromBytecode } from '../index';
 
 import { cached_test } from "./env";

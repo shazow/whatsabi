@@ -1,5 +1,7 @@
+import { test } from 'vitest';
+
 import { ethers } from "ethers";
-import { createPublicClient, http } from 'viem'
+import { createPublicClient, http } from 'viem';
 
 import { withCache } from "../internal/filecache";
 import { CompatibleProvider } from "../types";
