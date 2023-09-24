@@ -145,7 +145,7 @@ export const opcodes: Readonly<{ [key: string]: OpCode }> = Object.freeze({
   REVERT: 0xfd,
   INVALID: 0xfe,
   SUICIDE: 0xff,
-})
+} as const);
 
 export const mnemonics: Readonly<{ [key: OpCode]: string }> = Object.freeze(
   Object.fromEntries(
