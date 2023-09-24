@@ -1,6 +1,6 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "description": "Guess an ABI from Ethereum bytecode, even if it's unverified",
   "type": "module",
   "scripts": {
