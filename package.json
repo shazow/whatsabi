@@ -55,9 +55,9 @@
   "types": "./lib.types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./lib.types/index.d.ts",
       "import": "./lib.esm/index.js",
-      "default": "./lib.cjs/index.js",
-      "types": "./lib.types/index.d.ts"
+      "default": "./lib.cjs/index.js"
     }
   }
 }
