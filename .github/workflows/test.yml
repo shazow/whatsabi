@@ -1,6 +1,10 @@
 name: "Run Tests"
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   check:
@@ -11,14 +15,16 @@ jobs:
         provider: ["ethers", "viem"]
     steps:
       - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
       - uses: actions/setup-node@v3
+        with:
+          cache: pnpm
       - uses: actions/cache@v3
         with:
           key: api-result-cache
           path: ./.cache
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
       - run: pnpm install
       - name: Run tests with ${{ matrix.provider }}
         run: pnpm test
