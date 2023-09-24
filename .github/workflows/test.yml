@@ -16,9 +16,12 @@ jobs:
         with:
           key: api-result-cache
           path: ./.cache
-      - run: npm ci
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - run: pnpm install
       - name: Run tests with ${{ matrix.provider }}
-        run: npm test
+        run: pnpm test
         env:
           PROVIDER: ${{ matrix.provider }}
           ONLINE: 1
