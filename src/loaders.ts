@@ -58,10 +58,11 @@ export class SourcifyABILoader implements ABILoader {
       // Full match index includes verification settings that matches exactly
       return (await fetchJSON("https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json")).output.abi;
     } catch (error: any) {
-      if (error.status !== 404) throw error;
+      // Sourcify returns strict CORS only if there is no result -_-
+      if (error.message === "Failed to fetch") {}
+      else if (error.status !== 404) throw error;
     }
 
-    
     try {
       // Partial match index is for verified contracts whose settings didn't match exactly
       return (await fetchJSON("https://repo.sourcify.dev/contracts/partial_match/1/" + address + "/metadata.json")).output.abi;
