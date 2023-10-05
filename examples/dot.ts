@@ -1,17 +1,17 @@
-#!/usr/bin/env ts-node-script
+#!/usr/bin/env -S ts-node-script --esm
 
 // Example usage:
-// ./src.ts/bin/dot.ts 0x7a250d5630b4cf539739df2c5dacb4c659f2488d | dot -Tpng  | feh -
+// ./examples/dot.ts 0x7a250d5630b4cf539739df2c5dacb4c659f2488d | dot -Tpng  | feh -
 
 import { ethers } from "ethers";
 import { readFileSync } from "fs";
 
-import { withCache } from "../src/internal/filecache";
-import { Program, Function } from "../src/disasm";
-import { disasm } from '../src/disasm';
-import { mnemonics } from "../src/opcodes";
-import { defaultSignatureLookup } from "../src/loaders";
-import { bytesToHex } from "../src/utils";
+import { withCache } from "../src/internal/filecache.js";
+import { Program, Function } from "../src/disasm.js";
+import { disasm } from '../src/disasm.js';
+import { mnemonics } from "../src/opcodes.js";
+import { defaultSignatureLookup } from "../src/loaders.js";
+import { bytesToHex } from "../src/utils.js";
 
 const { INFURA_API_KEY, SKIP_SELECTOR_LOOKUP, SKIP_TAGS } = process.env;
 const provider = INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");

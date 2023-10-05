@@ -1,10 +1,10 @@
-#!/usr/bin/env ts-node-script
+#!/usr/bin/env -S ts-node-script --esm
 
 import { ethers } from "ethers";
 import { readFileSync } from "fs";
 
-import { withCache } from "../src/internal/filecache";
-import { bytecodeToString, bytecodeToStringConfig } from '../src/internal/debug';
+import { withCache } from "../src/internal/filecache.js";
+import { bytecodeToString, bytecodeToStringConfig } from '../src/internal/debug.js';
 
 const { INFURA_API_KEY, OPCODES_JSON } = process.env;
 const provider = INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");

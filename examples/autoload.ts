@@ -1,7 +1,7 @@
-#!/usr/bin/env ts-node-script
+#!/usr/bin/env -S ts-node-script --esm
 
 import { ethers } from "ethers";
-import { whatsabi } from "../src/index";
+import { whatsabi } from "../src/index.js";
 
 const { INFURA_API_KEY } = process.env;
 const provider = INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
