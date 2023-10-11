@@ -50,13 +50,19 @@ export class EtherscanABILoader implements ABILoader {
 
 // https://sourcify.dev/
 export class SourcifyABILoader implements ABILoader {
+  chainId?: number;
+
+  constructor(config?: {chainId?: number}) {
+    this.chainId = config?.chainId ?? 1;
+  }
+
   async loadABI(address: string): Promise<any[]> {
     // Sourcify doesn't like it when the address is not checksummed
     address = addressWithChecksum(address);
 
     try {
       // Full match index includes verification settings that matches exactly
-      return (await fetchJSON("https://repo.sourcify.dev/contracts/full_match/1/" + address + "/metadata.json")).output.abi;
+      return (await fetchJSON("https://repo.sourcify.dev/contracts/full_match/"+ this.chainId + "/" + address + "/metadata.json")).output.abi;
     } catch (error: any) {
       // Sourcify returns strict CORS only if there is no result -_-
       if (error.message === "Failed to fetch") {}
@@ -65,7 +71,7 @@ export class SourcifyABILoader implements ABILoader {
 
     try {
       // Partial match index is for verified contracts whose settings didn't match exactly
-      return (await fetchJSON("https://repo.sourcify.dev/contracts/partial_match/1/" + address + "/metadata.json")).output.abi;
+      return (await fetchJSON("https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json")).output.abi;
     } catch (error: any) {
       if (error.status !== 404) throw error;
     }
