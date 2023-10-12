@@ -26,8 +26,8 @@ online_test('autoload selectors with experimental metadata', async ({ provider }
     signatureLookup: false,
     enableExperimentalMetadata: true,
   });
-  expect(abi).toContainEqual({"inputs": [{"type": "bytes"}], "payable": true, "selector": "0x6dbf2fa0", "stateMutability": "payable", "type": "function"});
-  expect(abi).toContainEqual({"inputs": [{"type": "bytes"}], "payable": true, "selector": "0xec0ab6a7", "stateMutability": "payable", "type": "function"});
+  expect(abi).toContainEqual({"inputs": [{"type": "bytes", "name": ""}], "payable": true, "selector": "0x6dbf2fa0", "stateMutability": "payable", "type": "function"});
+  expect(abi).toContainEqual({"inputs": [{"type": "bytes", "name": ""}], "payable": true, "selector": "0xec0ab6a7", "stateMutability": "payable", "type": "function"});
 }, TIMEOUT);
 
 
@@ -49,3 +49,11 @@ online_test('autoload full', async ({ provider, env }) => {
 
   expect(abi).toContainEqual({"selector": "0xec0ab6a7", "type": "function"});
 }, TIMEOUT);
+
+online_test('autoload non-contract', async ({ provider }) => {
+  const address = "0x0000000000000000000000000000000000000000"; // Random unverified contract
+  const { abi } = await autoload(address, {
+    provider: provider,
+  });
+  expect(abi).toStrictEqual([]);
+});

@@ -49,7 +49,7 @@ describe('loaders module', () => {
     const selectors = Object.values(selectorsFromABI(abi));
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     expect(selectors).toContain(sig);
-  })
+  }, 30000)
 
   online_test('SamczunSignatureLookup', async () => {
     const lookup = new SamczunSignatureLookup();

@@ -203,10 +203,10 @@ export function abiFromBytecode(bytecodeOrProgram: string|Program): ABI {
         // Unfortunately we don't have better details about the type sizes, so we just return a dynamically-sized /shrug
         if (tags.has(opcodes.RETURN) || mutability === "view") {
             // FIXME: We assume outputs based on mutability, that's a hack.
-            funcABI.outputs = [{type: "bytes"}];
+            funcABI.outputs = [{type: "bytes", name: ""}];
         }
         if (tags.has(opcodes.CALLDATALOAD) || tags.has(opcodes.CALLDATASIZE) || tags.has(opcodes.CALLDATACOPY)) {
-            funcABI.inputs = [{type: "bytes"}];
+            funcABI.inputs = [{type: "bytes", name: ""}];
         }
 
         abi.push(funcABI);
