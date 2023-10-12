@@ -34,7 +34,7 @@ cached_test('README usage', async ({ provider, withCache }) => {
 
     expect(abi).toContainEqual({"hash": "0x721c20121297512b72821b97f5326877ea8ecf4bb9948fea5bfcb6453074d37f", "type": "event"});
     expect(abi).toContainEqual(
-      {"payable": true, "selector": "0xb3a34c4c", "type": "function", "stateMutability": "payable", "inputs": [{"type": "bytes"}], "outputs": [{"type": "bytes"}]},
+      {"payable": true, "selector": "0xb3a34c4c", "type": "function", "stateMutability": "payable", "inputs": [{"type": "bytes", "name": ""}], "outputs": [{"type": "bytes", "name": ""}]},
     );
   }
 

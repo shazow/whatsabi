@@ -3,8 +3,8 @@ export type StateMutability = "nonpayable"|"payable"|"view"|"pure";
 export type ABIFunction = {
     type: "function"; // TODO: constructor, receive, fallback
     selector: string;
-    outputs?: {type: string, length?: number, name?: string}[];
-    inputs?: {type: string}[];
+    outputs?: {type: string, length?: number, name: string}[];
+    inputs?: {type: string, name: string}[];
     sig?: string;
     sigAlts?: string[];
     payable?: boolean;

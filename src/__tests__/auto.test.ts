@@ -26,8 +26,8 @@ online_test('autoload selectors with experimental metadata', async ({ provider }
     signatureLookup: false,
     enableExperimentalMetadata: true,
   });
-  expect(abi).toContainEqual({"inputs": [{"type": "bytes"}], "payable": true, "selector": "0x6dbf2fa0", "stateMutability": "payable", "type": "function"});
-  expect(abi).toContainEqual({"inputs": [{"type": "bytes"}], "payable": true, "selector": "0xec0ab6a7", "stateMutability": "payable", "type": "function"});
+  expect(abi).toContainEqual({"inputs": [{"type": "bytes", "name": ""}], "payable": true, "selector": "0x6dbf2fa0", "stateMutability": "payable", "type": "function"});
+  expect(abi).toContainEqual({"inputs": [{"type": "bytes", "name": ""}], "payable": true, "selector": "0xec0ab6a7", "stateMutability": "payable", "type": "function"});
 }, TIMEOUT);
 
 
