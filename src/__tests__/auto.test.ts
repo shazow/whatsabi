@@ -49,3 +49,11 @@ online_test('autoload full', async ({ provider, env }) => {
 
   expect(abi).toContainEqual({"selector": "0xec0ab6a7", "type": "function"});
 }, TIMEOUT);
+
+online_test('autoload non-contract', async ({ provider }) => {
+  const address = "0x0000000000000000000000000000000000000000"; // Random unverified contract
+  const { abi } = await autoload(address, {
+    provider: provider,
+  });
+  expect(abi).toStrictEqual([]);
+});
