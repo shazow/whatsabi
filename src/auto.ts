@@ -81,7 +81,10 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
 
     // Load code, we need to disasm to find proxies
     onProgress("getCode", {address});
-    const program = disasm(await provider.getCode(address));
+    const bytecode = await provider.getCode(address)
+    if (!bytecode) return result; // Must be an EOA
+
+    const program = disasm(bytecode);
 
     // FIXME: Sort them in some reasonable way
     result.proxies = program.proxies;
