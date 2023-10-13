@@ -50,7 +50,6 @@
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
-    "sevm-cli": "^0.5.1",
     "size-limit": "^8.2.6",
     "ts-node": "^10.9.1",
     "viem": "^1.16.4",

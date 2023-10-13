@@ -4,7 +4,8 @@ import { readFileSync } from "fs";
 import { ethers } from "ethers";
 import { withCache } from "../src/internal/filecache.js";
 
-import { EVM } from 'sevm';
+// @ts-ignore
+import { Contract } from "sevm";
 
 
 const { INFURA_API_KEY } = process.env;
@@ -31,12 +32,10 @@ async function main() {
         );
     }
 
-  const evm = new EVM(code);
-  console.log(evm.getFunctions()); /* Get functions */
-  console.log(evm.getEvents()); /* Get events */
-  console.log(evm.decompile()); /* Decompile bytecode */
-  console.log(evm.containsOpcode('SELFDESTRUCT')); /* Check whether contract contains a SELFDESTRUCT */
-  console.log(evm.isERC165()); /* Detect whether contract is ERC165-compliant */
+  const c = new Contract(code);
+  console.log(c);
+  console.log(c.functions); /* Get functions */
+  console.log(c.getEvents); /* Get events */
 };
 
 main().then().catch(err => {
