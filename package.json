@@ -39,7 +39,13 @@
     "ethers": "^6.8.0"
   },
   "peerDependencies": {
+    "sevm": "^0.5.3",
     "@noble/hashes": "^1"
+  },
+  "peerDependenciesMeta": {
+    "sevm": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
