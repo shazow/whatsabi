@@ -38,20 +38,12 @@
   "dependencies": {
     "ethers": "^6.8.0"
   },
-  "peerDependencies": {
-    "@noble/hashes": "^1",
-    "sevm": "^0.5.3"
-  },
-  "peerDependenciesMeta": {
-    "sevm": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
     "size-limit": "^8.2.6",
     "ts-node": "^10.9.1",
+    "sevm": "^0.5.3",
     "viem": "^1.16.4",
     "vitest": "^0.34.6"
   },
