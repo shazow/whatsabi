@@ -34,7 +34,7 @@ function testerWithContext(tester: ItConcurrent, context: any): TestWithContext 
     return (name, fn, timeout) => tester(name, () => fn(context), timeout);
 }
 
-export function cached_describe(d: string, fn: (context: any) => void) {
+export function describe_cached(d: string, fn: (context: any) => void) {
     return describe(d, () => fn({ provider, env, withCache }));
 }
 

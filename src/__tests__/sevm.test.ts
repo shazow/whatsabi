@@ -1,4 +1,4 @@
-import { expect, bench } from 'vitest';
+import { expect, test, bench } from 'vitest';
 
 // @ts-ignore
 import { Contract } from "sevm";
@@ -6,7 +6,7 @@ import { Contract } from "sevm";
 import type { ABI, ABIFunction, ABIEvent } from "../abi.js";
 
 import { whatsabi } from "../index.js";
-import { cached_test } from "./env";
+import { describe_cached } from "./env";
 
 type sevmPublicFunction = {
     readonly payable: boolean;
@@ -42,19 +42,20 @@ function abiFromBytecode(bytecode: string): ABI {
     return abi;
 }
 
-cached_test('whatsabi vs sevm: abiFromBytecode', async ({ provider, withCache }) => {
+describe_cached("whatsabi vs sevm: abiFromBytecode", async ({ provider, withCache}) => {
     // Uniswap v2
     const address = "0x7a250d5630b4cf539739df2c5dacb4c659f2488d";
-
     const code = await withCache(`${address}_code`, provider.getCode.bind(address))
 
-    const [a, b] = [abiFromBytecode, whatsabi.abiFromBytecode].map(getABI => {
-        const abi = getABI(code);
-        const functions = abi.filter(a => a.type === "function") as ABIFunction[];
-        const selectors = functions.map(abi => abi.selector);
-        return selectors;
+    test("compare selectors", async () => {
+        const [a, b] = [abiFromBytecode, whatsabi.abiFromBytecode].map(getABI => {
+            const abi = getABI(code);
+            const functions = abi.filter(a => a.type === "function") as ABIFunction[];
+            const selectors = functions.map(abi => abi.selector);
+            return selectors;
+        });
+
+        expect(a).toStrictEqual(b);
     });
 
-    expect(a).toStrictEqual(b);
 });
-
