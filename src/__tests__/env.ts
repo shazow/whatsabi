@@ -1,4 +1,4 @@
-import { test } from 'vitest';
+import { test, describe } from 'vitest';
 
 import { ethers } from "ethers";
 import { createPublicClient, http } from 'viem';
@@ -29,8 +29,13 @@ type TestWithContext = (
   timeout?: number
 ) => void;
 
+// TODO: Switch to https://vitest.dev/api/#test-extend
 function testerWithContext(tester: ItConcurrent, context: any): TestWithContext {
     return (name, fn, timeout) => tester(name, () => fn(context), timeout);
+}
+
+export function cached_describe(d: string, fn: (context: any) => void) {
+    return describe(d, () => fn({ provider, env, withCache }));
 }
 
 // TODO: Port this to context-aware wrapper
