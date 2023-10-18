@@ -1,4 +1,4 @@
-import { expect, test, bench } from 'vitest';
+import { expect, test, describe, bench } from 'vitest';
 
 // @ts-ignore
 import { Contract } from "sevm";
@@ -43,19 +43,27 @@ function abiFromBytecode(bytecode: string): ABI {
 }
 
 describe_cached("whatsabi vs sevm: abiFromBytecode", async ({ provider, withCache}) => {
-    // Uniswap v2
-    const address = "0x7a250d5630b4cf539739df2c5dacb4c659f2488d";
-    const code = await withCache(`${address}_code`, provider.getCode.bind(address))
 
-    test("compare selectors", async () => {
-        const [a, b] = [abiFromBytecode, whatsabi.abiFromBytecode].map(getABI => {
-            const abi = getABI(code);
-            const functions = abi.filter(a => a.type === "function") as ABIFunction[];
-            const selectors = functions.map(abi => abi.selector);
-            return selectors;
+    describe.each([
+        {address: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d"}, // Uniswap v2
+        {address: "0x00000000006c3852cbEf3e08E8dF289169EdE581"}, // Seaport v1.1
+        {address: "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"}, // Random unverified
+        {address: "0x000000000000Df8c944e775BDe7Af50300999283"}, // Has 0x0 selector
+    ])("decompile $address", async ({address}) => {
+
+        const code = await withCache(`${address}_code`, provider.getCode.bind(provider, address))
+
+        test("compare selectors", async () => {
+            const [a, b] = [abiFromBytecode, whatsabi.abiFromBytecode].map(getABI => {
+                const abi = getABI(code);
+                const functions = abi.filter(a => a.type === "function") as ABIFunction[];
+                const selectors = functions.map(abi => abi.selector);
+                selectors.sort();
+                return selectors;
+            });
+
+            expect(a).toStrictEqual(b);
         });
 
-        expect(a).toStrictEqual(b);
     });
-
 });
