@@ -1,4 +1,4 @@
-import { expect, test, describe, bench } from 'vitest';
+import { expect, test, describe } from 'vitest';
 
 // @ts-ignore
 import { Contract } from "sevm";
@@ -6,7 +6,7 @@ import { Contract } from "sevm";
 import type { ABI, ABIFunction, ABIEvent } from "../abi.js";
 
 import { whatsabi } from "../index.js";
-import { describe_cached } from "./env";
+import { describe_cached, KNOWN_ADDRESSES } from "./env";
 
 type sevmPublicFunction = {
     readonly payable: boolean;
@@ -44,12 +44,7 @@ function abiFromBytecode(bytecode: string): ABI {
 
 describe_cached("whatsabi vs sevm: abiFromBytecode", async ({ provider, withCache}) => {
 
-    describe.each([
-        {address: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d"}, // Uniswap v2
-        {address: "0x00000000006c3852cbEf3e08E8dF289169EdE581"}, // Seaport v1.1
-        {address: "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"}, // Random unverified
-        {address: "0x000000000000Df8c944e775BDe7Af50300999283"}, // Has 0x0 selector
-    ])("decompile $address", async ({address}) => {
+    describe.each(KNOWN_ADDRESSES)("decompile $address ($label)", async ({address}) => {
 
         const code = await withCache(`${address}_code`, provider.getCode.bind(provider, address))
 
@@ -64,6 +59,5 @@ describe_cached("whatsabi vs sevm: abiFromBytecode", async ({ provider, withCach
 
             expect(a).toStrictEqual(b);
         });
-
     });
 });

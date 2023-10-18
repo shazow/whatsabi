@@ -45,3 +45,10 @@ export const cached_test = testerWithContext(!process.env["SKIP_CACHED"] ? test 
 if (process.env["ONLINE"] === undefined) {
     console.log("Skipping online tests. Set ONLINE env to run them.");
 }
+
+export const KNOWN_ADDRESSES = [
+    {address: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d", label: "Uniswap v2"},
+    {address: "0x00000000006c3852cbEf3e08E8dF289169EdE581", label: "Seaport v1.1"},
+    {address: "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6", label: "Random unverified"},
+    {address: "0x000000000000Df8c944e775BDe7Af50300999283", label: "Has 0x0 selector"},
+];
