@@ -59,6 +59,16 @@ console.log(await signatureLookup.loadEvents("0x721c20121297512b72821b97f5326877
 // -> ["CounterIncremented(uint256,address)"]
 
 // There are more fancy loaders in whatsabi.loaders.*, take a look!
+
+// Here's a multiloader with an Etherscan API key, it can be used with autoload below.
+// Each source will be attempted until a result is found.
+const abiLoader = new whatsabi.loaders.MultiABILoader([
+  new whatsabi.loaders.SourcifyABILoader(),
+  new whatsabi.loaders.EtherscanABILoader({
+    apiKey: "...", // Replace the value with your Etherscan API key
+  }),
+]);
+console.log(await abiLoader.loadABI(address));
 ```
 
 Bonus do-all-the-things helper:
