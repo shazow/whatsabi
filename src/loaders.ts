@@ -48,6 +48,14 @@ export class EtherscanABILoader implements ABILoader {
   }
 }
 
+function isSourcifyNotFound(error: any): boolean {
+    return (
+      // Sourcify returns strict CORS only if there is no result -_-
+      error.message === "Failed to fetch" ||
+      error.status === 404
+    );
+}
+
 // https://sourcify.dev/
 export class SourcifyABILoader implements ABILoader {
   chainId?: number;
@@ -64,16 +72,14 @@ export class SourcifyABILoader implements ABILoader {
       // Full match index includes verification settings that matches exactly
       return (await fetchJSON("https://repo.sourcify.dev/contracts/full_match/"+ this.chainId + "/" + address + "/metadata.json")).output.abi;
     } catch (error: any) {
-      // Sourcify returns strict CORS only if there is no result -_-
-      if (error.message === "Failed to fetch") {}
-      else if (error.status !== 404) throw error;
+      if (!isSourcifyNotFound(error)) throw error;
     }
 
     try {
       // Partial match index is for verified contracts whose settings didn't match exactly
       return (await fetchJSON("https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json")).output.abi;
     } catch (error: any) {
-      if (error.status !== 404) throw error;
+      if (!isSourcifyNotFound(error)) throw error;
     }
 
     return [];

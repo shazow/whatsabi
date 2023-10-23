@@ -8,10 +8,13 @@ import {
   OpenChainSignatureLookup,
   SamczunSignatureLookup,
   FourByteSignatureLookup,
+  MultiABILoader,
 } from "../loaders";
 import { selectorsFromABI } from "../index";
 
 import { online_test } from "./env";
+
+const SLOW_ETHERSCAN_TIMEOUT = 30000;
 
 describe('loaders module', () => {
   online_test('defaultABILoader', async () => {
@@ -49,7 +52,20 @@ describe('loaders module', () => {
     const selectors = Object.values(selectorsFromABI(abi));
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     expect(selectors).toContain(sig);
-  }, 30000)
+  }, SLOW_ETHERSCAN_TIMEOUT)
+
+  online_test('MultiABILoader', async () => {
+    // A contract that is verified on etherscan but not sourcify
+    const address = "0xa9a57f7d2A54C1E172a7dC546fEE6e03afdD28E2";
+    const loader = new MultiABILoader([
+      new SourcifyABILoader(),
+      new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] }),
+    ]);
+    const abi = await loader.loadABI(address);
+    const sig = "getMagistrate()";
+    const selectors = Object.values(selectorsFromABI(abi));
+    expect(selectors).toContain(sig);
+  }, SLOW_ETHERSCAN_TIMEOUT);
 
   online_test('SamczunSignatureLookup', async () => {
     const lookup = new SamczunSignatureLookup();
@@ -65,12 +81,10 @@ describe('loaders module', () => {
     expect(selectors).toContain(sig);
   })
 
-
   online_test('FourByteSignatureLookup', async () => {
     const lookup = new FourByteSignatureLookup();
     const selectors = await lookup.loadFunctions("0x7ff36ab5");
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     expect(selectors).toContain(sig);
   })
-
 })
