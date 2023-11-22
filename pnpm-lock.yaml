@@ -11,6 +11,9 @@ dependencies:
   ethers:
     specifier: ^6.8.0
     version: 6.8.0
+  sevm:
+    specifier: ^0.5.3
+    version: 0.5.3
 
 devDependencies:
   '@size-limit/esbuild-why':
@@ -997,6 +1000,10 @@ packages:
     dependencies:
       lru-cache: 6.0.0
     dev: true
+
+  /sevm@0.5.3:
+    resolution: {integrity: sha512-KA9kmu70EHaWCyZBTTEuCWJsAC1kuJb1BfpP6dWYgcYzc1wOK/IdW/t1M2dFxFPbeqj2hcGUFS/2Z7qIlbAIKg==}
+    dev: false
 
   /siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}

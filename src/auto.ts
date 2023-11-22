@@ -34,6 +34,7 @@ export type AutoloadResult = {
 export type AutoloadConfig = {
     provider: AnyProvider;
 
+    abiFromBytecode?: (bytecode: string) => Promise<ABI>;
     abiLoader?: ABILoader|false;
     signatureLookup?: SignatureLookup|false;
 
@@ -118,11 +119,16 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     }
 
     // Load from code
-    onProgress("getCode", {address});
-    result.abi = abiFromBytecode(program);
+    onProgress("abiFromBytecode", {address});
+    if (config.abiFromBytecode) {
+        result.abi = await config.abiFromBytecode(bytecode);
+    } else {
+        result.abi = abiFromBytecode(program);
 
-    if (!config.enableExperimentalMetadata) {
-        result.abi = stripUnreliableABI(result.abi);
+        // We only strip if our default abiFromBytecode function is used.
+        if (!config.enableExperimentalMetadata) {
+            result.abi = stripUnreliableABI(result.abi);
+        }
     }
 
     let signatureLookup = config.signatureLookup;
