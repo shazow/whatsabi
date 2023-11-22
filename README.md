@@ -30,7 +30,7 @@ What can WhatsABI do?
 import { ethers } from "ethers";
 import { whatsabi } from "@shazow/whatsabi";
 
-const provider = new ethers.getDefaultProvider(); // substitute with your fav provider
+const provider = ethers.getDefaultProvider(); // substitute with your fav provider
 const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
 const code = await provider.getCode(address); // Load the bytecode
 
@@ -55,7 +55,7 @@ console.log(await signatureLookup.loadFunctions("0x46423aa7"));
 // -> ["getOrderStatus(bytes32)"]);
 
 // We also have event loaders!
-console.log(await signatureLookup.loadEvents("0x721c20121297512b72821b97f5326877ea8ecf4bb9948fea5bfcb6453074d37f");
+console.log(await signatureLookup.loadEvents("0x721c20121297512b72821b97f5326877ea8ecf4bb9948fea5bfcb6453074d37f"));
 // -> ["CounterIncremented(uint256,address)"]
 
 // There are more fancy loaders in whatsabi.loaders.*, take a look!
