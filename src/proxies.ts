@@ -1,5 +1,5 @@
 import type { StorageProvider, CallProvider } from "./types.js";
-import { keccak256 } from "./utils.js";
+import { keccak256, hexToBytes } from "./utils.js";
 
 export interface ProxyResolver {
     resolve(provider: StorageProvider|CallProvider, address: string, selector?: string): Promise<string>
@@ -15,6 +15,56 @@ const _zeroAddress = "0x0000000000000000000000000000000000000000";
 // Convert 32 byte hex to a 20 byte hex address
 function callToAddress(data:string): string {
     return "0x" + data.slice(data.length - 40);
+}
+
+function joinSlot(parts: string[]): string {
+    return keccak256("0x" + parts.map(s => {
+        if (s.startsWith("0x")) {
+            s = s.slice(2);
+        }
+        return s.padEnd(64, "0");
+    }).join(""))
+}
+
+/**
+ * Read an array at some slot
+ * @param {StorageProvider} provider - Implementation of a provider that can call getStorageAt
+ * @param {string} address - Address of the contract storage namespace
+ * @param {number} pos - Slot position of the array
+ * @param {number=} width - Array item size
+ * @returns {Promise<string[]>} Values of the array at the given slot
+ */
+async function readArray(provider: StorageProvider, address: string, pos: number, width: number=32): Promise<string[]> {
+    // Based on https://gist.github.com/banteg/0cee21909f7c1baedfa6c3d96ffe94f2
+    const num = Number(await provider.getStorageAt(address, pos));
+    const start = keccak256(pos.toString(16));
+    const elements = Math.floor(32 / width);
+    const values = [];
+
+    // TODO: Parallelize
+    for (let i=0; i<num; i++) {
+        const itemSlot = start + Math.floor(i / elements);
+        const itemOffset = 32 - (i % elements + 1) * width;
+        const word = await provider.getStorageAt(address, itemSlot);
+        // TODO: Generalize the 8 divisor upwards, to skip converting to bytes
+        const value = word.slice(itemOffset/8, (itemOffset + width)/8);
+        values.push(value);
+    }
+
+    return values;
+}
+
+async function readMapping(provider: StorageProvider, address: string, slot: string, keys: string[]): Promise<Record<string, string>> {
+    const result: Record<string, string> = {};
+
+    // TODO: Parallelize
+    for (const key of keys) {
+        const pos = keccak256(key + slot);
+        const value = await provider.getStorageAt(address, pos);
+        result[key] = value;
+    }
+
+    return result;
 }
 
 
@@ -103,10 +153,9 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
             selector = selector.slice(2);
         }
 
-        const facetMappingSlot = keccak256(
-            // ethers.utils.defaultAbiCoder.encode(["bytes4", "bytes32"], ["0x" + selector, slots.DIAMOND_STORAGE])
-            "0x" + selector.padEnd(64, "0") + slots.DIAMOND_STORAGE.slice(2)
-        );
+        // ethers.utils.defaultAbiCoder.encode(["bytes4", "bytes32"], ["0x" + selector, slots.DIAMOND_STORAGE])
+        // keccak256("0x" + selector.padEnd(64, "0") + slots.DIAMOND_STORAGE.slice(2));
+        const facetMappingSlot = joinSlot([selector, slots.DIAMOND_STORAGE]);
 
         const facet = await provider.getStorageAt(address, facetMappingSlot);
 
@@ -161,8 +210,32 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
     // - Next we need to read slot 1 for each address: mapping(address => FacetToSelectors) facetToSelectors; 
     // - TODO: The rest of the owl
     //
-    //async selectors(provider: StorageProvider, address: string): Promise<string[]> {
-    //}
+    // Shoutout to @banteg for sharing the rest of the owl:
+    // - https://twitter.com/shazow/status/1693636008179343598
+    // - https://gist.github.com/banteg/0cee21909f7c1baedfa6c3d96ffe94f2
+    async selectors(provider: StorageProvider, address: string): Promise<string[]> {
+        // struct DiamondStorage {
+        //   mapping(bytes4 => SelectorToFacet) selectorToFacet;
+        //   mapping(address => FacetToSelectors) facetToSelectors;
+        //   address[] facets;
+        //   bool isFrozen;
+        // }
+
+        // Read the DiamondStorage.facets array
+        const diamondStorageOffset = Number(await provider.getStorageAt(address, slots.DIAMOND_STORAGE));
+        const facetsOffset = diamondStorageOffset + 2; // Facets live in the 3rd slot (0-indexed)
+        const width = 20; // Addresses are 20 bytes
+        const facets = await readArray(provider, address, facetsOffset, width);
+
+        // Read the facetToSelectors mapping
+        const facetToSelectors = await readMapping(provider, address, (diamondStorageOffset+1).toString(16), facets)
+
+        for (const [facet, selector] of Object.entries(facetToSelectors)) {
+            // TODO: ...
+        }
+
+        return [];
+    }
 }
 
 export class ZeppelinOSProxyResolver extends BaseProxyResolver implements ProxyResolver {
