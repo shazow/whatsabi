@@ -1,5 +1,5 @@
 import type { StorageProvider, CallProvider } from "./types.js";
-import { keccak256, hexToBytes } from "./utils.js";
+import { keccak256 } from "./utils.js";
 
 export interface ProxyResolver {
     resolve(provider: StorageProvider|CallProvider, address: string, selector?: string): Promise<string>
@@ -31,7 +31,7 @@ function joinSlot(parts: string[]): string {
  * @param {StorageProvider} provider - Implementation of a provider that can call getStorageAt
  * @param {string} address - Address of the contract storage namespace
  * @param {number|string} pos - Slot position of the array
- * @param {number=} width - Array item size
+ * @param {number=} width - Array item size, in bytes
  * @returns {Promise<string[]>} Values of the array at the given slot
  */
 export async function readArray(provider: StorageProvider, address: string, pos: number|string, width: number=32): Promise<string[]> {
@@ -39,17 +39,19 @@ export async function readArray(provider: StorageProvider, address: string, pos:
     const num = Number(await provider.getStorageAt(address, pos));
     console.log("XXX", "getStorageAt", address, pos, " => ", num);
     const start = keccak256(pos.toString(16)); // toString(16) does the right thing on strings too (no-op) (:
-    const elements = Math.floor(32 / width);
+    const itemsPerWord = Math.floor(32 / width);
     const values = [];
+
+    console.log("XXX", "readArray", {itemsPerWord, width});
 
     // TODO: Parallelize
     for (let i=0; i<num; i++) {
-        const itemSlot = addSlotOffset(start, Math.floor(i / elements));
-        const itemOffset = 32 - (i % elements + 1) * width;
-        const word = await provider.getStorageAt(address, itemSlot);
-        console.log("XXX", "getStorageAt", address, itemSlot, itemOffset, " => ", word);
-        // TODO: Generalize the 8 divisor upwards, to skip converting to bytes
-        const value = word.slice(itemOffset/8, (itemOffset + width)/8);
+        const itemSlot = addSlotOffset(start, Math.floor(i / itemsPerWord));
+        const wordHex = await provider.getStorageAt(address, itemSlot);
+        // TODO: Extract multiple words if they fit in a slot?
+        const itemOffset = 2 + 64 - (i % itemsPerWord + 1) * width * 2; // 0x + 2 hex per byte
+        const value = wordHex.slice(itemOffset, itemOffset + width * 2);
+        console.log("XXX", "getStorageAt", { address, itemSlot, itemOffset }, " => ", wordHex, value);
         values.push(value);
     }
 
@@ -208,6 +210,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         const slot = addSlotOffset(storageStart, 1); // facetToSelector in 2nd slot
         for (const facetPadded of facets) {
             const facet = addressFromPadded(facetPadded);
+            console.log("XXX", {facet, facetPadded, slot});
             const pos = keccak256(facetPadded + slot);
             facetSelectors[facet] = await readArray(provider, address, pos, selectorWidth);
         }
