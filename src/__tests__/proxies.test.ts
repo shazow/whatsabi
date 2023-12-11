@@ -3,6 +3,7 @@ import { expect, describe, test } from 'vitest';
 import { cached_test, online_test } from './env';
 
 import { disasm } from '../disasm';
+import { addSlotOffset, readArray } from "../slots.js";
 import * as proxies from '../proxies';
 
 import { ZEPPELINOS_USDC } from './__fixtures__/proxies'
@@ -170,18 +171,17 @@ describe('contract proxy resolving', () => {
 describe('proxy internal slot reading', () => {
     test('addSlotOffset', async () => {
         const slot = "0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b";
-        const got = proxies.addSlotOffset(slot, 2);
+        const got = addSlotOffset(slot, 2);
 
         expect(got).to.equal("0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131d");
     });
 
     online_test('ReadArray: Addresses', async ({ provider }) => {
         const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
-        const facetsOffset = proxies.addSlotOffset(proxies.slots.DIAMOND_STORAGE, 2); // Facets live in the 3rd slot (0-indexed)
-        const diamondStorageOffset = await provider.getStorageAt(address, facetsOffset);
+        const facetsOffset = addSlotOffset(proxies.slots.DIAMOND_STORAGE, 2); // Facets live in the 3rd slot (0-indexed)
 
         const addressWidth = 20; // Addresses are 20 bytes
-        const facets = await proxies.readArray(provider, address, facetsOffset, addressWidth);
+        const facets = await readArray(provider, address, facetsOffset, addressWidth);
 
         expect(
             facets.map(h => "0x" + h)
@@ -194,5 +194,6 @@ describe('proxy internal slot reading', () => {
     });
 
     online_test('ReadArray: Selectors', async ({ provider }) => {
+        // TODO: ...
     });
 });

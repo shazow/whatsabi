@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import { createPublicClient, http } from 'viem';
 
 import { withCache } from "../internal/filecache";
-import { CompatibleProvider } from "../types";
+import { CompatibleProvider } from "../types.js";
 
 const env = {
     INFURA_API_KEY: process.env.INFURA_API_KEY,

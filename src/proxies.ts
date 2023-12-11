@@ -1,5 +1,6 @@
 import type { StorageProvider, CallProvider } from "./types.js";
 import { keccak256 } from "./utils.js";
+import { addSlotOffset, readArray, joinSlot } from "./slots.js";
 
 export interface ProxyResolver {
     resolve(provider: StorageProvider|CallProvider, address: string, selector?: string): Promise<string>
@@ -16,52 +17,6 @@ const _zeroAddress = "0x0000000000000000000000000000000000000000";
 function addressFromPadded(data:string): string {
     return "0x" + data.slice(data.length - 40);
 }
-
-function joinSlot(parts: string[]): string {
-    return keccak256("0x" + parts.map(s => {
-        if (s.startsWith("0x")) {
-            s = s.slice(2);
-        }
-        return s.padEnd(64, "0");
-    }).join(""))
-}
-
-/**
- * Read an array at some slot
- * @param {StorageProvider} provider - Implementation of a provider that can call getStorageAt
- * @param {string} address - Address of the contract storage namespace
- * @param {number|string} pos - Slot position of the array
- * @param {number=} width - Array item size, in bytes
- * @returns {Promise<string[]>} Values of the array at the given slot
- */
-export async function readArray(provider: StorageProvider, address: string, pos: number|string, width: number=32): Promise<string[]> {
-    // Based on https://gist.github.com/banteg/0cee21909f7c1baedfa6c3d96ffe94f2
-    const num = Number(await provider.getStorageAt(address, pos));
-    console.log("XXX", "getStorageAt", address, pos, " => ", num);
-    const start = keccak256(pos.toString(16)); // toString(16) does the right thing on strings too (no-op) (:
-    const itemsPerWord = Math.floor(32 / width);
-    const values = [];
-
-    console.log("XXX", "readArray", {itemsPerWord, width});
-
-    // TODO: Parallelize
-    for (let i=0; i<num; i++) {
-        const itemSlot = addSlotOffset(start, Math.floor(i / itemsPerWord));
-        const wordHex = await provider.getStorageAt(address, itemSlot);
-        // TODO: Extract multiple words if they fit in a slot?
-        const itemOffset = 2 + 64 - (i % itemsPerWord + 1) * width * 2; // 0x + 2 hex per byte
-        const value = wordHex.slice(itemOffset, itemOffset + width * 2);
-        console.log("XXX", "getStorageAt", { address, itemSlot, itemOffset }, " => ", wordHex, value);
-        values.push(value);
-    }
-
-    return values;
-}
-
-export function addSlotOffset(slot: string, offset: number): string {
-    return "0x" + (BigInt(slot) + BigInt(offset)).toString(16);
-}
-
 
 // Resolvers:
 
