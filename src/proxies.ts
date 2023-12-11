@@ -13,7 +13,7 @@ export interface ProxyResolver {
 const _zeroAddress = "0x0000000000000000000000000000000000000000";
 
 // Convert 32 byte hex to a 20 byte hex address
-function callToAddress(data:string): string {
+function addressFromPadded(data:string): string {
     return "0x" + data.slice(data.length - 40);
 }
 
@@ -30,14 +30,14 @@ function joinSlot(parts: string[]): string {
  * Read an array at some slot
  * @param {StorageProvider} provider - Implementation of a provider that can call getStorageAt
  * @param {string} address - Address of the contract storage namespace
- * @param {number} pos - Slot position of the array
+ * @param {number|string} pos - Slot position of the array
  * @param {number=} width - Array item size
  * @returns {Promise<string[]>} Values of the array at the given slot
  */
-async function readArray(provider: StorageProvider, address: string, pos: number, width: number=32): Promise<string[]> {
+export async function readArray(provider: StorageProvider, address: string, pos: number|string, width: number=32): Promise<string[]> {
     // Based on https://gist.github.com/banteg/0cee21909f7c1baedfa6c3d96ffe94f2
     const num = Number(await provider.getStorageAt(address, pos));
-    const start = keccak256(pos.toString(16));
+    const start = keccak256(pos.toString(16)); // toString(16) does the right thing on strings too (no-op) (:
     const elements = Math.floor(32 / width);
     const values = [];
 
@@ -54,22 +54,8 @@ async function readArray(provider: StorageProvider, address: string, pos: number
     return values;
 }
 
-async function readMapping(provider: StorageProvider, address: string, slot: string, keys: string[]): Promise<Record<string, string>> {
-    const result: Record<string, string> = {};
-
-    // TODO: Parallelize
-    for (const key of keys) {
-        const pos = keccak256(key + slot);
-        const value = await provider.getStorageAt(address, pos);
-        result[key] = value;
-    }
-
-    return result;
-}
-
 
 // Resolvers:
-
 
 export class BaseProxyResolver {
     name: string;
@@ -86,7 +72,7 @@ export class BaseProxyResolver {
 export class GnosisSafeProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider, address: string): Promise<string> {
         const slotPosition = 0; // masterCopy() is always first slot
-        return callToAddress(await provider.getStorageAt(address, slotPosition));
+        return addressFromPadded(await provider.getStorageAt(address, slotPosition));
     }
 }
 
@@ -95,7 +81,7 @@ export class GnosisSafeProxyResolver extends BaseProxyResolver implements ProxyR
 export class LegacyUpgradeableProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider, address: string): Promise<string> {
         const slotPosition = 1; // // _dist is in the second slot
-        return callToAddress(await provider.getStorageAt(address, slotPosition));
+        return addressFromPadded(await provider.getStorageAt(address, slotPosition));
     }
 }
 
@@ -109,13 +95,13 @@ const EIP1967FallbackSelectors = [
 export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider & CallProvider, address: string): Promise<string> {
         // Is there an implementation defined?
-        const implAddr = callToAddress(await provider.getStorageAt(address, slots.EIP1967_IMPL));
+        const implAddr = addressFromPadded(await provider.getStorageAt(address, slots.EIP1967_IMPL));
         if (implAddr !== _zeroAddress) {
             return implAddr;
         }
 
         // Gotta find the fallback...
-        const fallbackAddr = callToAddress(await provider.getStorageAt(address, slots.EIP1967_BEACON));
+        const fallbackAddr = addressFromPadded(await provider.getStorageAt(address, slots.EIP1967_BEACON));
         if (fallbackAddr === _zeroAddress) {
             return _zeroAddress;
         }
@@ -125,7 +111,7 @@ export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyReso
         // 2. We could use multicall3 (if available)
         for (const selector of EIP1967FallbackSelectors) {
             try {
-                const addr = callToAddress(await provider.call({
+                const addr = addressFromPadded(await provider.call({
                     to: fallbackAddr,
                     data: selector,
                 }));
@@ -168,7 +154,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         // Try the selectors are a fallback
         for (const facetSelector of diamondSelectors) {
             try {
-                const addr = callToAddress(await provider.call({
+                const addr = addressFromPadded(await provider.call({
                     to: address,
                     data: facetSelector + selector,
                 }));
@@ -181,39 +167,16 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         return _zeroAddress;
     }
 
-    // TODO: Would be cool if we could read the private facets storage and return known selectors too
-    //
-    // Notes:
-    // 0x32400084c286cf3e17e7b677ea9583e60a000324 (ZkSync Era)
-    // - The struct that contains the facet storage lives in 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b:
-    //     struct DiamondStorage {
-    //       mapping(bytes4 => SelectorToFacet) selectorToFacet;
-    //       mapping(address => FacetToSelectors) facetToSelectors;
-    //       address[] facets;
-    //       bool isFrozen;
-    //     }
-    // - There's an address[] in the 3rd position that we can read (slot 2 because 0-indexed)
-    // - Adding 2 to the storage pointer, we get ending with d instead of b, reading that storage we get:
-    //   cast storage $ADDRESS 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131d
-    //   0x0000000000000000000000000000000000000000000000000000000000000005
-    //   ^ Length of the array
-    // - We hash the pointer to get the position of the first element:
-    // - cast keccak 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131d
-    //   0xc0d727610ea16241eff4447d08bb1b4595f7d2ec4515282437a13b7d0df4b922
-    //   ^ first element position
-    //   cast storage 0xc0d727610ea16241eff4447d08bb1b4595f7d2ec4515282437a13b7d0df4b922
-    //   0x000000000000000000000000f1fb730b7f8e8391b27b91f8f791e10e4a53cecc
-    //   ^ first element
-    //   cast storage 0xc0d727610ea16241eff4447d08bb1b4595f7d2ec4515282437a13b7d0df4b923
-    //   0x0000000000000000000000006df4a6d71622860dcc64c1fd9645d9a5be96f088
-    //   ^ second element, etc
-    // - Next we need to read slot 1 for each address: mapping(address => FacetToSelectors) facetToSelectors; 
-    // - TODO: The rest of the owl
-    //
-    // Shoutout to @banteg for sharing the rest of the owl:
-    // - https://twitter.com/shazow/status/1693636008179343598
-    // - https://gist.github.com/banteg/0cee21909f7c1baedfa6c3d96ffe94f2
-    async selectors(provider: StorageProvider, address: string): Promise<string[]> {
+    // Return the facet-to-selectors mapping
+    async facets(provider: StorageProvider, address: string): Promise<Record<string, string[]>> {
+        // Would be cool if we could read the private facets storage and return known selectors too
+        //
+        // Shoutout to @banteg for sharing the rest of the owl:
+        // - https://twitter.com/shazow/status/1693636008179343598
+        // - https://gist.github.com/banteg/0cee21909f7c1baedfa6c3d96ffe94f2
+
+        // 1. Read the DiamondStorage.facets array
+        //
         // struct DiamondStorage {
         //   mapping(bytes4 => SelectorToFacet) selectorToFacet;
         //   mapping(address => FacetToSelectors) facetToSelectors;
@@ -221,32 +184,47 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         //   bool isFrozen;
         // }
 
-        // Read the DiamondStorage.facets array
         const diamondStorageOffset = Number(await provider.getStorageAt(address, slots.DIAMOND_STORAGE));
         const facetsOffset = diamondStorageOffset + 2; // Facets live in the 3rd slot (0-indexed)
-        const width = 20; // Addresses are 20 bytes
-        const facets = await readArray(provider, address, facetsOffset, width);
+        const addressWidth = 20; // Addresses are 20 bytes
+        const facets = await readArray(provider, address, facetsOffset, addressWidth);
 
-        // Read the facetToSelectors mapping
-        const facetToSelectors = await readMapping(provider, address, (diamondStorageOffset+1).toString(16), facets)
+        // 2. Read FacetToSelectors.selectors[] via facetToSelectors[address].selectors[]
+        //
+        // struct FacetToSelectors {
+        //     bytes4[] selectors;
+        //     uint16 facetPosition;
+        // }
 
-        for (const [facet, selector] of Object.entries(facetToSelectors)) {
-            // TODO: ...
+        const selectorWidth = 4;
+        const facetSelectors : Record<string, string[]> = {};
+        const slot = (diamondStorageOffset+1).toString(16);
+        for (const facetPadded of facets) {
+            const facet = addressFromPadded(facetPadded);
+            const pos = keccak256(facetPadded + slot);
+            facetSelectors[facet] = await readArray(provider, address, pos, selectorWidth);
         }
 
-        return [];
+        return facetSelectors;
+    }
+
+    // Return all of the valid selectors that work on this DiamondProxy.
+    async selectors(provider: StorageProvider, address: string): Promise<string[]> {
+        // Get values from the mapping
+        const f = await this.facets(provider, address);
+        return Object.values(f).flat();
     }
 }
 
 export class ZeppelinOSProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider, address: string): Promise<string> {
-        return callToAddress(await provider.getStorageAt(address, slots.ZEPPELINOS_IMPL));
+        return addressFromPadded(await provider.getStorageAt(address, slots.ZEPPELINOS_IMPL));
     }
 }
 
 export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider, address: string): Promise<string> {
-        return callToAddress(await provider.getStorageAt(address, slots.PROXIABLE));
+        return addressFromPadded(await provider.getStorageAt(address, slots.PROXIABLE));
     }
 }
 
@@ -254,7 +232,7 @@ export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyRe
 // Implementation pointer is stored in slot keyed on the deployed address.
 export class SequenceWalletProxyResolver extends BaseProxyResolver implements ProxyResolver {
     async resolve(provider: StorageProvider, address: string): Promise<string> {
-        return callToAddress(await provider.getStorageAt(address, address.toLowerCase().slice(2)));
+        return addressFromPadded(await provider.getStorageAt(address, address.toLowerCase().slice(2)));
     }
 
     toString(): string {

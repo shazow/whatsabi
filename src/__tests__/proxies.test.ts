@@ -103,6 +103,15 @@ describe('known proxy resolving', () => {
         // ZkSync updates their proxies so it's annoying to maintain the desired mapping
         expect(got).not.toEqual("0x0000000000000000000000000000000000000000");
     });
+
+    online_test('EIP-2535 Diamond Proxy: Read facets from internal storage', async({ provider }) => {
+        const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
+        const resolver = new proxies.DiamondProxyResolver();
+        const got = await resolver.facets(provider, address);
+
+        expect(got).to.equal("foo");
+    });
+
     // FIXME: Is there one on mainnet? Seems they're all on polygon
     //online_test('SequenceWallet Proxy', async() => {
     //});
@@ -146,5 +155,18 @@ describe('contract proxy resolving', () => {
 
         const wantImplementation = "0x9c13e225ae007731caa49fd17a41379ab1a489f4";
         expect(got).toEqual(wantImplementation);
+    });
+});
+
+
+describe('proxy internal slot reading', () => {
+    online_test('ReadArray', async ({ provider }) => {
+        const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
+        const diamondStorageOffset = Number(await provider.getStorageAt(address, proxies.slots.DIAMOND_STORAGE));
+        const facetsOffset = diamondStorageOffset + 2; // Facets live in the 3rd slot (0-indexed)
+        const addressWidth = 20; // Addresses are 20 bytes
+        const facets = await proxies.readArray(provider, address, facetsOffset, addressWidth);
+
+        expect(facets).toEqual("foo");
     });
 });
