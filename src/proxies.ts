@@ -1,5 +1,4 @@
 import type { StorageProvider, CallProvider } from "./types.js";
-import { keccak256 } from "./utils.js";
 import { addSlotOffset, readArray, joinSlot } from "./slots.js";
 
 export interface ProxyResolver {
@@ -163,11 +162,10 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         const selectorWidth = 4;
         const facetSelectors : Record<string, string[]> = {};
         const slot = addSlotOffset(storageStart, 1); // facetToSelector in 2nd slot
-        for (const facetPadded of facets) {
-            const facet = addressFromPadded(facetPadded);
-            console.log("XXX", {facet, facetPadded, slot});
-            const pos = keccak256(facetPadded + slot);
-            facetSelectors[facet] = await readArray(provider, address, pos, selectorWidth);
+        for (const f of facets) {
+            const facet = addressFromPadded(f);
+            const facetSelectorsSlot = joinSlot([facet, slot]);
+            facetSelectors[facet] = await readArray(provider, address, facetSelectorsSlot, selectorWidth);
         }
 
         return facetSelectors;

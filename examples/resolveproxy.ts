@@ -2,6 +2,7 @@
 
 import { ethers } from "ethers";
 
+import { DiamondProxyResolver } from '../src/proxies.js';
 import { disasm } from '../src/disasm.js';
 import { withCache } from "../src/internal/filecache.js";
 import { opcodes } from "../src/opcodes.js";
@@ -34,6 +35,11 @@ async function main() {
 
     for (const resolver of program.proxies) {
         console.log("Proxy found:", resolver.toString());
+
+        if (resolver instanceof DiamondProxyResolver) {
+            const facets = await (resolver as DiamondProxyResolver).facets(provider, address);
+            console.log("Resolved to facets: ", facets);
+        }
 
         const addr = await resolver.resolve(provider, address, selector);
         if (addr === "0x0000000000000000000000000000000000000000") continue;

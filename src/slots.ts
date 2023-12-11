@@ -7,7 +7,7 @@ export function joinSlot(parts: string[]): string {
         if (s.startsWith("0x")) {
             s = s.slice(2);
         }
-        return s.padEnd(64, "0");
+        return s.padStart(64, "0");
     }).join(""))
 }
 
