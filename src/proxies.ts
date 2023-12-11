@@ -37,21 +37,27 @@ function joinSlot(parts: string[]): string {
 export async function readArray(provider: StorageProvider, address: string, pos: number|string, width: number=32): Promise<string[]> {
     // Based on https://gist.github.com/banteg/0cee21909f7c1baedfa6c3d96ffe94f2
     const num = Number(await provider.getStorageAt(address, pos));
+    console.log("XXX", "getStorageAt", address, pos, " => ", num);
     const start = keccak256(pos.toString(16)); // toString(16) does the right thing on strings too (no-op) (:
     const elements = Math.floor(32 / width);
     const values = [];
 
     // TODO: Parallelize
     for (let i=0; i<num; i++) {
-        const itemSlot = start + Math.floor(i / elements);
+        const itemSlot = addSlotOffset(start, Math.floor(i / elements));
         const itemOffset = 32 - (i % elements + 1) * width;
         const word = await provider.getStorageAt(address, itemSlot);
+        console.log("XXX", "getStorageAt", address, itemSlot, itemOffset, " => ", word);
         // TODO: Generalize the 8 divisor upwards, to skip converting to bytes
         const value = word.slice(itemOffset/8, (itemOffset + width)/8);
         values.push(value);
     }
 
     return values;
+}
+
+export function addSlotOffset(slot: string, offset: number): string {
+    return "0x" + (BigInt(slot) + BigInt(offset)).toString(16);
 }
 
 
@@ -184,8 +190,9 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         //   bool isFrozen;
         // }
 
-        const diamondStorageOffset = Number(await provider.getStorageAt(address, slots.DIAMOND_STORAGE));
-        const facetsOffset = diamondStorageOffset + 2; // Facets live in the 3rd slot (0-indexed)
+        const storageStart = slots.DIAMOND_STORAGE;
+
+        const facetsOffset = addSlotOffset(storageStart, 2); // Facets live in the 3rd slot (0-indexed)
         const addressWidth = 20; // Addresses are 20 bytes
         const facets = await readArray(provider, address, facetsOffset, addressWidth);
 
@@ -198,7 +205,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
 
         const selectorWidth = 4;
         const facetSelectors : Record<string, string[]> = {};
-        const slot = (diamondStorageOffset+1).toString(16);
+        const slot = addSlotOffset(storageStart, 1); // facetToSelector in 2nd slot
         for (const facetPadded of facets) {
             const facet = addressFromPadded(facetPadded);
             const pos = keccak256(facetPadded + slot);
