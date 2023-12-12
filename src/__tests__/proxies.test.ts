@@ -97,7 +97,7 @@ describe('known proxy resolving', () => {
 
         const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
         const resolver = new proxies.DiamondProxyResolver();
-        const selector = "0xeb672419"; // requestL2Transaction(address _contractL2,uint256 _l2Value,bytes _calldata,uint256 _l2GasLimit,uint256 _l2GasPerPubdataByteLimit,bytes[] _factoryDeps,address _refundRecipient)
+        const selector = "0x6c0960f9"; 
         const got = await resolver.resolve(provider, address, selector);
 
         // ZkSync updates their proxies so it's annoying to maintain the desired mapping

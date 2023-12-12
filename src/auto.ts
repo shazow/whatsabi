@@ -223,7 +223,7 @@ function pruneFacets(facets: Record<string, string[]>, abis: Record<string, ABI>
             if (a.selector === undefined && a.name) {
                 a.selector = FunctionFragment.getSelector(a.name, a.inputs);
             }
-            if (allowSelectors.has(a.selector)) {
+            if (allowSelectors.size === 0 || allowSelectors.has(a.selector)) {
                 r.push(a);
             }
         }
