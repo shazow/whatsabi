@@ -97,7 +97,7 @@ describe('known proxy resolving', () => {
 
         const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
         const resolver = new proxies.DiamondProxyResolver();
-        const selector = "0x6c0960f9"; 
+        const selector = "0x4fc07d75";  // function getGovernor() returns (address)
         const got = await resolver.resolve(provider, address, selector);
 
         // ZkSync updates their proxies so it's annoying to maintain the desired mapping
