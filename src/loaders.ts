@@ -171,3 +171,22 @@ export class SamczunSignatureLookup extends OpenChainSignatureLookup {};
 
 export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanABILoader()]);
 export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new OpenChainSignatureLookup(), new FourByteSignatureLookup()]);
+
+type APIKeys = {
+  ETHERSCAN_API_KEY?: string,
+}
+
+// Example:
+// whatsabi.autoload(address, {provider, ...defaultsWithAPIKeys(process.env)})
+export function defaultsWithAPIKeys(apiKeys: APIKeys): Record<string, ABILoader|SignatureLookup> {
+  return {
+    abiLoader: new MultiABILoader([
+      new SourcifyABILoader(),
+      new EtherscanABILoader({apiKey: apiKeys.ETHERSCAN_API_KEY}),
+    ]),
+    signaturelookup: new MultiSignatureLookup([
+      new OpenChainSignatureLookup(),
+      new FourByteSignatureLookup(),
+    ]),
+  }
+}
