@@ -2,7 +2,7 @@ import { Fragment } from "ethers";
 
 import type { AnyProvider } from "./types.js";
 import type { ABI } from "./abi.js";
-import type { ProxyResolver } from "./proxies.js";
+import { type ProxyResolver, DiamondProxyResolver } from "./proxies.js";
 import type { ABILoader, SignatureLookup } from "./loaders.js";
 
 import { CompatibleProvider } from "./types.js";
@@ -89,7 +89,15 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     // FIXME: Sort them in some reasonable way
     result.proxies = program.proxies;
 
-    if (result.proxies.length > 0) {
+    if (result.proxies.length === 1 && result.proxies[0] instanceof DiamondProxyResolver) {
+        onProgress("loadDiamondFacets", {address});
+        const diamondProxy = result.proxies[0] as DiamondProxyResolver;
+        const selectors = await diamondProxy.selectors(provider, address);
+        result.abi = selectors.map((selector) => {
+            return { type: "function", selector: selector };
+        });
+
+    } else if (result.proxies.length > 0) {
         result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
             for (const resolver of result.proxies) {
                 onProgress("followProxies", {resolver: resolver, address});
@@ -118,7 +126,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     }
 
     // Load from code
-    onProgress("getCode", {address});
+    onProgress("abiFromBytecode", {address});
     result.abi = abiFromBytecode(program);
 
     if (!config.enableExperimentalMetadata) {
@@ -181,4 +189,3 @@ function stripUnreliableABI(abi: ABI): ABI {
     }
     return r;
 }
-
