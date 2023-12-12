@@ -1,5 +1,6 @@
 import type { StorageProvider, CallProvider } from "./types.js";
 import { addSlotOffset, readArray, joinSlot } from "./slots.js";
+import { addressWithChecksum } from "./utils.js";
 
 export interface ProxyResolver {
     resolve(provider: StorageProvider|CallProvider, address: string, selector?: string): Promise<string>
@@ -165,7 +166,8 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         for (const f of facets) {
             const facet = addressFromPadded(f);
             const facetSelectorsSlot = joinSlot([facet, slot]);
-            facetSelectors[facet] = await readArray(provider, address, facetSelectorsSlot, selectorWidth);
+            const selectors = await readArray(provider, address, facetSelectorsSlot, selectorWidth);
+            facetSelectors[addressWithChecksum(facet)] = selectors.map(s => "0x" + s);
         }
 
         return facetSelectors;
