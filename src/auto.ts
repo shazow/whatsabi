@@ -1,7 +1,7 @@
-import { Fragment } from "ethers";
+import { Fragment, FunctionFragment } from "ethers";
 
 import type { AnyProvider } from "./types.js";
-import type { ABI } from "./abi.js";
+import type { ABI, ABIFunction } from "./abi.js";
 import { type ProxyResolver, DiamondProxyResolver } from "./proxies.js";
 import type { ABILoader, SignatureLookup } from "./loaders.js";
 
@@ -89,13 +89,17 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     // FIXME: Sort them in some reasonable way
     result.proxies = program.proxies;
 
+    // Mapping of address-to-valid-selectors. Non-empty mapping values will prune ABIs to the selectors before returning.
+    // This is mainly to support multiple proxies and diamond proxies.
+    const facets: Record<string, string[]> = {
+        [address]: [],
+    };
+
     if (result.proxies.length === 1 && result.proxies[0] instanceof DiamondProxyResolver) {
         onProgress("loadDiamondFacets", {address});
         const diamondProxy = result.proxies[0] as DiamondProxyResolver;
-        const selectors = await diamondProxy.selectors(provider, address);
-        result.abi = selectors.map((selector) => {
-            return { type: "function", selector: selector };
-        });
+        const f = await diamondProxy.facets(provider, address);
+        Object.assign(facets, f);
 
     } else if (result.proxies.length > 0) {
         result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
@@ -115,9 +119,16 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
 
     if (abiLoader) {
         // Attempt to load the ABI from a contract database, if exists
-        onProgress("abiLoader", {address});
+        onProgress("abiLoader", {address, facets});
+        const loader = abiLoader;
         try {
-            result.abi = await abiLoader.loadABI(address);
+            const addresses = Object.keys(facets);
+            const promises = addresses.map(addr => loader.loadABI(addr));
+            const results = await Promise.all(promises);
+            const abis = Object.fromEntries(results.map((abi, i) => {
+                return [addresses[i], abi];
+            }));
+            result.abi = pruneFacets(facets, abis);
             if (result.abi.length > 0) return result;
         } catch (error: any) {
             // TODO: Catch useful errors
@@ -132,6 +143,14 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     if (!config.enableExperimentalMetadata) {
         result.abi = stripUnreliableABI(result.abi);
     }
+
+    // Add any extra ABIs we found from facets
+    result.abi.push(... Object.values(facets).flat().map(selector => {
+        return {
+            type: "function",
+            selector,
+        } as ABIFunction;
+    }));
 
     let signatureLookup = config.signatureLookup;
     if (signatureLookup === undefined) signatureLookup = defaultSignatureLookup;
@@ -186,6 +205,28 @@ function stripUnreliableABI(abi: ABI): ABI {
             type: "function",
             selector: a.selector,
         });
+    }
+    return r;
+}
+
+function pruneFacets(facets: Record<string, string[]>, abis: Record<string, ABI>): ABI {
+    // TODO: Test
+    const r: ABI = [];
+    for (const [addr, abi] of Object.entries(abis)) {
+        const allowSelectors = new Set(facets[addr]);
+        for (let a of abi) {
+            if (a.type !== "function") {
+                r.push(a);
+                continue;
+            }
+            a = a as ABIFunction;
+            if (a.selector === undefined && a.name) {
+                a.selector = FunctionFragment.getSelector(a.name, a.inputs);
+            }
+            if (allowSelectors.has(a.selector)) {
+                r.push(a);
+            }
+        }
     }
     return r;
 }
