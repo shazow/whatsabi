@@ -119,7 +119,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
 
     if (abiLoader) {
         // Attempt to load the ABI from a contract database, if exists
-        onProgress("abiLoader", {address, facets});
+        onProgress("abiLoader", {address, facets: Object.keys(facets)});
         const loader = abiLoader;
         try {
             const addresses = Object.keys(facets);
