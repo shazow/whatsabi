@@ -210,20 +210,25 @@ function stripUnreliableABI(abi: ABI): ABI {
 }
 
 function pruneFacets(facets: Record<string, string[]>, abis: Record<string, ABI>): ABI {
-    // TODO: Test
     const r: ABI = [];
     for (const [addr, abi] of Object.entries(abis)) {
         const allowSelectors = new Set(facets[addr]);
+        if (allowSelectors.size === 0) {
+            // Skip pruning if the mapping is empty
+            r.push(...abi);
+            continue;
+        }
         for (let a of abi) {
             if (a.type !== "function") {
                 r.push(a);
                 continue;
             }
             a = a as ABIFunction;
-            if (a.selector === undefined && a.name) {
-                a.selector = FunctionFragment.getSelector(a.name, a.inputs);
+            let selector = a.selector;
+            if (selector === undefined && a.name) {
+                selector = FunctionFragment.getSelector(a.name, a.inputs);
             }
-            if (allowSelectors.size === 0 || allowSelectors.has(a.selector)) {
+            if (allowSelectors.has(selector)) {
                 r.push(a);
             }
         }
