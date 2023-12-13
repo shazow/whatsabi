@@ -102,9 +102,11 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
             selector = selector.slice(2);
         }
 
+        // Selectors are considered "strings and byte arrays" so they're "unpadded data" (ie. end-padded) as opposed to start-padded like addresses etc.
+        //
         // ethers.utils.defaultAbiCoder.encode(["bytes4", "bytes32"], ["0x" + selector, slots.DIAMOND_STORAGE])
         // keccak256("0x" + selector.padEnd(64, "0") + slots.DIAMOND_STORAGE.slice(2));
-        const facetMappingSlot = joinSlot([selector, slots.DIAMOND_STORAGE]);
+        const facetMappingSlot = joinSlot([selector.padEnd(64, "0"), slots.DIAMOND_STORAGE]);
 
         const facet = await provider.getStorageAt(address, facetMappingSlot);
 
@@ -131,6 +133,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
     }
 
     // Return the facet-to-selectors mapping
+    // Note that this does not respect frozen facet state.
     async facets(provider: StorageProvider, address: string): Promise<Record<string, string[]>> {
         // Would be cool if we could read the private facets storage and return known selectors too
         //
@@ -148,6 +151,15 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         // }
 
         const storageStart = slots.DIAMOND_STORAGE;
+
+        // TODO: Respect frozen facets?
+        // let isFrozen = false;
+        // if (config && !config.ignoreFrozen) {
+        //     const isFrozenOffset = addSlotOffset(storageStart, 3); // isFrozen
+        //     const isFrozenWord = await provider.getStorageAt(address, isFrozenOffset);
+        //     isFrozen = isFrozenWord.slice(-1) === "1"
+        // }
+        // ... the rest of the owl :3
 
         const facetsOffset = addSlotOffset(storageStart, 2); // Facets live in the 3rd slot (0-indexed)
         const addressWidth = 20; // Addresses are 20 bytes
@@ -174,6 +186,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
     }
 
     // Return all of the valid selectors that work on this DiamondProxy.
+    // Note that this does not respect frozen facet state.
     async selectors(provider: StorageProvider, address: string): Promise<string[]> {
         // Get values from the mapping
         const f = await this.facets(provider, address);

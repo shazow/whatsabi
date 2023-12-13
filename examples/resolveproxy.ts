@@ -36,15 +36,15 @@ async function main() {
     for (const resolver of program.proxies) {
         console.log("Proxy found:", resolver.toString());
 
-        if (resolver instanceof DiamondProxyResolver) {
+        if (!selector && resolver instanceof DiamondProxyResolver) {
             const facets = await (resolver as DiamondProxyResolver).facets(provider, address);
             console.log("Resolved to facets: ", facets);
+        } else {
+            const addr = await resolver.resolve(provider, address, selector);
+            if (addr === "0x0000000000000000000000000000000000000000") continue;
+            console.log("Resolved to address:", addr);
         }
 
-        const addr = await resolver.resolve(provider, address, selector);
-        if (addr === "0x0000000000000000000000000000000000000000") continue;
-
-        console.log("Resolved to address:", addr);
         return;
     }
 
