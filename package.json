@@ -1,6 +1,6 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Guess an ABI from Ethereum bytecode, even if it's unverified",
   "type": "module",
   "scripts": {
@@ -36,7 +36,7 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "ethers": "^6.8.0"
+    "ethers": "^6.9.0"
   },
   "peerDependencies": {
     "@noble/hashes": "^1"
@@ -45,8 +45,8 @@
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
     "size-limit": "^8.2.6",
-    "ts-node": "^10.9.1",
-    "viem": "^1.16.4",
+    "ts-node": "^10.9.2",
+    "viem": "^1.19.13",
     "vitest": "^0.34.6"
   },
   "main": "./lib.cjs/index.js",
