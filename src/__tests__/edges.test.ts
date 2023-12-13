@@ -59,3 +59,16 @@ test('issue 42', () => {
   expect(r).toEqual([
   ]);
 });
+
+import { WANDERWING } from './__fixtures__/proxies';
+test('issue 67', () => {
+  const bytecode = WANDERWING;
+  const r = selectorsFromBytecode(bytecode);
+  expect(r).toEqual([
+  ]);
+});
+
+// Addresses with false positive zero selectors:
+// 0x99aa182ed0e2b6c47132e95686d2c73cdeff307f
+// 0xb1116d0a09f06d3e22a264c0c233d80e93abec10
+// 0xb60e36e2d67a34b4eae678cad779e281e4c6d58c
