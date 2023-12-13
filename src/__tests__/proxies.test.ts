@@ -60,13 +60,13 @@ describe('proxy detection', () => {
     test('ZeppelinOS Proxy', async () => {
         const bytecode = ZEPPELINOS_USDC;
         const program = disasm(bytecode);
-        expect(program.proxies[0]).toBeInstanceOf(proxies.EIP1967ProxyResolver);
+        expect(program.proxies[0]).toBeInstanceOf(proxies.ZeppelinOSProxyResolver);
     });
 
     test('EIP-1967 Proxy: Wanderwing', async () => {
         const bytecode = WANDERWING;
         const program = disasm(bytecode);
-        expect(program.proxies[0]).toBeInstanceOf(proxies.ZeppelinOSProxyResolver);
+        expect(program.proxies[0]).toBeInstanceOf(proxies.EIP1967ProxyResolver);
     });
 });
 
