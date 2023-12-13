@@ -135,22 +135,11 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
     // Return the facet-to-selectors mapping
     // Note that this does not respect frozen facet state.
     async facets(provider: StorageProvider, address: string): Promise<Record<string, string[]>> {
-        // Would be cool if we could read the private facets storage and return known selectors too
+        // Would be cool if we could read the private facets storage and return known selectors... let's do it!
         //
         // Shoutout to @banteg for sharing the rest of the owl:
         // - https://twitter.com/shazow/status/1693636008179343598
         // - https://gist.github.com/banteg/0cee21909f7c1baedfa6c3d96ffe94f2
-
-        // 1. Read the DiamondStorage.facets array
-        //
-        // struct DiamondStorage {
-        //   mapping(bytes4 => SelectorToFacet) selectorToFacet;
-        //   mapping(address => FacetToSelectors) facetToSelectors;
-        //   address[] facets;
-        //   bool isFrozen;
-        // }
-
-        const storageStart = slots.DIAMOND_STORAGE;
 
         // TODO: Respect frozen facets?
         // let isFrozen = false;
@@ -160,6 +149,16 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         //     isFrozen = isFrozenWord.slice(-1) === "1"
         // }
         // ... the rest of the owl :3
+
+        // 1. Read the DiamondStorage.facets array
+        //
+        // struct DiamondStorage {
+        //   mapping(bytes4 => SelectorToFacet) selectorToFacet;
+        //   mapping(address => FacetToSelectors) facetToSelectors;
+        //   address[] facets;
+        //   bool isFrozen;
+        // }
+        const storageStart = slots.DIAMOND_STORAGE;
 
         const facetsOffset = addSlotOffset(storageStart, 2); // Facets live in the 3rd slot (0-indexed)
         const addressWidth = 20; // Addresses are 20 bytes
