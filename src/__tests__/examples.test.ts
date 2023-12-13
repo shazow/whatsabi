@@ -4,7 +4,7 @@ import { whatsabi } from "../index";
 
 import { cached_test, online_test } from "./env";
 
-const TIMEOUT = 15000;
+const TIMEOUT = 25000;
 
 cached_test('README usage', async ({ provider, withCache }) => {
 
@@ -62,6 +62,7 @@ online_test('README autoload', async ({ provider }) => {
       // signatureLoader: whatsabi.loaders.defaultSignatureLookup, // Optional
     });
     expect(result.abi).toContainEqual(
+      // 'function name() pure returns (string contractName)'
       {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"contractName","type":"string"}],"stateMutability":"pure","type":"function"}
     );
 

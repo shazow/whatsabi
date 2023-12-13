@@ -1,8 +1,8 @@
-import { Fragment } from "ethers";
+import { Fragment, FunctionFragment } from "ethers";
 
 import type { AnyProvider } from "./types.js";
-import type { ABI } from "./abi.js";
-import type { ProxyResolver } from "./proxies.js";
+import type { ABI, ABIFunction } from "./abi.js";
+import { type ProxyResolver, DiamondProxyResolver } from "./proxies.js";
 import type { ABILoader, SignatureLookup } from "./loaders.js";
 
 import { CompatibleProvider } from "./types.js";
@@ -89,7 +89,19 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     // FIXME: Sort them in some reasonable way
     result.proxies = program.proxies;
 
-    if (result.proxies.length > 0) {
+    // Mapping of address-to-valid-selectors. Non-empty mapping values will prune ABIs to the selectors before returning.
+    // This is mainly to support multiple proxies and diamond proxies.
+    const facets: Record<string, string[]> = {
+        [address]: [],
+    };
+
+    if (result.proxies.length === 1 && result.proxies[0] instanceof DiamondProxyResolver) {
+        onProgress("loadDiamondFacets", {address});
+        const diamondProxy = result.proxies[0] as DiamondProxyResolver;
+        const f = await diamondProxy.facets(provider, address);
+        Object.assign(facets, f);
+
+    } else if (result.proxies.length > 0) {
         result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
             for (const resolver of result.proxies) {
                 onProgress("followProxies", {resolver: resolver, address});
@@ -107,9 +119,16 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
 
     if (abiLoader) {
         // Attempt to load the ABI from a contract database, if exists
-        onProgress("abiLoader", {address});
+        onProgress("abiLoader", {address, facets: Object.keys(facets)});
+        const loader = abiLoader;
         try {
-            result.abi = await abiLoader.loadABI(address);
+            const addresses = Object.keys(facets);
+            const promises = addresses.map(addr => loader.loadABI(addr));
+            const results = await Promise.all(promises);
+            const abis = Object.fromEntries(results.map((abi, i) => {
+                return [addresses[i], abi];
+            }));
+            result.abi = pruneFacets(facets, abis);
             if (result.abi.length > 0) return result;
         } catch (error: any) {
             // TODO: Catch useful errors
@@ -118,12 +137,20 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     }
 
     // Load from code
-    onProgress("getCode", {address});
+    onProgress("abiFromBytecode", {address});
     result.abi = abiFromBytecode(program);
 
     if (!config.enableExperimentalMetadata) {
         result.abi = stripUnreliableABI(result.abi);
     }
+
+    // Add any extra ABIs we found from facets
+    result.abi.push(... Object.values(facets).flat().map(selector => {
+        return {
+            type: "function",
+            selector,
+        } as ABIFunction;
+    }));
 
     let signatureLookup = config.signatureLookup;
     if (signatureLookup === undefined) signatureLookup = defaultSignatureLookup;
@@ -182,3 +209,29 @@ function stripUnreliableABI(abi: ABI): ABI {
     return r;
 }
 
+function pruneFacets(facets: Record<string, string[]>, abis: Record<string, ABI>): ABI {
+    const r: ABI = [];
+    for (const [addr, abi] of Object.entries(abis)) {
+        const allowSelectors = new Set(facets[addr]);
+        if (allowSelectors.size === 0) {
+            // Skip pruning if the mapping is empty
+            r.push(...abi);
+            continue;
+        }
+        for (let a of abi) {
+            if (a.type !== "function") {
+                r.push(a);
+                continue;
+            }
+            a = a as ABIFunction;
+            let selector = a.selector;
+            if (selector === undefined && a.name) {
+                selector = FunctionFragment.getSelector(a.name, a.inputs);
+            }
+            if (allowSelectors.has(selector)) {
+                r.push(a);
+            }
+        }
+    }
+    return r;
+}

@@ -3,6 +3,7 @@ import { expect, describe, test } from 'vitest';
 import { cached_test, online_test } from './env';
 
 import { disasm } from '../disasm';
+import { addSlotOffset, readArray, joinSlot } from "../slots.js";
 import * as proxies from '../proxies';
 
 import { ZEPPELINOS_USDC } from './__fixtures__/proxies'
@@ -40,10 +41,9 @@ describe('proxy detection', () => {
         expect(proxy.resolvedAddress).toBe(want);
     });
 
-    test('SequenceWallet Proxy', async() => {
+    test('SequenceWallet Proxy', async () => {
         // Gas-optimized version of EIP-1167
         // https://github.com/0xsequence/wallet-contracts/blob/master/contracts/Wallet.sol
-        // FIXME: Need to refactor proxySlots, since the slot is dynamic
         const bytecode = "0x363d3d373d3d3d363d30545af43d82803e903d91601857fd5bf3";
         const program = disasm(bytecode);
         expect(program.proxies[0]).toBeInstanceOf(proxies.SequenceWalletProxyResolver);
@@ -73,7 +73,7 @@ describe('known proxy resolving', () => {
         const want = "0x34cfac646f301356faa8b21e94227e3583fe3f5f";
         expect(got).toEqual(want);
     });
-    
+
     online_test('EIP-1967 Proxy: Aztec TransparentUpgradeableProxy', async ({ provider }) => {
         const address = "0xff1f2b4adb9df6fc8eafecdcbf96a2b351680455";
         const resolver = new proxies.EIP1967ProxyResolver();
@@ -92,15 +92,26 @@ describe('known proxy resolving', () => {
         expect(got).toEqual(wantImplementation);
     });
 
-    online_test('EIP-2535 Diamond Proxy: ZkSync Era', async({ provider }) => {
+    online_test('EIP-2535 Diamond Proxy: ZkSync Era', async ({ provider }) => {
+        // More diamond proxies, if we need sometime: https://gist.github.com/banteg/74fa02c5457f2141bba11dd431fc2b57
+
         const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
         const resolver = new proxies.DiamondProxyResolver();
-        const selector = "0xeb672419"; // requestL2Transaction(address _contractL2,uint256 _l2Value,bytes _calldata,uint256 _l2GasLimit,uint256 _l2GasPerPubdataByteLimit,bytes[] _factoryDeps,address _refundRecipient)
+        const selector = "0x4fc07d75";  // function getGovernor() returns (address)
         const got = await resolver.resolve(provider, address, selector);
 
         // ZkSync updates their proxies so it's annoying to maintain the desired mapping
         expect(got).not.toEqual("0x0000000000000000000000000000000000000000");
     });
+
+    online_test('EIP-2535 Diamond Proxy: Read facets from internal storage', async ({ provider }) => {
+        const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
+        const resolver = new proxies.DiamondProxyResolver();
+        const got = await resolver.selectors(provider, address);
+
+        expect(got).to.not.equal([]);
+    });
+
     // FIXME: Is there one on mainnet? Seems they're all on polygon
     //online_test('SequenceWallet Proxy', async() => {
     //});
@@ -111,10 +122,10 @@ describe('contract proxy resolving', () => {
     cached_test('Create2Beacon Proxy', async ({ provider, withCache }) => {
         const address = "0x581acd618ba7ef6d3585242423867adc09e8ed60";
         const code = await withCache(
-          `${address}_code`,
-          async () => {
-            return await provider.getCode(address)
-          },
+            `${address}_code`,
+            async () => {
+                return await provider.getCode(address)
+            },
         )
 
         const program = disasm(code);
@@ -130,10 +141,10 @@ describe('contract proxy resolving', () => {
     cached_test('Vyper Minimal Proxy', async ({ provider, withCache }) => {
         const address = "0x2d5d4869381c4fce34789bc1d38acce747e295ae";
         const code = await withCache(
-          `${address}_code`,
-          async () => {
-            return await provider.getCode(address)
-          },
+            `${address}_code`,
+            async () => {
+                return await provider.getCode(address)
+            },
         )
 
         const program = disasm(code);
@@ -144,5 +155,48 @@ describe('contract proxy resolving', () => {
 
         const wantImplementation = "0x9c13e225ae007731caa49fd17a41379ab1a489f4";
         expect(got).toEqual(wantImplementation);
+    });
+});
+
+
+describe('proxy internal slot reading', () => {
+    test('addSlotOffset', async () => {
+        const slot = "0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b";
+        const got = addSlotOffset(slot, 2);
+
+        expect(got).to.equal("0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131d");
+    });
+
+    test('joinSlot', async() => {
+        const got = joinSlot(["0xf3acf6a03ea4a914b78ec788624b25cec37c14a4", "0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131c"]);
+        const want = "0x42983d3cf213719a972df53d14775d9ca74cc01b862f850a60cf959f26ffe0a2";
+        expect(got).toEqual(want);
+    });
+
+    online_test('ReadArray: Addresses', async ({ provider }) => {
+        const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
+        const facetsOffset = addSlotOffset(proxies.slots.DIAMOND_STORAGE, 2); // Facets live in the 3rd slot (0-indexed)
+
+        const addressWidth = 20; // Addresses are 20 bytes
+        const facets = await readArray(provider, address, facetsOffset, addressWidth);
+
+        expect(
+            facets.map(h => "0x" + h)
+        ).toStrictEqual([
+            "0x409560de546e057ce5bd5db487edf2bb5e785bab",
+            "0xf3acf6a03ea4a914b78ec788624b25cec37c14a4",
+            "0x63b5ec36b09384ffa7106a80ec7cfdfca521fd08",
+            "0x9e3fa34a10619fedd7ae40a3fb86fa515fcfd269",
+        ]);
+    });
+
+    online_test('ReadArray: Selectors', async ({ provider }) => {
+        const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
+        const storageStart = addSlotOffset(proxies.slots.DIAMOND_STORAGE, 1); // facetToSelector in 2nd slot
+        const facetAddress = "0x409560de546e057ce5bd5db487edf2bb5e785bab";
+        const facetToSelectorSlot = joinSlot([facetAddress, storageStart]);
+        const selectorWidth = 4;
+        const got = await readArray(provider, address, facetToSelectorSlot, selectorWidth);
+        expect(got).toStrictEqual([ "0e18b681", "e58bb639", "a9f6d941", "27ae4c16", "4dd18bf5", "f235757f", "1cc5d103", "be6f11cf", "4623c91d", "17338945"]);
     });
 });

@@ -3,8 +3,12 @@
 import { ethers } from "ethers";
 import { whatsabi } from "../src/index.js";
 
-const { INFURA_API_KEY } = process.env;
-const provider = INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
+const env = {
+    INFURA_API_KEY: process.env.INFURA_API_KEY,
+    ETHERSCAN_API_KEY: process.env.ETHERSCAN_API_KEY,
+    PROVIDER: process.env.PROVIDER,
+};
+const provider = env.INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
 
 // Helper
 // https://stackoverflow.com/questions/11731072/dividing-an-array-by-filter-function 
@@ -27,7 +31,8 @@ async function main() {
         provider,
         onProgress: (phase: string, ...args: string[]) => {
             console.debug("progress:", phase, ...args);
-        }
+        },
+        ... whatsabi.loaders.defaultsWithAPIKeys(env),
     });
 
     while (true) {
