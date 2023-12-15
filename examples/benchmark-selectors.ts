@@ -40,8 +40,10 @@ async function main() {
 
         // Compare results
         const want = new Set<string>();
+        const sigs: Record<string, string> = {};
         ethers.Interface.from(data.abi).forEachFunction((fragment) => {
             want.add(fragment.selector);
+            sigs[fragment.selector] = fragment.format();
         });
         const got = new Set<string>(selectors);
 
@@ -54,7 +56,12 @@ async function main() {
         result.falseNegative += falseNegative.length;
 
         if (falsePositive.length > 0 || falseNegative.length > 0) {
-            console.debug({address: data.address, id: result.count, falsePositive, falseNegative});
+            console.debug({
+                address: data.address,
+                id: result.count,
+                falsePositive: falsePositive.map(s => { return {selector: s, signature: sigs[s] }}),
+                falseNegative: falseNegative.map(s => { return {selector: s, signature: sigs[s] }}),
+            });
         }
 
     });
