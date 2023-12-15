@@ -56,7 +56,7 @@ async function main() {
         result.falseNegative += falseNegative.length;
 
         if (falsePositive.length > 0 || falseNegative.length > 0) {
-            console.debug({
+            console.error({
                 address: data.address,
                 id: result.count,
                 falsePositive: falsePositive.map(s => { return {selector: s, signature: sigs[s] }}),
@@ -67,7 +67,7 @@ async function main() {
     });
 
     pipe.once('close', () => {
-        console.log("Result:", result);
+        console.log(result);
     });
 
 };
