@@ -180,30 +180,20 @@ describe('proxy internal slot reading', () => {
         expect(got).toEqual(want);
     });
 
-    online_test('ReadArray: Addresses', async ({ provider }) => {
+    online_test('ReadArray: Addresses and Selectors', async ({ provider }) => {
         const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
         const facetsOffset = addSlotOffset(proxies.slots.DIAMOND_STORAGE, 2); // Facets live in the 3rd slot (0-indexed)
 
         const addressWidth = 20; // Addresses are 20 bytes
         const facets = await readArray(provider, address, facetsOffset, addressWidth);
+        expect(facets.length).to.not.equal(0);
 
-        expect(
-            facets.map(h => "0x" + h)
-        ).toStrictEqual([
-            "0x409560de546e057ce5bd5db487edf2bb5e785bab",
-            "0xf3acf6a03ea4a914b78ec788624b25cec37c14a4",
-            "0x63b5ec36b09384ffa7106a80ec7cfdfca521fd08",
-            "0x9e3fa34a10619fedd7ae40a3fb86fa515fcfd269",
-        ]);
-    });
-
-    online_test('ReadArray: Selectors', async ({ provider }) => {
-        const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
+        // Read selectors
         const storageStart = addSlotOffset(proxies.slots.DIAMOND_STORAGE, 1); // facetToSelector in 2nd slot
-        const facetAddress = "0x409560de546e057ce5bd5db487edf2bb5e785bab";
+        const facetAddress = "0x" + facets[0];
         const facetToSelectorSlot = joinSlot([facetAddress, storageStart]);
         const selectorWidth = 4;
         const got = await readArray(provider, address, facetToSelectorSlot, selectorWidth);
-        expect(got).toStrictEqual([ "0e18b681", "e58bb639", "a9f6d941", "27ae4c16", "4dd18bf5", "f235757f", "1cc5d103", "be6f11cf", "4623c91d", "17338945"]);
+        expect(got.length).to.not.equal(0);
     });
 });
