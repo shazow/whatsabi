@@ -224,7 +224,9 @@ export function abiFromBytecode(bytecodeOrProgram: string|Program): ABI {
 
 const _EmptyArray = new Uint8Array();
 
-export function disasm(bytecode: string): Program {
+export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Program {
+    const { onlyJumpTable } = config || {};
+
     let p : Program = new Program();
 
     const selectorDests = new Set<number>();
@@ -295,6 +297,9 @@ export function disasm(bytecode: string): Program {
                     // Continuation of a previous jump table?
                     // Selector branch trees start by pushing CALLDATALOAD or it was pushed before.
                     checkJumpTable = code.at(pos + 1) === opcodes.DUP1 || code.at(pos + 1) === opcodes.CALLDATALOAD;
+                } else if (!checkJumpTable && resumeJumpTable.size === 0 && onlyJumpTable) {
+                    // Exit early if we're only looking in the jump table
+                    break;
                 }
             } // Otherwise it's just a simple branch, we continue
 

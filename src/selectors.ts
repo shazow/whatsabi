@@ -1,7 +1,7 @@
 import { FunctionFragment } from "ethers";
 
 import { keccak256 } from "./utils.js";
-import { abiFromBytecode } from "./disasm.js";
+import { disasm } from "./disasm.js";
 
 // Load function selectors mapping from ABI, parsed using ethers.js
 // Mapping is selector hash to signature
@@ -19,13 +19,6 @@ export function selectorsFromABI(abi: any[]): {[key: string]: string} {
 
 // Load function selectors from EVM bytecode by parsing JUMPI instructions
 export function selectorsFromBytecode(code: string): string[] {
-    const abi = abiFromBytecode(code);
-    if (abi.length === 0) return [];
-
-    let selectors:string[] = [];
-    for (const a of abi) {
-        if (a.type !== "function") continue;
-        selectors.push(a.selector);
-    }
-    return selectors;
+    const p = disasm(code, { onlyJumpTable: true });
+    return Object.keys(p.selectors);
 }
