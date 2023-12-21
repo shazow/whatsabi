@@ -1,4 +1,5 @@
-import { mnemonics, OpCode, isPush }  from "../opcodes.js";
+import { mnemonics, isPush }  from "../opcodes.js";
+import type { OpCode }  from "../opcodes.js";
 import { BytecodeIter } from "../disasm.js";
 import { bytesToHex } from "../utils.js";
 

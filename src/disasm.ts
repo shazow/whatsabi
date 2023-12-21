@@ -430,11 +430,15 @@ export function disasm(bytecode: string): Program {
 
         // In some cases, the sequence can get optimized such as for 0x00000000:
         //    DUP1 ISZERO PUSHN <OFFSET> JUMPI
-        // But need to avoid CALLVALUE being checked ahead
+        // FIXME: Need a better heuristic to descriminate the preceding value. This is hacky. :(
         if (
             code.at(-3) === opcodes.ISZERO &&
             code.at(-4) === opcodes.DUP1 &&
-            code.at(-5) !== opcodes.CALLVALUE
+            ( code.at(-5) === opcodes.CALLDATASIZE ||
+              code.at(-5) === opcodes.CALLDATALOAD ||
+              code.at(-5) === opcodes.JUMPDEST ||
+              code.at(-5) === opcodes.SHR
+            )
         ) {
             const selector = "0x00000000";
             p.selectors[selector] = offsetDest;

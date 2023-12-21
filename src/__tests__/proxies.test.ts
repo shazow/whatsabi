@@ -6,7 +6,7 @@ import { disasm } from '../disasm';
 import { addSlotOffset, readArray, joinSlot } from "../slots.js";
 import * as proxies from '../proxies';
 
-import { ZEPPELINOS_USDC } from './__fixtures__/proxies'
+import { ZEPPELINOS_USDC, WANDERWING } from './__fixtures__/proxies'
 
 // TODO: Test for proxy factories to not match
 
@@ -61,6 +61,12 @@ describe('proxy detection', () => {
         const bytecode = ZEPPELINOS_USDC;
         const program = disasm(bytecode);
         expect(program.proxies[0]).toBeInstanceOf(proxies.ZeppelinOSProxyResolver);
+    });
+
+    test('EIP-1967 Proxy: Wanderwing', async () => {
+        const bytecode = WANDERWING;
+        const program = disasm(bytecode);
+        expect(program.proxies[0]).toBeInstanceOf(proxies.EIP1967ProxyResolver);
     });
 });
 
