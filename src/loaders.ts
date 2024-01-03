@@ -178,11 +178,11 @@ type APIKeys = {
 
 // Example:
 // whatsabi.autoload(address, {provider, ...defaultsWithAPIKeys(process.env)})
-export function defaultsWithAPIKeys(apiKeys: APIKeys): Record<string, ABILoader|SignatureLookup> {
+export function defaultsWithAPIKeys(apiKeys: APIKeys, baseURL: string = 'https://api.etherscan.io/api'): Record<string, ABILoader|SignatureLookup> {
   return {
     abiLoader: new MultiABILoader([
       new SourcifyABILoader(),
-      new EtherscanABILoader({apiKey: apiKeys.ETHERSCAN_API_KEY}),
+      new EtherscanABILoader({apiKey: apiKeys.ETHERSCAN_API_KEY, baseURL}),
     ]),
     signaturelookup: new MultiSignatureLookup([
       new OpenChainSignatureLookup(),
