@@ -174,15 +174,17 @@ export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup(
 
 type APIKeys = {
   ETHERSCAN_API_KEY?: string,
+  ETHERSCAN_BASE_URL?: string,
+  SOURCIFY_CHAIN_ID?: number,
 }
 
 // Example:
 // whatsabi.autoload(address, {provider, ...defaultsWithAPIKeys(process.env)})
-export function defaultsWithAPIKeys(apiKeys: APIKeys, baseURL: string = 'https://api.etherscan.io/api'): Record<string, ABILoader|SignatureLookup> {
+export function defaultsWithAPIKeys(apiKeys: APIKeys): Record<string, ABILoader|SignatureLookup> {
   return {
     abiLoader: new MultiABILoader([
-      new SourcifyABILoader(),
-      new EtherscanABILoader({apiKey: apiKeys.ETHERSCAN_API_KEY, baseURL}),
+      new SourcifyABILoader({chainId: apiKeys.SOURCIFY_CHAIN_ID}),
+      new EtherscanABILoader({apiKey: apiKeys.ETHERSCAN_API_KEY, baseURL: apiKeys.ETHERSCAN_BASE_URL}),
     ]),
     signaturelookup: new MultiSignatureLookup([
       new OpenChainSignatureLookup(),
