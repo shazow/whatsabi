@@ -83,9 +83,19 @@ let result = await whatsabi.autoload(address, {
   // abiLoader: whatsabi.loaders.defaultABILoader,
   // signatureLoader: whatsabi.loaders.defaultSignatureLookup,
 
+  // There is a handy helper for adding the default loaders but with your own settings
+  ... whatsabi.loaders.defaultsWithEnv({
+    SOURCIFY_CHAIN_ID: 42161,
+    ETHERSCAN_BASE_URL: "https://api.arbiscan.io/api",
+    ETHERSCAN_API_KEY: "MYSECRETAPIKEY",
+  }),
+
   // * Optional hooks:
   // onProgress: (phase: string) => { ... }
   // onError: (phase: string, context: any) => { ... }
+
+  onProgress: (phase) => console.log("autoload progress", phase),
+  onError: (phase, context) => console.log("autoload error", phase, context),
 
   // * Optional settings:
   // followProxies: false,
@@ -110,10 +120,12 @@ if (result.followProxies) {
 Or we can auto-follow resolved proxies, and expand parts of the result object:
 
 ```typescript
-const { abi, address } = await whatsabi.autoload("0x4f8AD938eBA0CD19155a835f617317a6E788c868", {
-    provider,
-
-    followProxies: true,
+const { abi, address } = await whatsabi.autoload(
+    "0x4f8AD938eBA0CD19155a835f617317a6E788c868",
+    {
+        provider,
+        followProxies: true,
+    },
 });
 
 console.log("Resolved to:", address);

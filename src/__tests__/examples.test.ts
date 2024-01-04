@@ -58,8 +58,28 @@ online_test('README autoload', async ({ provider }) => {
   {
     let result = await whatsabi.autoload(address, {
       provider: provider,
-      // abiLoader: whatsabi.loaders.defaultABILoader, // Optional
-      // signatureLoader: whatsabi.loaders.defaultSignatureLookup, // Optional
+
+      // * Optional loaders:
+      // abiLoader: whatsabi.loaders.defaultABILoader,
+      // signatureLoader: whatsabi.loaders.defaultSignatureLookup,
+
+      // There is a handy helper for adding the default loaders but with your own settings
+      ... whatsabi.loaders.defaultsWithEnv({
+        SOURCIFY_CHAIN_ID: 42161,
+        ETHERSCAN_BASE_URL: "https://api.arbiscan.io/api",
+        //ETHERSCAN_API_KEY: "MYSECRETAPIKEY",
+      }),
+
+      // * Optional hooks:
+      // onProgress: (phase: string) => { ... }
+      // onError: (phase: string, context: any) => { ... }
+
+      onProgress: (phase) => console.log("autoload progress", phase),
+      onError: (phase, context) => console.log("autoload error", phase, context),
+
+      // * Optional settings:
+      // followProxies: false,
+      // enableExperimentalMetadata: false,
     });
     expect(result.abi).toContainEqual(
       // 'function name() pure returns (string contractName)'
