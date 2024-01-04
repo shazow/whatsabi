@@ -1,4 +1,4 @@
-#!/usr/bin/env -S ts-node-script --esm
+#!/usr/bin/env -S tsx
 
 // Example usage:
 // ./examples/dot.ts 0x7a250d5630b4cf539739df2c5dacb4c659f2488d | dot -Tpng  | feh -

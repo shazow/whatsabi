@@ -1,4 +1,4 @@
-#!/usr/bin/env -S ts-node-script --esm
+#!/usr/bin/env -S tsx
 
 import { ethers } from "ethers";
 import { whatsabi } from "../src/index.js";
@@ -27,12 +27,17 @@ const partitionBy = <T>(
 async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
 
+    if (!address) {
+        console.log("Usage: autoload.ts ADDRESS");
+        process.exit(1);
+    }
+
     let r = await whatsabi.autoload(address, {
         provider,
         onProgress: (phase: string, ...args: string[]) => {
             console.debug("progress:", phase, ...args);
         },
-        ... whatsabi.loaders.defaultsWithAPIKeys(env),
+        ... whatsabi.loaders.defaultsWithEnv(env),
     });
 
     while (true) {

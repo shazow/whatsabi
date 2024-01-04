@@ -1,4 +1,4 @@
-#!/usr/bin/env -S ts-node-script --esm
+#!/usr/bin/env -S tsx
 // Read JSON blobs line-by-line, containing keys `code` and `abi`, compare results
 
 import { ethers } from "ethers";
