@@ -174,6 +174,8 @@ export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup(
 
 type APIKeys = {
   ETHERSCAN_API_KEY?: string,
+  ETHERSCAN_BASE_URL?: string,
+  SOURCIFY_CHAIN_ID?: number,
 }
 
 // Example:
@@ -181,8 +183,8 @@ type APIKeys = {
 export function defaultsWithAPIKeys(apiKeys: APIKeys): Record<string, ABILoader|SignatureLookup> {
   return {
     abiLoader: new MultiABILoader([
-      new SourcifyABILoader(),
-      new EtherscanABILoader({apiKey: apiKeys.ETHERSCAN_API_KEY}),
+      new SourcifyABILoader({chainId: apiKeys.SOURCIFY_CHAIN_ID}),
+      new EtherscanABILoader({apiKey: apiKeys.ETHERSCAN_API_KEY, baseURL: apiKeys.ETHERSCAN_BASE_URL}),
     ]),
     signaturelookup: new MultiSignatureLookup([
       new OpenChainSignatureLookup(),
