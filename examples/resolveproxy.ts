@@ -1,4 +1,4 @@
-#!/usr/bin/env -S ts-node-script --esm
+#!/usr/bin/env -S tsx
 
 import { ethers } from "ethers";
 
