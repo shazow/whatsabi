@@ -172,21 +172,44 @@ export class SamczunSignatureLookup extends OpenChainSignatureLookup {};
 export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanABILoader()]);
 export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new OpenChainSignatureLookup(), new FourByteSignatureLookup()]);
 
-type APIKeys = {
+type LoaderEnv = {
   ETHERSCAN_API_KEY?: string,
   ETHERSCAN_BASE_URL?: string,
-  SOURCIFY_CHAIN_ID?: number,
+  SOURCIFY_CHAIN_ID?: string|number,
 }
 
-// Example:
-// whatsabi.autoload(address, {provider, ...defaultsWithAPIKeys(process.env)})
-export function defaultsWithAPIKeys(apiKeys: APIKeys): Record<string, ABILoader|SignatureLookup> {
+/** @deprecated Use defaultsWithEnv instead, this function is outdated and will be removed soon. */
+export function defaultsWithAPIKeys(apiKeys: LoaderEnv): Record<string, ABILoader|SignatureLookup> {
+  return defaultsWithEnv(apiKeys);
+}
+
+/**
+ * Return params to use with whatsabi.autoload(...)
+ *
+ * @example
+ * ```ts
+ * whatsabi.autoload(address, {provider, ...defaultsWithEnv(process.env)})
+ * ```
+ *
+ * @example
+ * ```ts
+ * whatsabi.autoload(address, {
+ *   provider,
+ *   ...defaultsWithEnv({
+ *     SOURCIFY_CHAIN_ID: 42161,
+ *     ETHERSCAN_BASE_URL: "https://api.arbiscan.io/api",
+ *     ETHERSCAN_API_KEY: "MYSECRETAPIKEY",
+ *   }),
+ * })
+ * ```
+ */
+export function defaultsWithEnv(env: LoaderEnv): Record<string, ABILoader|SignatureLookup> {
   return {
     abiLoader: new MultiABILoader([
-      new SourcifyABILoader({chainId: apiKeys.SOURCIFY_CHAIN_ID}),
-      new EtherscanABILoader({apiKey: apiKeys.ETHERSCAN_API_KEY, baseURL: apiKeys.ETHERSCAN_BASE_URL}),
+      new SourcifyABILoader({chainId: env.SOURCIFY_CHAIN_ID && Number(env.SOURCIFY_CHAIN_ID) || undefined}),
+      new EtherscanABILoader({apiKey: env.ETHERSCAN_API_KEY, baseURL: env.ETHERSCAN_BASE_URL}),
     ]),
-    signaturelookup: new MultiSignatureLookup([
+    signatureLookup: new MultiSignatureLookup([
       new OpenChainSignatureLookup(),
       new FourByteSignatureLookup(),
     ]),
