@@ -102,8 +102,21 @@ describe('loaders module', () => {
     expect(name).toEqual("UniswapV3Factory");
   }, SLOW_ETHERSCAN_TIMEOUT)
 
-  online_test('MultiABILoader_getContract_UniswapV3Factory', async () => {
+  online_test('MultiABILoader_getContract', async () => {
     // A contract that is verified on etherscan but not sourcify
+    const address = "0xa9a57f7d2A54C1E172a7dC546fEE6e03afdD28E2";
+    const loader = new MultiABILoader([
+      new SourcifyABILoader(),
+      new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] }),
+    ]);
+    const {abi, name} = await loader.getContract(address);
+    const sig = "getMagistrate()";
+    const selectors = Object.values(selectorsFromABI(abi));
+    expect(selectors).toContain(sig);
+    expect(name).toEqual("KetherSortition");
+  }, SLOW_ETHERSCAN_TIMEOUT);
+
+  online_test('MultiABILoader_getContract_UniswapV3Factory', async () => {
     const address = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
     const loader = new MultiABILoader([
       new SourcifyABILoader(),
@@ -117,7 +130,6 @@ describe('loaders module', () => {
   }, SLOW_ETHERSCAN_TIMEOUT);
 
   online_test('MultiABILoader_SourcifyOnly_getContract_UniswapV3Factory', async () => {
-    // A contract that is verified on etherscan but not sourcify
     const address = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
     const loader = new MultiABILoader([
       new SourcifyABILoader(),
@@ -130,7 +142,6 @@ describe('loaders module', () => {
   }, SLOW_ETHERSCAN_TIMEOUT);
 
   online_test('MultiABILoader_EtherscanOnly_getContract_UniswapV3Factory', async () => {
-    // A contract that is verified on etherscan but not sourcify
     const address = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
     const loader = new MultiABILoader([
       new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] }),
