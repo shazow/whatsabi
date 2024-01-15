@@ -172,7 +172,7 @@ console.log("Resolved to:", address);
 ## Development
 
 ```console
-$ cat .env
+$ cat .env  # Write an .env file with your keys, or `cp .env.example .env`
 export INFURA_API_KEY="..."
 export ETHERSCAN_API_KEY="..."
 $ nix develop  # Or use your system's package manager to install node/ts/etc
