@@ -5,12 +5,10 @@ export interface ABILoader {
   getContract(address: string): Promise<ContractData | null>
 }
 
-type EvmVersion = 'homestead' | 'tangerine whistle' | 'spurious dragon' | 'byzantium' | 'constantinople' | 'istanbul' | 'berlin' | 'london' | 'paris' | 'shanghai'
-
 export interface ContractData {
   abi: any[];
   name: string;
-  evmVersion: EvmVersion | 'Default';
+  evmVersion: string;
   compilerVersion: string;
   runs: number;
 }
