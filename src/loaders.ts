@@ -2,6 +2,15 @@ import { addressWithChecksum, fetchJSON } from "./utils.js";
 
 export interface ABILoader {
   loadABI(address: string): Promise<any[]>;
+  getContract(address: string): Promise<ContractData | null>
+}
+
+export interface ContractData {
+  abi: any[];
+  name: string | null;
+  evmVersion: string;
+  compilerVersion: string;
+  runs: number;
 }
 
 // Load ABIs from multiple providers until a result is found.
@@ -10,6 +19,19 @@ export class MultiABILoader implements ABILoader {
 
   constructor(loaders: ABILoader[]) {
     this.loaders = loaders;
+  }
+
+  async getContract(address: string): Promise<ContractData | null> {
+    for (const loader of this.loaders) {
+      try {
+        const r = await loader.getContract(address);
+        if (r && r.abi.length > 0) return Promise.resolve(r);
+      } catch (error: any) {
+        if (error.status === 404) continue;
+        throw error;
+      }
+    }
+    return null
   }
 
   async loadABI(address: string): Promise<any[]> {
@@ -31,6 +53,27 @@ export class EtherscanABILoader implements ABILoader {
     if (config === undefined) config = {};
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL || "https://api.etherscan.io/api";
+  }
+
+  async getContract(address: string): Promise<ContractData | null> {
+    let url = this.baseURL + '?module=contract&action=getsourcecode&address=' + address;
+    if (this.apiKey) url += "&apikey=" + this.apiKey;
+
+    const r = await fetchJSON(url);
+    if (r.status === "0") {
+        if (r.result === "Contract source code not verified") return null;
+
+        throw new Error("Etherscan error: " + r.result);
+    }
+
+    const result = r.result[0];
+    return {
+      abi: JSON.parse(result.ABI),
+      name: result.ContractName,
+      evmVersion: result.EVMVersion,
+      compilerVersion: result.CompilerVersion,
+      runs: result.Runs,
+    };
   }
 
   async loadABI(address: string): Promise<any[]> {
@@ -62,6 +105,41 @@ export class SourcifyABILoader implements ABILoader {
 
   constructor(config?: {chainId?: number}) {
     this.chainId = config?.chainId ?? 1;
+  }
+
+  async getContract(address: string): Promise<ContractData | null> {
+    // Sourcify doesn't like it when the address is not checksummed
+    address = addressWithChecksum(address);
+
+    try {
+        // Full match index includes verification settings that matches exactly
+        const r = await fetchJSON("https://repo.sourcify.dev/contracts/full_match/"+ this.chainId + "/" + address + "/metadata.json");
+        return {
+            abi: r.output.abi,
+            name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
+            evmVersion: r.settings.evmVersion,
+            compilerVersion: r.compiler.version,
+            runs: r.settings.optimizer.runs,
+        };
+    } catch (error: any) {
+        if (!isSourcifyNotFound(error)) throw error;
+    }
+
+    try {
+        // Partial match index is for verified contracts whose settings didn't match exactly
+        const r = await fetchJSON("https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json");
+        return {
+            abi: r.output.abi,
+            name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
+            evmVersion: r.settings.evmVersion,
+            compilerVersion: r.compiler.version,
+            runs: r.settings.optimizer.runs,
+        };
+    } catch (error: any) {
+        if (!isSourcifyNotFound(error)) throw error;
+    }
+
+    return null
   }
 
   async loadABI(address: string): Promise<any[]> {
@@ -167,7 +245,7 @@ export class OpenChainSignatureLookup implements SignatureLookup {
   }
 }
 
-export class SamczunSignatureLookup extends OpenChainSignatureLookup {};
+export class SamczunSignatureLookup extends OpenChainSignatureLookup {}
 
 export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanABILoader()]);
 export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new OpenChainSignatureLookup(), new FourByteSignatureLookup()]);
