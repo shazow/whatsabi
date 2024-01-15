@@ -7,7 +7,7 @@ export interface ABILoader {
 
 export interface ContractData {
   abi: any[];
-  name: string;
+  name: string | null;
   evmVersion: string;
   compilerVersion: string;
   runs: number;
@@ -116,7 +116,7 @@ export class SourcifyABILoader implements ABILoader {
         const r = await fetchJSON("https://repo.sourcify.dev/contracts/full_match/"+ this.chainId + "/" + address + "/metadata.json");
         return {
             abi: r.output.abi,
-            name: r.devdoc?.title || r.userdoc?.title || '', // Sourcify includes a title from the Natspec comments
+            name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
             evmVersion: r.settings.evmVersion,
             compilerVersion: r.compiler.version,
             runs: r.settings.optimizer.runs,
@@ -130,10 +130,10 @@ export class SourcifyABILoader implements ABILoader {
         const r = await fetchJSON("https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json");
         return {
             abi: r.output.abi,
-            name: r.metadata.contractName,
-            evmVersion: r.metadata.evmVersion,
+            name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
+            evmVersion: r.settings.evmVersion,
             compilerVersion: r.compiler.version,
-            runs: r.metadata.settings.runs,
+            runs: r.settings.optimizer.runs,
         };
     } catch (error: any) {
         if (!isSourcifyNotFound(error)) throw error;
