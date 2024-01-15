@@ -61,7 +61,7 @@ export class EtherscanABILoader implements ABILoader {
 
     const r = await fetchJSON(url);
     if (r.status === "0") {
-        if (r.result === "Contract source code not verified") return {abi: [], name: '', evmVersion: 'Default', compilerVersion: '', runs: 0};
+        if (r.result === "Contract source code not verified") return null;
 
         throw new Error("Etherscan error: " + r.result);
     }
@@ -139,7 +139,7 @@ export class SourcifyABILoader implements ABILoader {
         if (!isSourcifyNotFound(error)) throw error;
     }
 
-    return {abi: [], name: '', evmVersion: 'Default', compilerVersion: '', runs: 0};
+    return null
   }
 
   async loadABI(address: string): Promise<any[]> {
