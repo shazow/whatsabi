@@ -1,16 +1,28 @@
 import { addressWithChecksum, fetchJSON } from "./utils.js";
 
-export interface ABILoader {
-  loadABI(address: string): Promise<any[]>;
-  getContract(address: string): Promise<ContractData | null>
-}
-
-export interface ContractData {
+export type ContractResult = {
   abi: any[];
   name: string | null;
   evmVersion: string;
   compilerVersion: string;
   runs: number;
+
+  ok: boolean; // False if no result is found
+}
+
+const emptyContractResult : ContractResult = {
+  ok: false,
+
+  abi: [],
+  name: null,
+  evmVersion: "",
+  compilerVersion: "",
+  runs: 0,
+}
+
+export interface ABILoader {
+  loadABI(address: string): Promise<any[]>;
+  getContract(address: string): Promise<ContractResult>
 }
 
 // Load ABIs from multiple providers until a result is found.
@@ -21,7 +33,7 @@ export class MultiABILoader implements ABILoader {
     this.loaders = loaders;
   }
 
-  async getContract(address: string): Promise<ContractData | null> {
+  async getContract(address: string): Promise<ContractResult> {
     for (const loader of this.loaders) {
       try {
         const r = await loader.getContract(address);
@@ -31,7 +43,7 @@ export class MultiABILoader implements ABILoader {
         throw error;
       }
     }
-    return null
+    return emptyContractResult;
   }
 
   async loadABI(address: string): Promise<any[]> {
@@ -55,13 +67,13 @@ export class EtherscanABILoader implements ABILoader {
     this.baseURL = config.baseURL || "https://api.etherscan.io/api";
   }
 
-  async getContract(address: string): Promise<ContractData | null> {
+  async getContract(address: string): Promise<ContractResult> {
     let url = this.baseURL + '?module=contract&action=getsourcecode&address=' + address;
     if (this.apiKey) url += "&apikey=" + this.apiKey;
 
     const r = await fetchJSON(url);
     if (r.status === "0") {
-        if (r.result === "Contract source code not verified") return null;
+        if (r.result === "Contract source code not verified") return emptyContractResult;
 
         throw new Error("Etherscan error: " + r.result);
     }
@@ -73,6 +85,8 @@ export class EtherscanABILoader implements ABILoader {
       evmVersion: result.EVMVersion,
       compilerVersion: result.CompilerVersion,
       runs: result.Runs,
+
+      ok: true,
     };
   }
 
@@ -107,7 +121,7 @@ export class SourcifyABILoader implements ABILoader {
     this.chainId = config?.chainId ?? 1;
   }
 
-  async getContract(address: string): Promise<ContractData | null> {
+  async getContract(address: string): Promise<ContractResult> {
     // Sourcify doesn't like it when the address is not checksummed
     address = addressWithChecksum(address);
 
@@ -120,6 +134,8 @@ export class SourcifyABILoader implements ABILoader {
             evmVersion: r.settings.evmVersion,
             compilerVersion: r.compiler.version,
             runs: r.settings.optimizer.runs,
+
+            ok: true,
         };
     } catch (error: any) {
         if (!isSourcifyNotFound(error)) throw error;
@@ -134,12 +150,14 @@ export class SourcifyABILoader implements ABILoader {
             evmVersion: r.settings.evmVersion,
             compilerVersion: r.compiler.version,
             runs: r.settings.optimizer.runs,
+
+            ok: true,
         };
     } catch (error: any) {
         if (!isSourcifyNotFound(error)) throw error;
     }
 
-    return null
+    return emptyContractResult;
   }
 
   async loadABI(address: string): Promise<any[]> {
