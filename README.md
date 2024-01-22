@@ -26,12 +26,25 @@ What can WhatsABI do?
 
 ## Usage
 
+Quick start:
+
 ```typescript
 import { ethers } from "ethers";
 import { whatsabi } from "@shazow/whatsabi";
 
 const provider = ethers.getDefaultProvider(); // substitute with your fav provider
 const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
+
+// Quick-start:
+
+const result = await whatsabi.autoload(address, { provider });
+console.log(result.abi);
+// -> [ ... ]
+```
+
+Breaking it down:
+
+```typescript
 const code = await provider.getCode(address); // Load the bytecode
 
 // Get just the callable selectors
@@ -62,16 +75,16 @@ console.log(await signatureLookup.loadEvents("0x721c20121297512b72821b97f5326877
 
 // Here's a multiloader with an Etherscan API key, it can be used with autoload below.
 // Each source will be attempted until a result is found.
-const abiLoader = new whatsabi.loaders.MultiABILoader([
+const loader = new whatsabi.loaders.MultiABILoader([
   new whatsabi.loaders.SourcifyABILoader(),
   new whatsabi.loaders.EtherscanABILoader({
     apiKey: "...", // Replace the value with your Etherscan API key
   }),
 ]);
-console.log(await abiLoader.loadABI(address));
+const { abi, name, /* ... other metadata */ } = await loader.getContract(address));
 ```
 
-Bonus do-all-the-things helper:
+All together with our do-all-the-things helper:
 
 ```typescript
 ...
