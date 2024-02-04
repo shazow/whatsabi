@@ -233,6 +233,21 @@ export class FixedProxyResolver extends BaseProxyResolver implements ProxyResolv
     }
 };
 
+// UnknownProxyResolver is used when we don't know what kind of proxy this is, so we attach some details to figure out later.
+export class UnknownProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    context : any;
+
+    constructor(context: any) {
+        super("UnknownProxy");
+        this.context = context;
+    }
+
+    async resolve(provider: StorageProvider, address: string): Promise<string> {
+        throw new Error("UnknownProxy: " + JSON.stringify(this.context));
+    }
+};
+
+
 
 // Lookups:
 
