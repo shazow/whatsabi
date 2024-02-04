@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
 
+import { cached_test, describe_cached } from "./env";
 import { selectorsFromBytecode } from '../index';
 
 //const address = "0xbadc0defafcf6d4239bdf0b66da4d7bd36fcf05a";
@@ -66,6 +67,20 @@ test('issue 67', () => {
   const r = selectorsFromBytecode(bytecode);
   expect(r).toEqual([
   ]);
+});
+
+cached_test('issue 70: negated selector', async ({ provider, withCache }) => {
+  const address = "0x000000000090d2b159528c290616CF919B24e1d9";
+
+  const code = await withCache(
+    `${address}_code`,
+    async () => {
+      return await provider.getCode(address)
+    },
+  )
+
+  const r = selectorsFromBytecode(code);
+  expect(r).toEqual(expect.arrayContaining(["0xfd9f1e10"]))
 });
 
 // Addresses with false positive zero selectors:

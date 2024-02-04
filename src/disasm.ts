@@ -146,6 +146,7 @@ export class Program {
     dests: { [key: number]: Function }; // instruction offset -> Function
     selectors: { [key: string]: number }; // function hash -> instruction offset
     notPayable: { [key: number]: number }; // instruction offset -> bytes offset
+    fallback?: number; // instruction offset for fallback function
 
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
     proxySlots: Array<string>; // PUSH32 found that match known proxy slots
@@ -230,6 +231,7 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
     let p : Program = new Program();
 
     const selectorDests = new Set<number>();
+    let invertedSelector = "";
 
     let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
     let checkJumpTable: boolean = true;
@@ -371,9 +373,16 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
         // We're in a jump table section now. Let's find some selectors.
 
         if (inst === opcodes.JUMP && isPush(code.at(-2))) {
-            // The table is continued elsewhere? Or could be a default target
             const offsetDest: number = valueToOffset(code.valueAt(-2));
-            resumeJumpTable.add(offsetDest);
+
+            if (invertedSelector !== "") {
+                p.selectors[invertedSelector] = offsetDest;
+                selectorDests.add(offsetDest);
+                invertedSelector = "";
+            } else {
+                // The table is continued elsewhere? Or could be a default target
+                resumeJumpTable.add(offsetDest);
+            }
         }
 
         // Beyond this, we're only looking with instruction sequences that end with 
@@ -431,6 +440,18 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             selectorDests.add(offsetDest);
 
             continue;
+        }
+
+        // Sometimes the final selector is negated using SUB
+        //    PUSHN <SELECTOR> SUB PUSHN <OFFSET> JUMPI ... <OFFSET> <JUMP>
+        //                                        ^ We are here (at -1)
+        if (
+            code.at(-3) === opcodes.SUB &&
+            isPush(code.at(-4))
+        ) {
+            // Found an inverted JUMPI, probably a final "else" condition
+            invertedSelector = bytesToHex(code.valueAt(-4), 4);
+            p.fallback = offsetDest; // Fallback
         }
 
         // In some cases, the sequence can get optimized such as for 0x00000000:

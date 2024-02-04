@@ -7,8 +7,9 @@ const env = {
     INFURA_API_KEY: process.env.INFURA_API_KEY,
     ETHERSCAN_API_KEY: process.env.ETHERSCAN_API_KEY,
     PROVIDER: process.env.PROVIDER,
+    NETWORK: process.env.NETWORK,
 };
-const provider = env.INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
+const provider = env.INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider(env.NETWORK || "homestead");
 
 // Helper
 // https://stackoverflow.com/questions/11731072/dividing-an-array-by-filter-function 
