@@ -2,27 +2,29 @@
 
 # WhatsABI
 
-Guess an ABI from an Ethereum contract address, even if it's unverified.
-
-WhatsABI does bounded-complexity static analysis to disassemble EVM bytecode and map out the possible call flows,
-which allows us to discover function selectors and other metadata about the contract.
+Guess an ABI and detect proxies from an Ethereum bytecode, even if it's unverified.
 
 WhatsABI is perfect for building procedural frontends, embedding in wallets, block explorers, or doing bytecode analysis.
 
 ## Features
 
-WhatsABI is different from other EVM analysis tools in some important ways:
+**What can WhatsABI do**?
+- Return selectors from bytecode.
+- Look up function signatures from selectors.
+- Helpers for looking up ABI and signatures from public databases (like Sourcify, Etherscan, OpenChain, 4Byte).
+- ✨ Resolve proxy contracts!
+- Small bundle (less than 15 KB) that works with Ethers.js, Viem, and others.
+
+**WhatsABI is different from other EVM analysis tools in some important ways:**
 - Built in Typescript with minimal dependencies, so that it is **runnable in the browser and embeddable in wallets.**
 - Algorithms used are limited to `O(instructions)` with a small constant factor, so that **complex contracts don't cause it to time out or use unbounded memory.**
 - Does not rely on source code, so it **works with unverified contracts.**
 - Does not assume the source language, so it can work for source languages other than Solidity (Vyper, or even hand-written assembly).
 - Permissive open source (MIT-licensed), so that anyone can use it.
 
-What can WhatsABI do?
-- Return selectors from bytecode.
-- Look up function signatures from selectors.
-- ✨ Resolve proxy contracts!
-- Small bundle (less than 15 KB) that works with Ethers.js, Viem, and others.
+## Docs
+
+- https://tsdocs.dev/docs/@shazow/whatsabi
 
 ## Usage
 
