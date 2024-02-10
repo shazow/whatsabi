@@ -22,11 +22,9 @@ WhatsABI is perfect for building procedural frontends, embedding in wallets, blo
 - Does not assume the source language, so it can work for source languages other than Solidity (Vyper, or even hand-written assembly).
 - Permissive open source (MIT-licensed), so that anyone can use it.
 
-## Docs
-
-- https://tsdocs.dev/docs/@shazow/whatsabi
-
 ## Usage
+
+Generated docs: https://tsdocs.dev/docs/@shazow/whatsabi
 
 Quick start:
 
