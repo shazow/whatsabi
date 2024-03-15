@@ -23,7 +23,7 @@
           export PS1="[dev] $PS1"
           export PATH=$PWD/node_modules/.bin:$PATH
 
-          [[ ! -d node_modules ]] && npm install
+          [[ ! -d node_modules ]] && pnpm install
 
           [[ -f .env ]] && source .env
         '';
