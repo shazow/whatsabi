@@ -6,7 +6,7 @@ import { hexToBytes, bytesToHex } from "./utils.js";
 
 import { opcodes, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes.js";
 
-import { slotResolvers, SequenceWalletProxyResolver, FixedProxyResolver } from "./proxies.js";
+import { slotResolvers, SequenceWalletProxyResolver, FixedProxyResolver, UnknownProxyResolver } from "./proxies.js";
 
 
 function valueToOffset(value: Uint8Array): number {
@@ -149,7 +149,7 @@ export class Program {
     fallback?: number; // instruction offset for fallback function
 
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
-    proxySlots: Array<string>; // PUSH32 found that match known proxy slots
+    fixedSlots: Array<string>; // PUSH32 followed by SLOAD
     proxies: Array<ProxyResolver>;
 
     init?: Program; // Program embedded as init code
@@ -159,7 +159,7 @@ export class Program {
         this.selectors = {};
         this.notPayable = {};
         this.eventCandidates = [];
-        this.proxySlots = [];
+        this.fixedSlots = [];
         this.proxies = [];
         this.init = init;
     }
@@ -265,6 +265,13 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             continue
         }
 
+        if (inst === opcodes.SLOAD &&
+            isPush(code.at(-2))
+        ) {
+            const slot = bytesToHex(code.valueAt(-2));
+            p.fixedSlots.push(slot);
+        }
+
         // Possible minimal proxy pattern? EIP-1167
         if (inst === opcodes.DELEGATECALL &&
             code.at(-2) === opcodes.GAS) {
@@ -281,6 +288,15 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             ) {
                 // SequenceWallet-style proxy (keyed on address)
                 p.proxies.push(new SequenceWalletProxyResolver());
+
+            } else if (
+                code.at(-3) === opcodes.DUP5 &&
+                p.fixedSlots.length > 0
+            ) {
+                // Might be a custom TransparentProxy? Not handling it yet
+                p.proxies.push(new UnknownProxyResolver({
+                    slot: p.fixedSlots[0] || undefined,
+                }));
             }
         }
 
