@@ -10,7 +10,7 @@ import { defaultABILoader, defaultSignatureLookup } from "./loaders.js";
 import { abiFromBytecode, disasm } from "./disasm.js";
 
 function isAddress(address: string) {
-    return address.length === 42 && address.startsWith("0x");
+    return address.length === 42 && address.startsWith("0x") && Number(address) >= 0;
 }
 
 export const defaultConfig = {
@@ -45,6 +45,8 @@ export type AutoloadConfig = {
     // Called during any encountered errors during a given phase
     onError?: (phase: string, error: Error) => boolean|void; // Return true-y to abort, undefined/false-y to continue
 
+    // Called to resolve invalid addresses, uses provider's built-in resolver otherwise
+    addressResolver?: (name: string) => Promise<string>;
 
     // Settings:
 
@@ -76,7 +78,11 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
 
     if (!isAddress(address)) {
         onProgress("resolveName", {address});
-        address = await provider.getAddress(address);
+        if (config.addressResolver) {
+            address = await config.addressResolver(address);
+        } else {
+            address = await provider.getAddress(address);
+        }
     }
 
     // Load code, we need to disasm to find proxies
