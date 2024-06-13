@@ -85,7 +85,7 @@ describe('known proxy resolving', () => {
         const address = "0xff1f2b4adb9df6fc8eafecdcbf96a2b351680455";
         const resolver = new proxies.EIP1967ProxyResolver();
         const got = await resolver.resolve(provider, address);
-        const wantImplementation = "0x8430be7b8fd28cc58ea70a25c9c7a624f26f5d09";
+        const wantImplementation = "0x7d657ddcf7e2a5fd118dc8a6ddc3dc308adc2728";
 
         expect(got).toEqual(wantImplementation);
     });
@@ -104,7 +104,7 @@ describe('known proxy resolving', () => {
 
         const address = "0x32400084C286CF3E17e7B677ea9583e60a000324";
         const resolver = new proxies.DiamondProxyResolver();
-        const selector = "0x4fc07d75";  // function getGovernor() returns (address)
+        const selector = "0x6e9960c3";  // function getAdmin() returns (address)
         const got = await resolver.resolve(provider, address, selector);
 
         // ZkSync updates their proxies so it's annoying to maintain the desired mapping
