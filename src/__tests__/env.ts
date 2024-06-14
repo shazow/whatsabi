@@ -9,16 +9,22 @@ import { CompatibleProvider } from "../types.js";
 const env = {
     INFURA_API_KEY: process.env.INFURA_API_KEY,
     ETHERSCAN_API_KEY: process.env.ETHERSCAN_API_KEY,
+
     PROVIDER: process.env.PROVIDER,
+    PROVIDER_RPC_URL: process.env.PROVIDER_RPC_URL,
 };
 
 const provider = CompatibleProvider(function() {
+    let rpc_url = env.PROVIDER_RPC_URL ?? "https://mainnet.infura.io/v3/" + env.INFURA_API_KEY;
     if (env.PROVIDER === "viem") {
         return createPublicClient({
-            transport: http(env.INFURA_API_KEY ? "https://mainnet.infura.io/v3/" + env.INFURA_API_KEY : undefined),
+            transport: http(rpc_url),
         });
     }
-    return env.INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
+    // env.provider == "ethers"
+    if (env.PROVIDER_RPC_URL) return new ethers.JsonRpcProvider(rpc_url);
+    if (env.INFURA_API_KEY) return new ethers.InfuraProvider("homestead", env.INFURA_API_KEY);
+    return ethers.getDefaultProvider("homestead");
 }());
 
 type ItConcurrent = typeof test.skip;

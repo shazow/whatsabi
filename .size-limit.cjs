@@ -7,6 +7,6 @@ module.exports = [
   {
     path: "lib.cjs/index.js",
     import: "{ whatsabi }",
-    limit: "160 kb"
+    limit: "165 kb"
   }
 ]

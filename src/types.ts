@@ -75,6 +75,10 @@ class Ethers6Provider extends Ethers5Provider {
     getStorageAt(address: string, slot: number|string): Promise<string> {
         return this.provider.getStorage(address, slot);
     }
+
+    getAddress(name: string): Promise<string> {
+        return this.provider.resolveName(name);
+    }
 }
 
 class ViemProvider extends Web3Provider {
@@ -86,7 +90,7 @@ class ViemProvider extends Web3Provider {
     }
 
     call(transaction: {to: string, data: string}): Promise<string> {
-        // Note: We can't use viem's provider.call because it does some fun dynamic module loading optimizations (maybe also related to auto batching?) which segfaults on some enviornments.
+        // Note: We can't use viem's provider.call because it does some fun dynamic module loading optimizations (maybe also related to auto batching?) which segfaults on some environments.
         return this.provider.transport.request({method: "eth_call", params: [{
             from: "0x0000000000000000000000000000000000000001",
             to: transaction.to,
