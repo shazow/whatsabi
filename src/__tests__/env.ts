@@ -14,20 +14,22 @@ const env = {
     PROVIDER_RPC_URL: process.env.PROVIDER_RPC_URL,
 };
 
+const DEFAULT_PUBLIC_RPC = "https://ethereum-rpc.publicnode.com";
+
 const provider = CompatibleProvider(function() {
-    let rpc_url = env.PROVIDER_RPC_URL;
     if (env.PROVIDER === "viem") {
+        let rpc_url = env.PROVIDER_RPC_URL;
         if (env.INFURA_API_KEY) {
             rpc_url = "https://mainnet.infura.io/v3/" + env.INFURA_API_KEY;
         }
         return createPublicClient({
-            transport: http(rpc_url),
+            transport: http(rpc_url ?? DEFAULT_PUBLIC_RPC),
         });
     }
     // env.provider == "ethers"
-    if (env.PROVIDER_RPC_URL) return new ethers.JsonRpcProvider(rpc_url);
+    if (env.PROVIDER_RPC_URL) return new ethers.JsonRpcProvider(env.PROVIDER_RPC_URL);
     if (env.INFURA_API_KEY) return new ethers.InfuraProvider("homestead", env.INFURA_API_KEY);
-    return ethers.getDefaultProvider("homestead");
+    return new ethers.JsonRpcProvider(DEFAULT_PUBLIC_RPC);
 }());
 
 type ItConcurrent = typeof test.skip;
