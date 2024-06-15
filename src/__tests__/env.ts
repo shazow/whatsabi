@@ -15,8 +15,11 @@ const env = {
 };
 
 const provider = CompatibleProvider(function() {
-    let rpc_url = env.PROVIDER_RPC_URL ?? "https://mainnet.infura.io/v3/" + env.INFURA_API_KEY;
+    let rpc_url = env.PROVIDER_RPC_URL;
     if (env.PROVIDER === "viem") {
+        if (env.INFURA_API_KEY) {
+            rpc_url = "https://mainnet.infura.io/v3/" + env.INFURA_API_KEY;
+        }
         return createPublicClient({
             transport: http(rpc_url),
         });
