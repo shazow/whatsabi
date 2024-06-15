@@ -110,6 +110,9 @@ let result = await whatsabi.autoload(address, {
   onProgress: (phase) => console.log("autoload progress", phase),
   onError: (phase, context) => console.log("autoload error", phase, context),
 
+  // * Optional overrides:
+  // addressResolver: (name: string) => Promise<string>
+
   // * Optional settings:
   // followProxies: false,
   // enableExperimentalMetadata: false,

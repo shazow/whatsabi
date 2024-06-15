@@ -1,7 +1,7 @@
 {
   "name": "@shazow/whatsabi",
   "version": "0.12.0",
-  "description": "Guess an ABI from Ethereum bytecode, even if it's unverified",
+  "description": "Resolve proxies and get an ABI from Ethereum bytecode, even if it's unverified",
   "type": "module",
   "scripts": {
     "test": "vitest run",
@@ -45,7 +45,7 @@
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
     "size-limit": "^8.2.6",
-    "tsx": "^4.12.0",
+    "tsx": "^4.15.5",
     "viem": "^1.21.4",
     "vitest": "^0.34.6"
   },

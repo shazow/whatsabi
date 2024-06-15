@@ -1,6 +1,5 @@
 build:
 	tsc --project tsconfig.esm.json
-	size-limit
 
 watch:
 	tsc --project tsconfig.esm.json -w
