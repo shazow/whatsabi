@@ -26,13 +26,16 @@ export interface AnyProvider {}; // TODO: Can we narrow this more?
 
 export function CompatibleProvider(provider: any): Provider {
     if (typeof provider.getAddress === "function") {
-        return new Web3Provider(provider);
+        return new GenericProvider(provider);
     }
     if (typeof provider.resolveName === "function") {
         return new EthersProvider(provider);
     }
     if (typeof provider.getEnsAddress === "function") {
         return new ViemProvider(provider);
+    }
+    if (typeof provider.eth !== undefined) {
+        return new Web3Provider(provider);
     }
 
     throw new Error("Unsupported provider, please open an issue: https://github.com/shazow/whatsabi/issues");
@@ -76,7 +79,7 @@ abstract class RPCProvider implements Provider {
 
 }
 
-class Web3Provider implements Provider {
+class GenericProvider implements Provider {
     provider: any;
 
     constructor(provider: any) {
@@ -99,6 +102,31 @@ class Web3Provider implements Provider {
         return this.provider.getAddress(name);
     }
 }
+
+type JSONRPCResponse = {
+    result?: string,
+    error?: {
+        id: number,
+        message: string,
+    };
+};
+
+class Web3Provider extends RPCProvider {
+    send(method: string, params: Array<any>): Promise<any> {
+        // this.provider is the web3 instance, we need web3.provider
+        const r = this.provider.currentProvider.request({method, params, "jsonrpc": "2.0", id: "1"});
+        return r.then((resp : JSONRPCResponse) => {
+            if (resp.result) return resp.result;
+            else if (resp.error) throw new Error(resp.error.message);
+            return resp;
+        });
+    }
+
+    getAddress(name: string): Promise<string> {
+        return this.provider.eth.ens.getAddress(name)
+    }
+}
+
 
 class EthersProvider extends RPCProvider {
     send(method: string, params: Array<any>): Promise<any> {

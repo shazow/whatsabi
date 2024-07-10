@@ -36,7 +36,7 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "ethers": "^6.13.0"
+    "ethers": "^6.13.1"
   },
   "peerDependencies": {
     "@noble/hashes": "^1"
@@ -45,9 +45,10 @@
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
     "size-limit": "^8.2.6",
-    "tsx": "^4.15.5",
-    "viem": "^1.21.4",
-    "vitest": "^0.34.6"
+    "tsx": "^4.16.2",
+    "viem": "^2.17.3",
+    "vitest": "^0.34.6",
+    "web3": "^4.10.0"
   },
   "main": "./lib.cjs/index.js",
   "module": "./lib.esm/index.js",
