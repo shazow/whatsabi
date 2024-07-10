@@ -31,11 +31,11 @@ export function CompatibleProvider(provider: any): Provider {
     if (typeof provider.getStorage === "function") {
         return new Ethers6Provider(provider);
     }
-    if (typeof provider.getCode === "function") {
-        return new Ethers5Provider(provider);
-    }
     if (typeof provider.getBytecode === "function") {
         return new ViemProvider(provider);
+    }
+    if (typeof provider.getCode === "function") {
+        return new Ethers5Provider(provider);
     }
 
     throw new Error("Unsupported provider, please open an issue: https://github.com/shazow/whatsabi/issues");
