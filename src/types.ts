@@ -26,22 +26,60 @@ export interface AnyProvider {}; // TODO: Can we narrow this more?
 
 export function CompatibleProvider(provider: any): Provider {
     if (typeof provider.getAddress === "function") {
-        return new Web3Provider(provider);
+        return new GenericProvider(provider);
     }
-    if (typeof provider.getStorage === "function") {
-        return new Ethers6Provider(provider);
+    if (typeof provider.resolveName === "function") {
+        return new EthersProvider(provider);
     }
-    if (typeof provider.getBytecode === "function") {
+    if (typeof provider.getEnsAddress === "function") {
         return new ViemProvider(provider);
     }
-    if (typeof provider.getCode === "function") {
-        return new Ethers5Provider(provider);
+    if (typeof provider.eth !== undefined) {
+        return new Web3Provider(provider);
     }
 
     throw new Error("Unsupported provider, please open an issue: https://github.com/shazow/whatsabi/issues");
 }
 
-class Web3Provider implements Provider {
+// RPCPRovider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
+// and instead have a discovery for the lowest-level RPC call function that we can use directly.
+// At least whenever possible. Higher-level functionality like getAddress is still tricky.
+abstract class RPCProvider implements Provider {
+    provider: any;
+
+    constructor(provider: any) {
+        this.provider = provider;
+    }
+
+    abstract send(method: string, params: Array<any>): Promise<any>;
+
+    getStorageAt(address: string, slot: number|string): Promise<string> {
+        if (typeof slot === "number") {
+            slot = bytesToHex(slot);
+        }
+        return this.send("eth_getStorageAt", [address, slot, "latest"]);
+    }
+
+    call(transaction: {to: string, data: string}): Promise<string> {
+        return this.send("eth_call", [
+            {
+                from: "0x0000000000000000000000000000000000000001",
+                to: transaction.to,
+                data: transaction.data,
+            },
+            "latest"
+        ]);
+    }
+
+    getCode(address: string): Promise<string> {
+        return this.send("eth_getCode", [address, "latest"]);
+    }
+
+    abstract getAddress(name: string): Promise<string>;
+
+}
+
+class GenericProvider implements Provider {
     provider: any;
 
     constructor(provider: any) {
@@ -65,41 +103,44 @@ class Web3Provider implements Provider {
     }
 }
 
-class Ethers5Provider extends Web3Provider {
+type JSONRPCResponse = {
+    result?: string,
+    error?: {
+        id: number,
+        message: string,
+    };
+};
+
+class Web3Provider extends RPCProvider {
+    send(method: string, params: Array<any>): Promise<any> {
+        // this.provider is the web3 instance, we need web3.provider
+        const r = this.provider.currentProvider.request({method, params, "jsonrpc": "2.0", id: "1"});
+        return r.then((resp : JSONRPCResponse) => {
+            if (resp.result) return resp.result;
+            else if (resp.error) throw new Error(resp.error.message);
+            return resp;
+        });
+    }
+
+    getAddress(name: string): Promise<string> {
+        return this.provider.eth.ens.getAddress(name)
+    }
+}
+
+
+class EthersProvider extends RPCProvider {
+    send(method: string, params: Array<any>): Promise<any> {
+        return this.provider.send(method, params);
+    }
+
     getAddress(name: string): Promise<string> {
         return this.provider.resolveName(name);
     }
 }
 
-class Ethers6Provider extends Ethers5Provider {
-    getStorageAt(address: string, slot: number|string): Promise<string> {
-        return this.provider.getStorage(address, slot);
-    }
-
-    getAddress(name: string): Promise<string> {
-        return this.provider.resolveName(name);
-    }
-}
-
-class ViemProvider extends Web3Provider {
-    getStorageAt(address: string, slot: number|string): Promise<string> {
-        if (typeof slot === "number") {
-            slot = bytesToHex(slot);
-        }
-        return this.provider.getStorageAt({address, slot});
-    }
-
-    call(transaction: {to: string, data: string}): Promise<string> {
-        // Note: We can't use viem's provider.call because it does some fun dynamic module loading optimizations (maybe also related to auto batching?) which segfaults on some environments.
-        return this.provider.transport.request({method: "eth_call", params: [{
-            from: "0x0000000000000000000000000000000000000001",
-            to: transaction.to,
-            data: transaction.data,
-        }, "latest"]});
-    }
-
-    getCode(address: string): Promise<string> {
-        return this.provider.getBytecode({address});
+class ViemProvider extends RPCProvider {
+    send(method: string, params: Array<any>): Promise<any> {
+        return this.provider.transport.request({method, params});
     }
 
     getAddress(name: string): Promise<string> {

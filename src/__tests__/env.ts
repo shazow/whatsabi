@@ -2,6 +2,7 @@ import { test, describe } from 'vitest';
 
 import { ethers } from "ethers";
 import { createPublicClient, http } from 'viem';
+import { Web3 } from "web3";
 
 import { withCache } from "../internal/filecache";
 import { CompatibleProvider } from "../types.js";
@@ -17,27 +18,36 @@ const env = {
 const DEFAULT_PUBLIC_RPC = "https://ethereum-rpc.publicnode.com";
 
 const provider = CompatibleProvider(function() {
+    let rpc_url = env.PROVIDER_RPC_URL;
+    if (env.INFURA_API_KEY) {
+        rpc_url = "https://mainnet.infura.io/v3/" + env.INFURA_API_KEY;
+    }
+
     if (env.PROVIDER === "viem") {
-        let rpc_url = env.PROVIDER_RPC_URL;
-        if (env.INFURA_API_KEY) {
-            rpc_url = "https://mainnet.infura.io/v3/" + env.INFURA_API_KEY;
-        }
         return createPublicClient({
             transport: http(rpc_url ?? DEFAULT_PUBLIC_RPC),
         });
     }
-    // env.provider == "ethers"
-    if (env.PROVIDER_RPC_URL) return new ethers.JsonRpcProvider(env.PROVIDER_RPC_URL);
-    if (env.INFURA_API_KEY) return new ethers.InfuraProvider("homestead", env.INFURA_API_KEY);
-    return new ethers.JsonRpcProvider(DEFAULT_PUBLIC_RPC);
+
+    if (env.PROVIDER === "web3") {
+        return new Web3(rpc_url ?? DEFAULT_PUBLIC_RPC);
+    }
+
+    if (!env.PROVIDER || env.PROVIDER === "ethers") {
+        if (env.PROVIDER_RPC_URL) return new ethers.JsonRpcProvider(env.PROVIDER_RPC_URL);
+        if (env.INFURA_API_KEY) return new ethers.InfuraProvider("homestead", env.INFURA_API_KEY);
+        return new ethers.JsonRpcProvider(DEFAULT_PUBLIC_RPC);
+    }
+
+    throw new Error("Unknown PROVIDER: " + env.PROVIDER);
 }());
 
 type ItConcurrent = typeof test.skip;
 
 type TestWithContext = (
-  name: string,
-  fn: (context: any) => void,
-  timeout?: number
+    name: string,
+    fn: (context: any) => void,
+    timeout?: number
 ) => void;
 
 function testerWithContext(tester: ItConcurrent, context: any): TestWithContext {
