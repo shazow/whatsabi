@@ -93,7 +93,10 @@ class GenericProvider implements Provider {
     }
 
     getStorageAt(address: string, slot: number|string): Promise<string> {
-        return this.provider.getStorageAt(address, slot);
+        if ("getStorageAt" in this.provider) {
+            return this.provider.getStorageAt(address, slot);
+        }
+        return this.provider.getStorage(address, slot);
     }
 
     call(transaction: {to: string, data: string}): Promise<string> {
