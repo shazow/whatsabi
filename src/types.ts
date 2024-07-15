@@ -29,7 +29,13 @@ export function CompatibleProvider(provider: any): Provider {
         return new GenericProvider(provider);
     }
     if (typeof provider.resolveName === "function") {
-        return new EthersProvider(provider);
+        // Ethers-like
+        if (typeof provider.send === "function") {
+            return new EthersProvider(provider);
+        }
+        // Probably FallbackProvider or a different custom wrapper?
+        // Need to use higher-level functions.
+        return new GenericProvider(provider);
     }
     if (typeof provider.getEnsAddress === "function") {
         return new ViemProvider(provider);
