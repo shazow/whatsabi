@@ -29,7 +29,13 @@ export function CompatibleProvider(provider: any): Provider {
         return new GenericProvider(provider);
     }
     if (typeof provider.resolveName === "function") {
-        return new EthersProvider(provider);
+        // Ethers-like
+        if (typeof provider.send === "function") {
+            return new EthersProvider(provider);
+        }
+        // Probably FallbackProvider or a different custom wrapper?
+        // Need to use higher-level functions.
+        return new GenericProvider(provider);
     }
     if (typeof provider.getEnsAddress === "function") {
         return new ViemProvider(provider);
@@ -87,7 +93,10 @@ class GenericProvider implements Provider {
     }
 
     getStorageAt(address: string, slot: number|string): Promise<string> {
-        return this.provider.getStorageAt(address, slot);
+        if ("getStorageAt" in this.provider) {
+            return this.provider.getStorageAt(address, slot);
+        }
+        return this.provider.getStorage(address, slot);
     }
 
     call(transaction: {to: string, data: string}): Promise<string> {
