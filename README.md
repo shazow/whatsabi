@@ -177,7 +177,8 @@ console.log("Resolved to:", address);
 
 ## Caveats
 
-* Finding valid function selectors works great!
+* If the contract is verified, `autoload` will just fetch the registered ABI and everything should be perfect either way.
+* Finding valid function selectors from bytecode works great!
 * Detecting Solidity-style function modifiers (view, payable, etc) is still unreliable.
 * There's some minimal attempts at guessing the presence of arguments, but also unreliable.
 * Call graph traversal only supports static jumps right now. Dynamic jumps are skipped until we add abstract stack tracing, this is the main cause of above's unreliability.
