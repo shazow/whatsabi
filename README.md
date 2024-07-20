@@ -156,6 +156,7 @@ console.log("Resolved to:", address);
 * [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/) - A frontend for whatsabi by [@w1nt3r_eth](https://twitter.com/w1nt3r_eth) - https://github.com/w1nt3r-eth/abi.w1nt3r.xyz
 * [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, [uses whatsabi for unverified contracts](https://github.com/verynifty/ethcmd)
 * [monobase.xyz](https://monobase.xyz) - Universal frontend, [uses whatsabi for unverified contracts](https://twitter.com/nazar_ilamanov/status/1659648915195707392)
+* [savvy](https://svvy.sh/) - Contract explorer that uses whatsabi to fetch ABIs and execute against an in-browser devnet, built by [0xpolarzero](https://x.com/0xpolarzero)
 
 ## Some Cool People Said...
 
