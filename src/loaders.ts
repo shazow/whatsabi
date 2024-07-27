@@ -1,4 +1,6 @@
 import { addressWithChecksum, fetchJSON } from "./utils.js";
+import type { FetchError } from "./utils.js";
+import * as errors from "./errors.js";
 
 export type ContractResult = {
   abi: any[];
@@ -10,7 +12,7 @@ export type ContractResult = {
   ok: boolean; // False if no result is found
 }
 
-const emptyContractResult : ContractResult = {
+const emptyContractResult: ContractResult = {
   ok: false,
 
   abi: [],
@@ -61,7 +63,7 @@ export class EtherscanABILoader implements ABILoader {
   apiKey?: string;
   baseURL: string;
 
-  constructor(config?: {apiKey?: string, baseURL?: string}) {
+  constructor(config?: { apiKey?: string, baseURL?: string }) {
     if (config === undefined) config = {};
     this.apiKey = config.apiKey;
     this.baseURL = config.baseURL || "https://api.etherscan.io/api";
@@ -71,53 +73,70 @@ export class EtherscanABILoader implements ABILoader {
     let url = this.baseURL + '?module=contract&action=getsourcecode&address=' + address;
     if (this.apiKey) url += "&apikey=" + this.apiKey;
 
-    const r = await fetchJSON(url);
-    if (r.status === "0") {
+    try {
+      const r = await fetchJSON(url);
+      if (r.status === "0") {
         if (r.result === "Contract source code not verified") return emptyContractResult;
+        throw new Error(r.result);  // This gets wrapped below
+      }
 
-        throw new Error("Etherscan error: " + r.result);
+      const result = r.result[0];
+      return {
+        abi: JSON.parse(result.ABI),
+        name: result.ContractName,
+        evmVersion: result.EVMVersion,
+        compilerVersion: result.CompilerVersion,
+        runs: result.Runs,
+
+        ok: true,
+      };
+    } catch (err: any) {
+      throw new EtherscanABILoaderError("EtherscanABILoader getContract error: " + err.message, {
+        context: { url, address },
+        cause: err,
+      });
     }
-
-    const result = r.result[0];
-    return {
-      abi: JSON.parse(result.ABI),
-      name: result.ContractName,
-      evmVersion: result.EVMVersion,
-      compilerVersion: result.CompilerVersion,
-      runs: result.Runs,
-
-      ok: true,
-    };
   }
 
   async loadABI(address: string): Promise<any[]> {
     let url = this.baseURL + '?module=contract&action=getabi&address=' + address;
     if (this.apiKey) url += "&apikey=" + this.apiKey;
 
-    const r = await fetchJSON(url);
-    if (r.status === "0") {
+    try {
+      const r = await fetchJSON(url);
+
+      if (r.status === "0") {
         if (r.result === "Contract source code not verified") return [];
+        throw new Error(r.result); // This gets wrapped below
+      }
 
-        throw new Error("Etherscan error: " + r.result);
+      return JSON.parse(r.result);
+
+    } catch (err: any) {
+      throw new EtherscanABILoaderError("EtherscanABILoader loadABI error: " + err.message, {
+        context: { url, address },
+        cause: err,
+      });
     }
-
-    return JSON.parse(r.result);
   }
 }
 
+export class EtherscanABILoaderError extends errors.LoaderError { };
+
+
 function isSourcifyNotFound(error: any): boolean {
-    return (
-      // Sourcify returns strict CORS only if there is no result -_-
-      error.message === "Failed to fetch" ||
-      error.status === 404
-    );
+  return (
+    // Sourcify returns strict CORS only if there is no result -_-
+    error.message === "Failed to fetch" ||
+    error.status === 404
+  );
 }
 
 // https://sourcify.dev/
 export class SourcifyABILoader implements ABILoader {
   chainId?: number;
 
-  constructor(config?: {chainId?: number}) {
+  constructor(config?: { chainId?: number }) {
     this.chainId = config?.chainId ?? 1;
   }
 
@@ -125,36 +144,52 @@ export class SourcifyABILoader implements ABILoader {
     // Sourcify doesn't like it when the address is not checksummed
     address = addressWithChecksum(address);
 
-    try {
-        // Full match index includes verification settings that matches exactly
-        const r = await fetchJSON("https://repo.sourcify.dev/contracts/full_match/"+ this.chainId + "/" + address + "/metadata.json");
+    {
+      // Full match index includes verification settings that matches exactly
+      const url = "https://repo.sourcify.dev/contracts/full_match/" + this.chainId + "/" + address + "/metadata.json";
+      try {
+        const r = await fetchJSON(url);
         return {
-            abi: r.output.abi,
-            name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
-            evmVersion: r.settings.evmVersion,
-            compilerVersion: r.compiler.version,
-            runs: r.settings.optimizer.runs,
+          abi: r.output.abi,
+          name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
+          evmVersion: r.settings.evmVersion,
+          compilerVersion: r.compiler.version,
+          runs: r.settings.optimizer.runs,
 
-            ok: true,
+          ok: true,
         };
-    } catch (error: any) {
-        if (!isSourcifyNotFound(error)) throw error;
+      } catch (err: any) {
+        if (!isSourcifyNotFound(err)) {
+          throw new SourcifyABILoaderError("SourcifyABILoader getContract error: " + err.message, {
+            context: { address, url },
+            cause: err,
+          });
+        }
+      }
     }
 
-    try {
-        // Partial match index is for verified contracts whose settings didn't match exactly
-        const r = await fetchJSON("https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json");
+    {
+      // Partial match index is for verified contracts whose settings didn't match exactly
+      const url = "https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json"
+      try {
+        const r = await fetchJSON(url);
         return {
-            abi: r.output.abi,
-            name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
-            evmVersion: r.settings.evmVersion,
-            compilerVersion: r.compiler.version,
-            runs: r.settings.optimizer.runs,
+          abi: r.output.abi,
+          name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
+          evmVersion: r.settings.evmVersion,
+          compilerVersion: r.compiler.version,
+          runs: r.settings.optimizer.runs,
 
-            ok: true,
+          ok: true,
         };
-    } catch (error: any) {
-        if (!isSourcifyNotFound(error)) throw error;
+      } catch (err: any) {
+        if (!isSourcifyNotFound(err)) {
+          throw new SourcifyABILoaderError("SourcifyABILoader getContract error: " + err.message, {
+            context: { address, url },
+            cause: err,
+          });
+        }
+      }
     }
 
     return emptyContractResult;
@@ -164,23 +199,41 @@ export class SourcifyABILoader implements ABILoader {
     // Sourcify doesn't like it when the address is not checksummed
     address = addressWithChecksum(address);
 
-    try {
+    {
       // Full match index includes verification settings that matches exactly
-      return (await fetchJSON("https://repo.sourcify.dev/contracts/full_match/"+ this.chainId + "/" + address + "/metadata.json")).output.abi;
-    } catch (error: any) {
-      if (!isSourcifyNotFound(error)) throw error;
+      const url = "https://repo.sourcify.dev/contracts/full_match/" + this.chainId + "/" + address + "/metadata.json";
+      try {
+        return (await fetchJSON(url)).output.abi;
+      } catch (err: any) {
+        if (!isSourcifyNotFound(err)) {
+          throw new SourcifyABILoaderError("SourcifyABILoader loadABI error: " + err.message, {
+            context: { address, url },
+            cause: err,
+          });
+        }
+      }
     }
 
-    try {
+    {
       // Partial match index is for verified contracts whose settings didn't match exactly
-      return (await fetchJSON("https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json")).output.abi;
-    } catch (error: any) {
-      if (!isSourcifyNotFound(error)) throw error;
+      const url = "https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json";
+      try {
+        return (await fetchJSON(url)).output.abi;
+      } catch (err: any) {
+        if (!isSourcifyNotFound(err)) {
+          throw new SourcifyABILoaderError("SourcifyABILoader loadABI error: " + err.message, {
+            context: { address, url },
+            cause: err,
+          });
+        }
+      }
     }
 
     return [];
   }
 }
+
+export class SourcifyABILoaderError extends errors.LoaderError { };
 
 export interface SignatureLookup {
   loadFunctions(selector: string): Promise<string[]>;
@@ -254,16 +307,16 @@ export class OpenChainSignatureLookup implements SignatureLookup {
 
   async loadFunctions(selector: string): Promise<string[]> {
     const r = await this.load("https://api.openchain.xyz/signature-database/v1/lookup?function=" + selector);
-    return (r.result.function[selector] || []).map((item:any) => item.name);
+    return (r.result.function[selector] || []).map((item: any) => item.name);
   }
 
   async loadEvents(hash: string): Promise<string[]> {
     const r = await this.load("https://api.openchain.xyz/signature-database/v1/lookup?event=" + hash);
-    return (r.result.event[hash] || []).map((item:any) => item.name);
+    return (r.result.event[hash] || []).map((item: any) => item.name);
   }
 }
 
-export class SamczunSignatureLookup extends OpenChainSignatureLookup {}
+export class SamczunSignatureLookup extends OpenChainSignatureLookup { }
 
 export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanABILoader()]);
 export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new OpenChainSignatureLookup(), new FourByteSignatureLookup()]);
@@ -271,11 +324,11 @@ export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup(
 type LoaderEnv = {
   ETHERSCAN_API_KEY?: string,
   ETHERSCAN_BASE_URL?: string,
-  SOURCIFY_CHAIN_ID?: string|number,
+  SOURCIFY_CHAIN_ID?: string | number,
 }
 
 /** @deprecated Use defaultsWithEnv instead, this function is outdated and will be removed soon. */
-export function defaultsWithAPIKeys(apiKeys: LoaderEnv): Record<string, ABILoader|SignatureLookup> {
+export function defaultsWithAPIKeys(apiKeys: LoaderEnv): Record<string, ABILoader | SignatureLookup> {
   return defaultsWithEnv(apiKeys);
 }
 
@@ -299,11 +352,11 @@ export function defaultsWithAPIKeys(apiKeys: LoaderEnv): Record<string, ABILoade
  * })
  * ```
  */
-export function defaultsWithEnv(env: LoaderEnv): Record<string, ABILoader|SignatureLookup> {
+export function defaultsWithEnv(env: LoaderEnv): Record<string, ABILoader | SignatureLookup> {
   return {
     abiLoader: new MultiABILoader([
-      new SourcifyABILoader({chainId: env.SOURCIFY_CHAIN_ID && Number(env.SOURCIFY_CHAIN_ID) || undefined}),
-      new EtherscanABILoader({apiKey: env.ETHERSCAN_API_KEY, baseURL: env.ETHERSCAN_BASE_URL}),
+      new SourcifyABILoader({ chainId: env.SOURCIFY_CHAIN_ID && Number(env.SOURCIFY_CHAIN_ID) || undefined }),
+      new EtherscanABILoader({ apiKey: env.ETHERSCAN_API_KEY, baseURL: env.ETHERSCAN_BASE_URL }),
     ]),
     signatureLookup: new MultiSignatureLookup([
       new OpenChainSignatureLookup(),

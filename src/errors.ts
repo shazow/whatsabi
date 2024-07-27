@@ -11,5 +11,6 @@ export class WhatsABIError extends Error {
     }
 }
 
-export class AutoloadError extends WhatsABIError {
-}
+export class AutoloadError extends WhatsABIError {}
+
+export class LoaderError extends WhatsABIError {}
