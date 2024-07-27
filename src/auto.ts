@@ -4,6 +4,7 @@ import type { AnyProvider } from "./types.js";
 import type { ABI, ABIFunction } from "./abi.js";
 import { type ProxyResolver, DiamondProxyResolver } from "./proxies.js";
 import type { ABILoader, SignatureLookup } from "./loaders.js";
+import * as errors from "./errors.js";
 
 import { CompatibleProvider } from "./types.js";
 import { defaultABILoader, defaultSignatureLookup } from "./loaders.js";
@@ -60,6 +61,10 @@ export type AutoloadConfig = {
 
 // auto is a convenience helper for doing All The Things to load an ABI of a contract.
 export async function autoload(address: string, config: AutoloadConfig): Promise<AutoloadResult> {
+    if (config === undefined) {
+        throw new errors.AutoloadError("autoload: config is undefined, must include 'provider'");
+    }
+
     const onProgress = config.onProgress || defaultConfig.onProgress;
     const onError = config.onError || defaultConfig.onError;
     const provider = CompatibleProvider(config.provider);
@@ -70,9 +75,6 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         proxies: [],
     };
 
-    if (config === undefined) {
-        throw new Error("autoload: config is undefined, must include 'provider'");
-    }
     let abiLoader = config.abiLoader;
     if (abiLoader === undefined) abiLoader = defaultABILoader;
 

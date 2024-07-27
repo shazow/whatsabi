@@ -10,3 +10,6 @@ export class WhatsABIError extends Error {
         this.context = args.context;
     }
 }
+
+export class AutoloadError extends WhatsABIError {
+}

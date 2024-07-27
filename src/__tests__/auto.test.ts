@@ -2,10 +2,15 @@ import { expect } from 'vitest';
 
 import { whatsabi } from "../index";
 import { autoload } from "../auto";
+import { errors } from "../errors";
 
-import { online_test } from "./env";
+import { test, online_test } from "./env";
 
 const TIMEOUT = 15000;
+
+test('autoload throws typed error', async () => {
+  await expect(autoload("0xf00")).rejects.toThrow(/autoload/);
+});
 
 online_test('autoload selectors', async ({ provider }) => {
   const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
