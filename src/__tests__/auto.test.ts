@@ -2,13 +2,13 @@ import { expect } from 'vitest';
 
 import { whatsabi } from "../index";
 import { autoload } from "../auto";
-import { errors } from "../errors";
 
 import { test, online_test } from "./env";
 
 const TIMEOUT = 15000;
 
 test('autoload throws typed error', async () => {
+  // @ts-expect-error: Expected 2 arguments, but got 1
   await expect(autoload("0xf00")).rejects.toThrow(/autoload/);
 });
 
