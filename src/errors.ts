@@ -12,7 +12,9 @@ export class WhatsABIError extends Error {
 }
 
 export class AutoloadError extends WhatsABIError {
-  override name AutoloadError = 'AutoloadError' as const
+    override name = 'AutoloadError';
 }
 
-export class LoaderError extends WhatsABIError {}
+export class LoaderError extends WhatsABIError {
+    override name = 'LoaderError';
+}
