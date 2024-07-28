@@ -1,12 +1,12 @@
 import { Fragment, FunctionFragment } from "ethers";
 
-import type { AnyProvider } from "./types.js";
+import type { AnyProvider } from "./providers.js";
 import type { ABI, ABIFunction } from "./abi.js";
 import { type ProxyResolver, DiamondProxyResolver } from "./proxies.js";
 import type { ABILoader, SignatureLookup } from "./loaders.js";
 import * as errors from "./errors.js";
 
-import { CompatibleProvider } from "./types.js";
+import { CompatibleProvider } from "./providers.js";
 import { defaultABILoader, defaultSignatureLookup } from "./loaders.js";
 import { abiFromBytecode, disasm } from "./disasm.js";
 

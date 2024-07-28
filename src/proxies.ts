@@ -1,4 +1,4 @@
-import type { StorageProvider, CallProvider } from "./types.js";
+import type { StorageProvider, CallProvider } from "./providers.js";
 import { addSlotOffset, readArray, joinSlot } from "./slots.js";
 import { addressWithChecksum } from "./utils.js";
 

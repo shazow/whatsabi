@@ -5,7 +5,7 @@ import { createPublicClient, http } from 'viem';
 import { Web3 } from "web3";
 
 import { withCache } from "../internal/filecache";
-import { CompatibleProvider } from "../types.js";
+import { CompatibleProvider } from "../providers.js";
 
 const env = {
     INFURA_API_KEY: process.env.INFURA_API_KEY,

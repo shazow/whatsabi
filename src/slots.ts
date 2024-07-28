@@ -1,5 +1,5 @@
 import { keccak256 } from "./utils.js";
-import type { StorageProvider } from "./types.js";
+import type { StorageProvider } from "./providers.js";
 
 
 export function joinSlot(parts: string[]): string {
