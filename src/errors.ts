@@ -18,3 +18,7 @@ export class AutoloadError extends WhatsABIError {
 export class LoaderError extends WhatsABIError {
     override name = 'LoaderError';
 }
+
+export class ProviderError extends WhatsABIError {
+    override name = 'ProviderError';
+}

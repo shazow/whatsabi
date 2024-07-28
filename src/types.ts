@@ -1,12 +1,13 @@
 import { bytesToHex } from "./utils.js";
+import * as errors from "./errors.js";
 
 
 export interface StorageProvider {
-    getStorageAt(address: string, slot: number|string): Promise<string>
+    getStorageAt(address: string, slot: number | string): Promise<string>
 }
 
 export interface CallProvider {
-    call(transaction: {to: string, data: string}): Promise<string>;
+    call(transaction: { to: string, data: string }): Promise<string>;
 }
 
 export interface CodeProvider {
@@ -17,9 +18,9 @@ export interface ENSProvider {
     getAddress(name: string): Promise<string>;
 }
 
-export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider {};
+export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider { };
 
-export interface AnyProvider {}; // TODO: Can we narrow this more?
+export interface AnyProvider { }; // TODO: Can we narrow this more?
 
 
 // Abstract away web3 provider inconsistencies
@@ -44,7 +45,9 @@ export function CompatibleProvider(provider: any): Provider {
         return new Web3Provider(provider);
     }
 
-    throw new Error("Unsupported provider, please open an issue: https://github.com/shazow/whatsabi/issues");
+    throw new errors.ProviderError("Unsupported provider, please open an issue: https://github.com/shazow/whatsabi/issues", {
+        context: { provider },
+    });
 }
 
 // RPCPRovider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
@@ -59,14 +62,14 @@ abstract class RPCProvider implements Provider {
 
     abstract send(method: string, params: Array<any>): Promise<any>;
 
-    getStorageAt(address: string, slot: number|string): Promise<string> {
+    getStorageAt(address: string, slot: number | string): Promise<string> {
         if (typeof slot === "number") {
             slot = bytesToHex(slot);
         }
         return this.send("eth_getStorageAt", [address, slot, "latest"]);
     }
 
-    call(transaction: {to: string, data: string}): Promise<string> {
+    call(transaction: { to: string, data: string }): Promise<string> {
         return this.send("eth_call", [
             {
                 from: "0x0000000000000000000000000000000000000001",
@@ -92,14 +95,14 @@ class GenericProvider implements Provider {
         this.provider = provider;
     }
 
-    getStorageAt(address: string, slot: number|string): Promise<string> {
+    getStorageAt(address: string, slot: number | string): Promise<string> {
         if ("getStorageAt" in this.provider) {
             return this.provider.getStorageAt(address, slot);
         }
         return this.provider.getStorage(address, slot);
     }
 
-    call(transaction: {to: string, data: string}): Promise<string> {
+    call(transaction: { to: string, data: string }): Promise<string> {
         return this.provider.call(transaction);
     }
 
@@ -123,10 +126,12 @@ type JSONRPCResponse = {
 class Web3Provider extends RPCProvider {
     send(method: string, params: Array<any>): Promise<any> {
         // this.provider is the web3 instance, we need web3.provider
-        const r = this.provider.currentProvider.request({method, params, "jsonrpc": "2.0", id: "1"});
-        return r.then((resp : JSONRPCResponse) => {
+        const r = this.provider.currentProvider.request({ method, params, "jsonrpc": "2.0", id: "1" });
+        return r.then((resp: JSONRPCResponse) => {
             if (resp.result) return resp.result;
-            else if (resp.error) throw new Error(resp.error.message);
+            else if (resp.error) throw new Web3ProviderError(resp.error.message, {
+                context: { method, params, resp },
+            });
             return resp;
         });
     }
@@ -135,6 +140,8 @@ class Web3Provider extends RPCProvider {
         return this.provider.eth.ens.getAddress(name)
     }
 }
+
+export class Web3ProviderError extends errors.ProviderError { };
 
 
 class EthersProvider extends RPCProvider {
@@ -149,10 +156,10 @@ class EthersProvider extends RPCProvider {
 
 class ViemProvider extends RPCProvider {
     send(method: string, params: Array<any>): Promise<any> {
-        return this.provider.transport.request({method, params});
+        return this.provider.transport.request({ method, params });
     }
 
     getAddress(name: string): Promise<string> {
-        return this.provider.getEnsAddress({name});
+        return this.provider.getEnsAddress({ name });
     }
 }
