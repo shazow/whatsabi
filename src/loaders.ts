@@ -1,5 +1,4 @@
 import { addressWithChecksum, fetchJSON } from "./utils.js";
-import type { FetchError } from "./utils.js";
 import * as errors from "./errors.js";
 
 export type ContractResult = {
@@ -40,9 +39,13 @@ export class MultiABILoader implements ABILoader {
       try {
         const r = await loader.getContract(address);
         if (r && r.abi.length > 0) return Promise.resolve(r);
-      } catch (error: any) {
-        if (error.status === 404) continue;
-        throw error;
+      } catch (err: any) {
+        if (err.status === 404) continue;
+
+        throw new MultiABILoaderError("MultiABILoader getContract error: " + err.message, {
+          context: { loader, address },
+          cause: err,
+        });
       }
     }
     return emptyContractResult;
@@ -50,14 +53,24 @@ export class MultiABILoader implements ABILoader {
 
   async loadABI(address: string): Promise<any[]> {
     for (const loader of this.loaders) {
-      const r = await loader.loadABI(address);
+      try {
+        const r = await loader.loadABI(address);
 
-      // Return the first non-empty result
-      if (r.length > 0) return Promise.resolve(r);
+        // Return the first non-empty result
+        if (r.length > 0) return Promise.resolve(r);
+      } catch (err: any) {
+        throw new MultiABILoaderError("MultiABILoader loadABI error: " + err.message, {
+          context: { loader, address },
+          cause: err,
+        });
+      }
     }
     return Promise.resolve([]);
   }
 }
+
+export class MultiABILoaderError extends errors.LoaderError { };
+
 
 export class EtherscanABILoader implements ABILoader {
   apiKey?: string;
@@ -235,6 +248,7 @@ export class SourcifyABILoader implements ABILoader {
 
 export class SourcifyABILoaderError extends errors.LoaderError { };
 
+
 export interface SignatureLookup {
   loadFunctions(selector: string): Promise<string[]>;
   loadEvents(hash: string): Promise<string[]>;
@@ -276,13 +290,16 @@ export class FourByteSignatureLookup implements SignatureLookup {
       const r = await fetchJSON(url);
       if (r.results === undefined) return [];
       return r.results.map((r: any): string => { return r.text_signature });
-    } catch (error: any) {
-      if (error.status === 404) return [];
-      throw error;
+    } catch (err: any) {
+      if (err.status === 404) return [];
+      throw new FourByteSignatureLookupError("FourByteSignatureLookup load error: " + err.message, {
+        context: { url },
+        cause: err,
+      });
     }
   }
   async loadFunctions(selector: string): Promise<string[]> {
-    // TODO: Use github lookup?
+    // Note: Could also lookup directly on Github, but not sure that's a good idea
     return this.load("https://www.4byte.directory/api/v1/signatures/?hex_signature=" + selector);
   }
 
@@ -290,6 +307,8 @@ export class FourByteSignatureLookup implements SignatureLookup {
     return this.load("https://www.4byte.directory/api/v1/event-signatures/?hex_signature=" + hash);
   }
 }
+
+export class FourByteSignatureLookupError extends errors.LoaderError { };
 
 // openchain.xyz
 // Formerly: https://sig.eth.samczsun.com/
@@ -299,9 +318,12 @@ export class OpenChainSignatureLookup implements SignatureLookup {
       const r = await fetchJSON(url);
       if (!r.ok) throw new Error("OpenChain API bad response: " + JSON.stringify(r));
       return r;
-    } catch (error: any) {
-      if (error.status === 404) return [];
-      throw error;
+    } catch (err: any) {
+      if (err.status === 404) return [];
+      throw new OpenChainSignatureLookupError("OpenChainSignatureLookup load error: " + err.message, {
+        context: { url },
+        cause: err,
+      });
     }
   }
 
@@ -315,6 +337,8 @@ export class OpenChainSignatureLookup implements SignatureLookup {
     return (r.result.event[hash] || []).map((item: any) => item.name);
   }
 }
+
+export class OpenChainSignatureLookupError extends errors.LoaderError { };
 
 export class SamczunSignatureLookup extends OpenChainSignatureLookup { }
 
