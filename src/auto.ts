@@ -113,7 +113,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     } catch (err) {
         throw new errors.AutoloadError(`Failed to fetch contract code due to provider error: ${err instanceof Error ? err.message : String(err) }`,
             {
-                context: { address, provider },
+                context: { address },
                 cause: err as Error,
             },
         );
@@ -228,7 +228,25 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         }
     }
 
-    await Promise.all(promises);
+    // Aggregate signatureLookup promises and their errors, if any
+    const promiseResults = await Promise.allSettled(promises);
+    const rejectedPromises = promiseResults.filter(
+        (r) => r.status === "rejected",
+    ) as PromiseRejectedResult[];
+
+    if (rejectedPromises.length > 0) {
+        const cause =
+            rejectedPromises.length === 1
+                ? rejectedPromises[0].reason
+                : new AggregateError(rejectedPromises.map((r) => r.reason));
+        throw new errors.AutoloadError(
+            `Failed to fetch signatures due to loader error: ${cause.message}`,
+            {
+                context: { address },
+                cause,
+            },
+        );
+    }
 
     return result;
 }
