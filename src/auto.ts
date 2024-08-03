@@ -15,7 +15,7 @@ function isAddress(address: string) {
 }
 
 export const defaultConfig = {
-    onProgress: (_: string) => {},
+    onProgress: (_: string) => { },
     onError: (phase: string, err: Error) => { console.error(phase + ":", err); return false; },
 }
 
@@ -35,8 +35,8 @@ export type AutoloadResult = {
 export type AutoloadConfig = {
     provider: AnyProvider;
 
-    abiLoader?: ABILoader|false;
-    signatureLookup?: SignatureLookup|false;
+    abiLoader?: ABILoader | false;
+    signatureLookup?: SignatureLookup | false;
 
     // Hooks:
 
@@ -44,7 +44,7 @@ export type AutoloadConfig = {
     onProgress?: (phase: string, ...args: any[]) => void;
 
     // Called during any encountered errors during a given phase
-    onError?: (phase: string, error: Error) => boolean|void; // Return true-y to abort, undefined/false-y to continue
+    onError?: (phase: string, error: Error) => boolean | void; // Return true-y to abort, undefined/false-y to continue
 
     // Called to resolve invalid addresses, uses provider's built-in resolver otherwise
     addressResolver?: (name: string) => Promise<string>;
@@ -59,17 +59,35 @@ export type AutoloadConfig = {
     enableExperimentalMetadata?: boolean;
 }
 
-// auto is a convenience helper for doing All The Things to load an ABI of a contract.
+/**
+ * autoload is a convenience helper for doing All The Things to load an ABI of a contract address, including resolving proxies.
+ * @param address - The address of the contract to load
+ * @param config - the {@link AutoloadConfig} object
+ * @example
+ * ```typescript
+ * import { ethers } from "ethers";
+ * import { whatsabi } from "@shazow/whatsabi";
+ *
+ * const provider = ethers.getDefaultProvider(); // substitute with your fav provider
+ * const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
+ *
+ * // Quick-start:
+ *
+ * const result = await whatsabi.autoload(address, { provider });
+ * console.log(result.abi);
+ * // -> [ ... ]
+ * ```
+ */
 export async function autoload(address: string, config: AutoloadConfig): Promise<AutoloadResult> {
     if (config === undefined) {
-        throw new errors.AutoloadError("autoload: config is undefined, must include 'provider'");
+        throw new errors.AutoloadError("config is undefined, must include 'provider'");
     }
 
     const onProgress = config.onProgress || defaultConfig.onProgress;
     const onError = config.onError || defaultConfig.onError;
     const provider = CompatibleProvider(config.provider);
 
-    const result : AutoloadResult = {
+    const result: AutoloadResult = {
         address,
         abi: [],
         proxies: [],
@@ -79,7 +97,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     if (abiLoader === undefined) abiLoader = defaultABILoader;
 
     if (!isAddress(address)) {
-        onProgress("resolveName", {address});
+        onProgress("resolveName", { address });
         if (config.addressResolver) {
             address = await config.addressResolver(address);
         } else {
@@ -88,8 +106,18 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     }
 
     // Load code, we need to disasm to find proxies
-    onProgress("getCode", {address});
-    const bytecode = await provider.getCode(address)
+    onProgress("getCode", { address });
+    let bytecode: string;
+    try {
+        bytecode = await provider.getCode(address);
+    } catch (err) {
+        throw new errors.AutoloadError(`Failed to fetch contract code due to provider error: ${err instanceof Error ? err.message : String(err) }`,
+            {
+                context: { address, provider },
+                cause: err as Error,
+            },
+        );
+    }
     if (!bytecode) return result; // Must be an EOA
 
     const program = disasm(bytecode);
@@ -104,7 +132,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     };
 
     if (result.proxies.length === 1 && result.proxies[0] instanceof DiamondProxyResolver) {
-        onProgress("loadDiamondFacets", {address});
+        onProgress("loadDiamondFacets", { address });
         const diamondProxy = result.proxies[0] as DiamondProxyResolver;
         const f = await diamondProxy.facets(provider, address);
         Object.assign(facets, f);
@@ -112,7 +140,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     } else if (result.proxies.length > 0) {
         result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
             for (const resolver of result.proxies) {
-                onProgress("followProxies", {resolver: resolver, address});
+                onProgress("followProxies", { resolver: resolver, address });
                 const resolved = await resolver.resolve(provider, address, selector);
                 if (resolved !== undefined) return await autoload(resolved, config);
             }
@@ -127,7 +155,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
 
     if (abiLoader) {
         // Attempt to load the ABI from a contract database, if exists
-        onProgress("abiLoader", {address, facets: Object.keys(facets)});
+        onProgress("abiLoader", { address, facets: Object.keys(facets) });
         const loader = abiLoader;
         try {
             const addresses = Object.keys(facets);
@@ -145,7 +173,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     }
 
     // Load from code
-    onProgress("abiFromBytecode", {address});
+    onProgress("abiFromBytecode", { address });
     result.abi = abiFromBytecode(program);
 
     if (!config.enableExperimentalMetadata) {
@@ -153,7 +181,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     }
 
     // Add any extra ABIs we found from facets
-    result.abi.push(... Object.values(facets).flat().map(selector => {
+    result.abi.push(...Object.values(facets).flat().map(selector => {
         return {
             type: "function",
             selector,
@@ -165,9 +193,9 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     if (!signatureLookup) return result; // Bail
 
     // Load signatures from a database
-    onProgress("signatureLookup", {abiItems: result.abi.length});
+    onProgress("signatureLookup", { abiItems: result.abi.length });
 
-    let promises : Promise<void>[] = [];
+    let promises: Promise<void>[] = [];
 
     for (const a of result.abi) {
         if (a.type === "function") {
@@ -180,7 +208,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
                     if (extracted.outputs.length === 0) {
                         // Outputs not included in signature databases -_- (unless something changed)
                         // Let whatsabi keep its best guess, if any.
-                        delete(extracted.outputs);
+                        delete (extracted.outputs);
                     }
 
                     Object.assign(a, extracted)

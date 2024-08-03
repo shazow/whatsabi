@@ -9,7 +9,7 @@ const TIMEOUT = 15000;
 
 test('autoload throws typed error', async () => {
   // @ts-expect-error: Expected 2 arguments, but got 1
-  await expect(autoload("0xf00")).rejects.toThrow(/autoload/);
+  await expect(autoload("0xf00")).rejects.toThrow(/config is undefined/);
 });
 
 online_test('autoload selectors', async ({ provider }) => {
