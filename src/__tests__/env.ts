@@ -5,7 +5,7 @@ import { createPublicClient, http } from 'viem';
 import { Web3 } from "web3";
 
 import { withCache } from "../internal/filecache";
-import { CompatibleProvider } from "../types.js";
+import { CompatibleProvider } from "../providers.js";
 
 const env = {
     INFURA_API_KEY: process.env.INFURA_API_KEY,
@@ -61,6 +61,7 @@ export function describe_cached(d: string, fn: (context: any) => void) {
 // TODO: Port this to context-aware wrapper
 export const online_test = testerWithContext(process.env["ONLINE"] ? test : test.skip, { provider, env });
 export const cached_test = testerWithContext(!process.env["SKIP_CACHED"] ? test : test.skip, { provider, env, withCache });
+export { test };
 
 if (process.env["ONLINE"] === undefined) {
     console.log("Skipping online tests. Set ONLINE env to run them.");

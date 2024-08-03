@@ -49,7 +49,7 @@ export function keccak256(data: Uint8Array|string): string {
 }
 
 
-class FetchError extends Error {
+export class FetchError extends Error {
   status: number;
 
   constructor(message: string, status: number) {
