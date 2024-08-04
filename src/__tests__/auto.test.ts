@@ -8,62 +8,62 @@ import { test, online_test } from "./env";
 const TIMEOUT = 15000;
 
 test('autoload throws typed error', async () => {
-  // @ts-expect-error: Expected 2 arguments, but got 1
-  await expect(autoload("0xf00")).rejects.toThrow(/config is undefined/);
+    // @ts-expect-error: Expected 2 arguments, but got 1
+    await expect(autoload("0xf00")).rejects.toThrow(/config is undefined/);
 
-  const fakeProvider = {
-    request: () => {},
-  }
-  await expect(autoload("abc.eth", { provider: fakeProvider })).rejects.toThrow(/Failed to resolve ENS/);
+    const fakeProvider = {
+        request: () => {},
+    }
+    await expect(autoload("abc.eth", { provider: fakeProvider })).rejects.toThrow(/Failed to resolve ENS/);
 });
 
 online_test('autoload selectors', async ({ provider }) => {
-  const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
-  const { abi } = await autoload(address, {
-    provider: provider,
-    abiLoader: false,
-    signatureLookup: false,
-  });
-  expect(abi).toContainEqual({"selector": "0x6dbf2fa0", "type": "function"});
-  expect(abi).toContainEqual({"selector": "0xec0ab6a7", "type": "function"});
+    const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
+    const { abi } = await autoload(address, {
+        provider: provider,
+        abiLoader: false,
+        signatureLookup: false,
+    });
+    expect(abi).toContainEqual({"selector": "0x6dbf2fa0", "type": "function"});
+    expect(abi).toContainEqual({"selector": "0xec0ab6a7", "type": "function"});
 }, TIMEOUT);
 
 online_test('autoload selectors with experimental metadata', async ({ provider }) => {
-  const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
-  const { abi } = await autoload(address, {
-    provider: provider,
-    abiLoader: false,
-    signatureLookup: false,
-    enableExperimentalMetadata: true,
-  });
-  expect(abi).toContainEqual({"inputs": [{"type": "bytes", "name": ""}], "payable": true, "selector": "0x6dbf2fa0", "stateMutability": "payable", "type": "function"});
-  expect(abi).toContainEqual({"inputs": [{"type": "bytes", "name": ""}], "payable": true, "selector": "0xec0ab6a7", "stateMutability": "payable", "type": "function"});
+    const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
+    const { abi } = await autoload(address, {
+        provider: provider,
+        abiLoader: false,
+        signatureLookup: false,
+        enableExperimentalMetadata: true,
+    });
+    expect(abi).toContainEqual({"inputs": [{"type": "bytes", "name": ""}], "payable": true, "selector": "0x6dbf2fa0", "stateMutability": "payable", "type": "function"});
+    expect(abi).toContainEqual({"inputs": [{"type": "bytes", "name": ""}], "payable": true, "selector": "0xec0ab6a7", "stateMutability": "payable", "type": "function"});
 }, TIMEOUT);
 
 
 online_test('autoload full', async ({ provider, env }) => {
-  const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
-  const { abi } = await autoload(address, {
-    provider: provider,
-    abiLoader: new whatsabi.loaders.MultiABILoader([
-      new whatsabi.loaders.SourcifyABILoader(),
-      new whatsabi.loaders.EtherscanABILoader({ apiKey: env.ETHERSCAN_API_KEY }),
-    ]),
-    signatureLookup: new whatsabi.loaders.MultiSignatureLookup([
-      new whatsabi.loaders.OpenChainSignatureLookup(),
-      new whatsabi.loaders.FourByteSignatureLookup(),
-    ]),
-    //onProgress: (phase: string, ...args: any[]) => { console.debug("PROGRESS", phase, args); },
-  });
-  expect(abi).toContainEqual({"constant": false, "inputs": [{"type": "address", "name": ""}, {"type": "uint256", "name": ""}, {"type": "bytes", "name": ""}], "name": "call", "payable": false, "selector": "0x6dbf2fa0", "sig": "call(address,uint256,bytes)", "type": "function"})
+    const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
+    const { abi } = await autoload(address, {
+        provider: provider,
+        abiLoader: new whatsabi.loaders.MultiABILoader([
+            new whatsabi.loaders.SourcifyABILoader(),
+            new whatsabi.loaders.EtherscanABILoader({ apiKey: env.ETHERSCAN_API_KEY }),
+        ]),
+        signatureLookup: new whatsabi.loaders.MultiSignatureLookup([
+            new whatsabi.loaders.OpenChainSignatureLookup(),
+            new whatsabi.loaders.FourByteSignatureLookup(),
+        ]),
+        //onProgress: (phase: string, ...args: any[]) => { console.debug("PROGRESS", phase, args); },
+    });
+    expect(abi).toContainEqual({"constant": false, "inputs": [{"type": "address", "name": ""}, {"type": "uint256", "name": ""}, {"type": "bytes", "name": ""}], "name": "call", "payable": false, "selector": "0x6dbf2fa0", "sig": "call(address,uint256,bytes)", "type": "function"})
 
-  expect(abi).toContainEqual({"selector": "0xec0ab6a7", "type": "function"});
+    expect(abi).toContainEqual({"selector": "0xec0ab6a7", "type": "function"});
 }, TIMEOUT);
 
 online_test('autoload non-contract', async ({ provider }) => {
-  const address = "0x0000000000000000000000000000000000000000"; // Random unverified contract
-  const { abi } = await autoload(address, {
-    provider: provider,
-  });
-  expect(abi).toStrictEqual([]);
+    const address = "0x0000000000000000000000000000000000000000"; // Random unverified contract
+    const { abi } = await autoload(address, {
+        provider: provider,
+    });
+    expect(abi).toStrictEqual([]);
 });
