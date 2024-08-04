@@ -170,6 +170,7 @@ export class Web3ProviderError extends errors.ProviderError { };
 
 class EthersProvider extends RPCProvider {
     request(args: EIP1193RequestArguments): Promise<any> {
+        // Fun fact: Before 2020, EIP1193 draft had used .send(method, params) instead of .request({method, params})
         return this.provider.send(args.method, args.params);
     }
 

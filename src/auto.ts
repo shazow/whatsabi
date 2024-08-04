@@ -101,7 +101,14 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         if (config.addressResolver) {
             address = await config.addressResolver(address);
         } else {
-            address = await provider.getAddress(address);
+            try {
+                address = await provider.getAddress(address);
+            } catch (err) {
+                throw new errors.AutoloadError(`Failed to resolve ENS address using provider.getAddress, try supplying your own resolver in AutoloadConfig by specifying addressResolver`, {
+                    context: { address },
+                    cause: err as Error,
+                });
+            }
         }
     }
 
