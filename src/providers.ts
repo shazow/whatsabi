@@ -20,14 +20,25 @@ export interface ENSProvider {
 
 export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider { };
 
+
 export interface AnyProvider { }; // TODO: Can we narrow this more?
+
+
+interface EIP1193RequestArguments {
+  readonly method: string;
+  readonly params?: readonly unknown[] | object;
+}
+
+interface EIP1193 {
+    request(args: EIP1193RequestArguments): Promise<unknown>;
+}
 
 
 // Abstract away web3 provider inconsistencies
 
 export function CompatibleProvider(provider: any): Provider {
     if (typeof provider.getAddress === "function") {
-        return new GenericProvider(provider);
+        return new HighLevelProvider(provider);
     }
     if (typeof provider.resolveName === "function") {
         // Ethers-like
@@ -36,13 +47,17 @@ export function CompatibleProvider(provider: any): Provider {
         }
         // Probably FallbackProvider or a different custom wrapper?
         // Need to use higher-level functions.
-        return new GenericProvider(provider);
+        return new HighLevelProvider(provider);
     }
     if (typeof provider.getEnsAddress === "function") {
         return new ViemProvider(provider);
     }
-    if (typeof provider.eth !== undefined) {
+    if (typeof provider?.eth?.ens?.getAddress === "function") {
         return new Web3Provider(provider);
+    }
+    if (typeof provider.request === "function") {
+        // Might be a viem transport, or something else
+        return new RPCProvider(provider);
     }
 
     throw new errors.ProviderError("Unsupported provider, please open an issue: https://github.com/shazow/whatsabi/issues", {
@@ -53,42 +68,51 @@ export function CompatibleProvider(provider: any): Provider {
 // RPCPRovider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
 // and instead have a discovery for the lowest-level RPC call function that we can use directly.
 // At least whenever possible. Higher-level functionality like getAddress is still tricky.
-abstract class RPCProvider implements Provider {
+class RPCProvider implements Provider, EIP1193 {
     provider: any;
 
     constructor(provider: any) {
         this.provider = provider;
     }
 
-    abstract send(method: string, params: Array<any>): Promise<any>;
+    // Based on EIP-1193
+    request(req: {method: string, params?: object|Array<unknown>}): Promise<any> {
+        return this.provider.request(req);
+    }
 
     getStorageAt(address: string, slot: number | string): Promise<string> {
         if (typeof slot === "number") {
             slot = bytesToHex(slot);
         }
-        return this.send("eth_getStorageAt", [address, slot, "latest"]);
+        return this.request({method: "eth_getStorageAt", params: [address, slot, "latest"]});
     }
 
     call(transaction: { to: string, data: string }): Promise<string> {
-        return this.send("eth_call", [
+        return this.request({ method: "eth_call", params: [
             {
                 from: "0x0000000000000000000000000000000000000001",
                 to: transaction.to,
                 data: transaction.data,
             },
             "latest"
-        ]);
+        ]});
     }
 
     getCode(address: string): Promise<string> {
-        return this.send("eth_getCode", [address, "latest"]);
+        return this.request({ method: "eth_getCode", params: [address, "latest"]});
     }
 
-    abstract getAddress(name: string): Promise<string>;
-
+    getAddress(name: string): Promise<string> {
+        throw new MissingENSProviderError("Provider does not implement getAddress, required to resolve ENS", {
+            context: {name, provider: this.provider},
+        });
+    }
 }
 
-class GenericProvider implements Provider {
+export class MissingENSProviderError extends errors.ProviderError { };
+
+// HighLevelProvider is used for high-level providers like ethers' FallbackProvider
+class HighLevelProvider implements Provider {
     provider: any;
 
     constructor(provider: any) {
@@ -124,7 +148,7 @@ type JSONRPCResponse = {
 };
 
 class Web3Provider extends RPCProvider {
-    send(method: string, params: Array<any>): Promise<any> {
+    request({method, params}: EIP1193RequestArguments): Promise<any> {
         // this.provider is the web3 instance, we need web3.provider
         const r = this.provider.currentProvider.request({ method, params, "jsonrpc": "2.0", id: "1" });
         return r.then((resp: JSONRPCResponse) => {
@@ -145,8 +169,8 @@ export class Web3ProviderError extends errors.ProviderError { };
 
 
 class EthersProvider extends RPCProvider {
-    send(method: string, params: Array<any>): Promise<any> {
-        return this.provider.send(method, params);
+    request(args: EIP1193RequestArguments): Promise<any> {
+        return this.provider.send(args.method, args.params);
     }
 
     getAddress(name: string): Promise<string> {
@@ -155,8 +179,8 @@ class EthersProvider extends RPCProvider {
 }
 
 class ViemProvider extends RPCProvider {
-    send(method: string, params: Array<any>): Promise<any> {
-        return this.provider.transport.request({ method, params });
+    request(args: EIP1193RequestArguments): Promise<any> {
+        return this.provider.transport.request(args);
     }
 
     getAddress(name: string): Promise<string> {

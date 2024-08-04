@@ -1,7 +1,7 @@
 import { test, describe } from 'vitest';
 
 import { ethers } from "ethers";
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, createWalletClient, http } from 'viem';
 import { Web3 } from "web3";
 
 import { withCache } from "../internal/filecache";
@@ -23,10 +23,11 @@ const provider = CompatibleProvider(function() {
         rpc_url = "https://mainnet.infura.io/v3/" + env.INFURA_API_KEY;
     }
 
-    if (env.PROVIDER === "viem") {
-        return createPublicClient({
-            transport: http(rpc_url ?? DEFAULT_PUBLIC_RPC),
-        });
+    if (env.PROVIDER?.startsWith("viem")) {
+        const transport = http(rpc_url ?? DEFAULT_PUBLIC_RPC)
+        if (env.PROVIDER.endsWith("transport")) return transport;
+        if (env.PROVIDER.endsWith("publicClient")) return createPublicClient({ transport });
+        return createWalletClient({ transport });
     }
 
     if (env.PROVIDER === "web3") {
