@@ -32,7 +32,8 @@ Quick start:
 import { ethers } from "ethers";
 import { whatsabi } from "@shazow/whatsabi";
 
-const provider = ethers.getDefaultProvider(); // substitute with your fav provider
+// Works with any provider (or client) library like Ethers.js, Viem, or Web3.js!
+const provider = ethers.getDefaultProvider();
 const address = "0x00000000006c3852cbEf3e08E8dF289169EdE581"; // Or your fav contract address
 
 // Quick-start:
@@ -42,7 +43,19 @@ console.log(result.abi);
 // -> [ ... ]
 ```
 
-Breaking it down:
+Another quick example with Viem:
+
+```typescript
+import { createPublicClient, http } from 'viem'
+import { mainnet } from 'viem/chains'
+import { whatsabi } from "@shazow/whatsabi";
+ 
+const client = createPublicClient({ chain: mainnet, transport: http() })
+const result = await whatsabi.autoload(address, { provider: client });
+```
+
+
+Breaking it down, here's what autoload is doing on the inside:
 
 ```typescript
 const code = await provider.getCode(address); // Load the bytecode
