@@ -8,6 +8,7 @@ test:
 	vitest run
 
 test-providers:
+	# Might want to also do ONLINE=1 when running this
 	PROVIDER=ethers vitest run
 	PROVIDER=web3 vitest run
 	PROVIDER=viem vitest run
