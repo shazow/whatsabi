@@ -1,6 +1,9 @@
 build:
 	tsc --project tsconfig.esm.json
 
+docs:
+	pnpm build:docs
+
 watch:
 	tsc --project tsconfig.esm.json -w
 
@@ -31,3 +34,5 @@ run-examples:
 	./examples/bytecode.ts $(ADDRESS)
 	./examples/dot.ts $(ADDRESS)
 	./examples/resolveproxy.ts $(ADDRESS)
+
+.PHONY: docs

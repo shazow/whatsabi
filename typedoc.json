@@ -1,0 +1,14 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "out": "./docs",
+    "entryPoints": [
+        "./src/index.ts"
+    ],
+    "plugin": [
+        "typedoc-plugin-missing-exports"
+    ],
+    "excludeNotDocumented": false,
+    "categorizeByGroup": true,
+    "groupOrder": ["Variables", "Functions", "Required", "*"],
+    "gitRevision": "main"
+}

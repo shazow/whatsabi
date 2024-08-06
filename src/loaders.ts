@@ -351,11 +351,6 @@ type LoaderEnv = {
     SOURCIFY_CHAIN_ID?: string | number,
 }
 
-/** @deprecated Use defaultsWithEnv instead, this function is outdated and will be removed soon. */
-export function defaultsWithAPIKeys(apiKeys: LoaderEnv): Record<string, ABILoader | SignatureLookup> {
-    return defaultsWithEnv(apiKeys);
-}
-
 /**
  * Return params to use with whatsabi.autoload(...)
  *

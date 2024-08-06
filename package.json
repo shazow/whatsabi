@@ -1,13 +1,14 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "0.13.2",
+  "version": "0.14.0",
   "description": "Resolve proxies and get an ABI from Ethereum bytecode, even if it's unverified",
   "type": "module",
   "scripts": {
     "test": "vitest run",
     "build:cjs": "tsc --project tsconfig.cjs.json && cp package.cjs.json lib.cjs/package.json",
     "build:esm": "tsc --project tsconfig.esm.json && cp package.esm.json lib.esm/package.json",
-    "build:types": "tsc --project tsconfig.types.json"
+    "build:types": "tsc --project tsconfig.types.json",
+    "build:docs": "typedoc"
   },
   "repository": {
     "type": "git",
@@ -36,7 +37,7 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "ethers": "^6.13.1"
+    "ethers": "^6.13.2"
   },
   "peerDependencies": {
     "@noble/hashes": "^1"
@@ -46,10 +47,12 @@
     "@size-limit/preset-small-lib": "^8.2.6",
     "npm": "^10.8.2",
     "size-limit": "^8.2.6",
-    "tsx": "^4.16.2",
-    "viem": "^2.17.3",
+    "tsx": "^4.16.5",
+    "typedoc": "^0.26.5",
+    "typedoc-plugin-missing-exports": "^3.0.0",
+    "viem": "^2.18.8",
     "vitest": "^0.34.6",
-    "web3": "^4.10.0"
+    "web3": "^4.11.1"
   },
   "main": "./lib.cjs/index.js",
   "module": "./lib.esm/index.js",
