@@ -26,6 +26,7 @@ const provider = CompatibleProvider(function() {
     if (env.PROVIDER?.startsWith("viem")) {
         const transport = http(rpc_url ?? DEFAULT_PUBLIC_RPC);
         if (env.PROVIDER.endsWith("publicClient")) return createPublicClient({ transport });
+        if (env.PROVIDER.endsWith("transport")) return transport({});
         return createWalletClient({ transport });
     }
 

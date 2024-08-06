@@ -7,6 +7,13 @@ watch:
 test:
 	vitest run
 
+test-providers:
+	PROVIDER=ethers vitest run
+	PROVIDER=web3 vitest run
+	PROVIDER=viem vitest run
+	PROVIDER=viem:transport vitest run
+	PROVIDER=viem:publicClient vitest run
+
 clean:
 	rm -rf ./lib ./lib.*
 
