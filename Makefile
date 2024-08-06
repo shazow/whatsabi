@@ -34,3 +34,5 @@ run-examples:
 	./examples/bytecode.ts $(ADDRESS)
 	./examples/dot.ts $(ADDRESS)
 	./examples/resolveproxy.ts $(ADDRESS)
+
+.PHONY: docs

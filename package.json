@@ -1,6 +1,6 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "0.13.2",
+  "version": "0.14.0",
   "description": "Resolve proxies and get an ABI from Ethereum bytecode, even if it's unverified",
   "type": "module",
   "scripts": {
@@ -49,6 +49,7 @@
     "size-limit": "^8.2.6",
     "tsx": "^4.16.5",
     "typedoc": "^0.26.5",
+    "typedoc-plugin-missing-exports": "^3.0.0",
     "viem": "^2.18.8",
     "vitest": "^0.34.6",
     "web3": "^4.11.1"
