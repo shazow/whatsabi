@@ -19,43 +19,70 @@ export const defaultConfig = {
     onError: (phase: string, err: Error) => { console.error(phase + ":", err); return false; },
 }
 
+/** AutoloadResult is the return type for the {@link autoload} function. */
 export type AutoloadResult = {
     address: string,
     abi: ABI;
 
-    // List of resolveable proxies detected in the contract
+    /** List of resolveable proxies detected in the contract */
     proxies: ProxyResolver[],
 
-    // Follow proxies to next result.
-    // If multiple proxies were detected, some reasonable ordering of attempts will be made.
-    // Note: Some proxies operate relative to a specific selector (such as DiamondProxy facets), in this case we'll need to specify a selector that we care about.
+    /**
+     * Follow proxies to next result.
+     * If multiple proxies were detected, some reasonable ordering of attempts will be made.
+     * Note: Some proxies operate relative to a specific selector (such as DiamondProxy facets), in this case we'll need to specify a selector that we care about.
+     */
     followProxies?: (selector?: string) => Promise<AutoloadResult>,
 }
 
+
+/**
+ * AutoloadConfig specifies the configuration inputs for the {@link autoload} function.
+ **/
 export type AutoloadConfig = {
+    /** @group Required */
     provider: AnyProvider;
 
+    /** @group Loaders */
     abiLoader?: ABILoader | false;
+    /** @group Loaders */
     signatureLookup?: SignatureLookup | false;
 
-    // Hooks:
+    /** Hooks: */
 
-    // Called during various phases: resolveName, getCode, abiLoader, signatureLookup, followProxies
+    /**
+     * Called during various phases: resolveName, getCode, abiLoader, signatureLookup, followProxies
+     * @group Hooks
+     */
     onProgress?: (phase: string, ...args: any[]) => void;
 
-    // Called during any encountered errors during a given phase
+    /**
+     * Called during any encountered errors during a given phase
+     * @group Hooks
+     */
     onError?: (phase: string, error: Error) => boolean | void; // Return true-y to abort, undefined/false-y to continue
 
-    // Called to resolve invalid addresses, uses provider's built-in resolver otherwise
+    /**
+     * Called to resolve invalid addresses, uses provider's built-in resolver otherwise
+     * @group Hooks
+     */
     addressResolver?: (name: string) => Promise<string>;
 
-    // Settings:
+    /** Settings: */
 
-    // Enable following proxies automagically, if possible. Return the final result.
-    // Note that some proxies are relative to a specific selector (such as DiamondProxies), so they will not be followed
+    /**
+     * Enable following proxies automagically, if possible. Return the final result.
+     * Note that some proxies are relative to a specific selector (such as DiamondProxies), so they will not be followed
+     *
+     * @group Settings
+     */
     followProxies?: boolean;
 
-    // Enable pulling additional metadata from WhatsABI's static analysis, still unreliable
+    /**
+     * Enable pulling additional metadata from WhatsABI's static analysis, still unreliable
+     *
+     * @group Settings
+     */
     enableExperimentalMetadata?: boolean;
 }
 
