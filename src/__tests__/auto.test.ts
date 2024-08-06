@@ -45,6 +45,8 @@ online_test('autoload full', async ({ provider, env }) => {
     const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
     const { abi } = await autoload(address, {
         provider: provider,
+        // Equivalent to:
+        // ...whatsabi.loaders.defaultsWithEnv(env),
         abiLoader: new whatsabi.loaders.MultiABILoader([
             new whatsabi.loaders.SourcifyABILoader(),
             new whatsabi.loaders.EtherscanABILoader({ apiKey: env.ETHERSCAN_API_KEY }),
@@ -60,10 +62,11 @@ online_test('autoload full', async ({ provider, env }) => {
     expect(abi).toContainEqual({"selector": "0xec0ab6a7", "type": "function"});
 }, TIMEOUT);
 
-online_test('autoload non-contract', async ({ provider }) => {
+online_test('autoload non-contract', async ({ provider, env }) => {
     const address = "0x0000000000000000000000000000000000000000"; // Random unverified contract
     const { abi } = await autoload(address, {
         provider: provider,
+        ...whatsabi.loaders.defaultsWithEnv(env),
     });
     expect(abi).toStrictEqual([]);
 });
