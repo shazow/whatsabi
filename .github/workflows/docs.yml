@@ -27,6 +27,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           cache: pnpm
+      - run: pnpm install
       - run: pnpm build:docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
