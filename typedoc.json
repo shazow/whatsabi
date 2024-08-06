@@ -1,0 +1,10 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "out": "./docs",
+    "entryPoints": [
+        "./src/index.ts"
+    ],
+    "plugin": [
+    ],
+    "gitRevision": "main"
+}

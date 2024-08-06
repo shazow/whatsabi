@@ -1,6 +1,9 @@
 build:
 	tsc --project tsconfig.esm.json
 
+docs:
+	pnpm build:docs
+
 watch:
 	tsc --project tsconfig.esm.json -w
 
