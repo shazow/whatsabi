@@ -24,7 +24,7 @@ WhatsABI is perfect for building procedural frontends, embedding in wallets, blo
 
 ## Usage
 
-Generated docs: https://tsdocs.dev/docs/@shazow/whatsabi
+Generated docs: https://shazow.github.io/whatsabi/
 
 Quick start:
 
