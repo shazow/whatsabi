@@ -12,6 +12,11 @@ export {
     autoload,
 } from "./auto.js";
 
+export type {
+    AutoloadResult,
+    AutoloadConfig,
+} from "./auto.js";
+
 import * as loaders from "./loaders.js";
 import * as proxies from "./proxies.js";
 export { loaders };
