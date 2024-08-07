@@ -9,7 +9,33 @@ export type ContractResult = {
     runs: number;
 
     ok: boolean; // False if no result is found
+
+    /**
+     * getSources returns the imports -> source code mapping for the contract, if available.
+     *
+     * Caveats:
+     * - Not all loaders support this, so the property could be undefined.
+     * - This call could trigger additional fetch requests, depending on the loader.
+     **/
+    getSources?: () => Promise<ContractSources>;
 }
+
+/**
+ * ContractSources is a mapping of source import paths to source code.
+ * If no mapping was present, the source code will be merged under the empty string key ""
+ *
+ * @example
+ * ```typescript
+ * {"": "pragma solidity =0.7.6;\n\nimport ..."}
+ * ```
+ *
+ * @example
+ * ```typescript
+ * {"contracts/Foo.sol": "pragma solidity =0.7.6;\n\nimport ..."}
+ * ```
+ **/
+export type ContractSources = Record<string, string>;
+
 
 const emptyContractResult: ContractResult = {
     ok: false,
@@ -82,6 +108,26 @@ export class EtherscanABILoader implements ABILoader {
         this.baseURL = config.baseURL || "https://api.etherscan.io/api";
     }
 
+
+    /** Etherscan helper for converting the encoded SourceCode result arg to a decoded ContractSources. */
+    toContractSources(result: {SourceCode: string}): ContractSources {
+        if (!result.SourceCode.startsWith("{{")) {
+            return {"": result.SourceCode}
+        }
+
+        // Etherscan adds an extra {} to the encoded JSON
+        const s = JSON.parse(result.SourceCode.slice(1, result.SourceCode.length-1));
+
+        // Flatten sources
+        // { "sources": {"foo.sol": {"content": "..."}}}
+        const sources = s.sources as Record<string, {content: string}>;
+        return Object.fromEntries(
+            Object.entries(sources).map(
+                ([path, source]) => [path, source.content]
+            )
+        );
+    }
+
     async getContract(address: string): Promise<ContractResult> {
         let url = this.baseURL + '?module=contract&action=getsourcecode&address=' + address;
         if (this.apiKey) url += "&apikey=" + this.apiKey;
@@ -100,6 +146,17 @@ export class EtherscanABILoader implements ABILoader {
                 evmVersion: result.EVMVersion,
                 compilerVersion: result.CompilerVersion,
                 runs: result.Runs,
+
+                getSources: () => {
+                    try {
+                        return Promise.resolve(this.toContractSources(result));
+                    } catch (err: any) {
+                        throw new EtherscanABILoaderError("EtherscanABILoader getContract getSources error: " + err.message, {
+                            context: { url, address },
+                            cause: err,
+                        });
+                    }
+                },
 
                 ok: true,
             };

@@ -87,10 +87,14 @@ describe('loaders module', () => {
 
   online_test('EtherscanABILoader_getContract', async () => {
     const loader = new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] });
-    const {abi} = await loader.getContract("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
-    const selectors = Object.values(selectorsFromABI(abi));
+    const result = await loader.getContract("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
+    const selectors = Object.values(selectorsFromABI(result.abi));
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     expect(selectors).toContain(sig);
+
+    const sources = result.getSources && await result.getSources();
+    expect(sources[""]).toContain("pragma solidity");
+
   }, SLOW_ETHERSCAN_TIMEOUT)
 
   online_test('EtherscanABILoader_getContract_UniswapV3Factory', async () => {
@@ -146,11 +150,14 @@ describe('loaders module', () => {
     const loader = new MultiABILoader([
       new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] }),
     ]);
-    const {abi, name} = await loader.getContract(address);
+    const res = await loader.getContract(address);
     const sig = "owner()";
-    const selectors = Object.values(selectorsFromABI(abi));
+    const selectors = Object.values(selectorsFromABI(res.abi));
     expect(selectors).toContain(sig);
-    expect(name).toEqual("UniswapV3Factory");
+    expect(res.name).toEqual("UniswapV3Factory");
+
+    const sources = res.getSources && await res.getSources();
+    expect(sources["contracts/libraries/UnsafeMath.sol"]).contains("pragma solidity");
   }, SLOW_ETHERSCAN_TIMEOUT);
 
   online_test('SamczunSignatureLookup', async () => {
