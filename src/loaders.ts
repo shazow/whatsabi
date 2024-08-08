@@ -64,7 +64,7 @@ export class MultiABILoader implements ABILoader {
         for (const loader of this.loaders) {
             try {
                 const r = await loader.getContract(address);
-                if (r && r.abi.length > 0) return Promise.resolve(r);
+                if (r && r.abi.length > 0) return r;
             } catch (err: any) {
                 if (err.status === 404) continue;
 
@@ -83,7 +83,7 @@ export class MultiABILoader implements ABILoader {
                 const r = await loader.loadABI(address);
 
                 // Return the first non-empty result
-                if (r.length > 0) return Promise.resolve(r);
+                if (r.length > 0) return r;
             } catch (err: any) {
                 throw new MultiABILoaderError("MultiABILoader loadABI error: " + err.message, {
                     context: { loader, address },
@@ -91,7 +91,7 @@ export class MultiABILoader implements ABILoader {
                 });
             }
         }
-        return Promise.resolve([]);
+        return [];
     }
 }
 
@@ -147,9 +147,9 @@ export class EtherscanABILoader implements ABILoader {
                 compilerVersion: result.CompilerVersion,
                 runs: result.Runs,
 
-                getSources: () => {
+                getSources: async () => {
                     try {
-                        return Promise.resolve(this.#toContractSources(result));
+                        return this.#toContractSources(result);
                     } catch (err: any) {
                         throw new EtherscanABILoaderError("EtherscanABILoader getContract getSources error: " + err.message, {
                             context: { url, address },
@@ -236,7 +236,7 @@ export class SourcifyABILoader implements ABILoader {
                 // TODO: Paths will have a sourcify prefix, do we want to strip it to help normalize? It doesn't break anything keeping the prefix, so not sure.
                 // E.g. /contracts/full_match/1/0x1F98431c8aD98523631AE4a59f267346ea31F984/sources/contracts/interfaces/IERC20Minimal.sol
                 // Can use stripPathPrefix helper to do this, but maybe we want something like getSources({ normalize: true })?
-                getSources: () => Promise.resolve(files.map(({ path, content }) => { return { path, content } })),
+                getSources: async () => files.map(({ path, content }) => { return { path, content } }),
 
                 ok: true,
             };
@@ -329,9 +329,9 @@ export class MultiSignatureLookup implements SignatureLookup {
             const r = await lookup.loadFunctions(selector);
 
             // Return the first non-empty result
-            if (r.length > 0) return Promise.resolve(r);
+            if (r.length > 0) return r;
         }
-        return Promise.resolve([]);
+        return [];
     }
 
     async loadEvents(hash: string): Promise<string[]> {
@@ -339,9 +339,9 @@ export class MultiSignatureLookup implements SignatureLookup {
             const r = await lookup.loadEvents(hash);
 
             // Return the first non-empty result
-            if (r.length > 0) return Promise.resolve(r);
+            if (r.length > 0) return r;
         }
-        return Promise.resolve([]);
+        return [];
     }
 }
 
