@@ -21,20 +21,20 @@ export type ContractResult = {
 }
 
 /**
- * ContractSources is a mapping of source import paths to source code.
- * If no mapping was present, the source code will be merged under the empty string key ""
+ * ContractSources is a list of source files.
+ * If the source was flattened, it will lack a path attribute.
  *
  * @example
  * ```typescript
- * {"": "pragma solidity =0.7.6;\n\nimport ..."}
+ * [{"content": "pragma solidity =0.7.6;\n\nimport ..."}]
  * ```
  *
  * @example
  * ```typescript
- * {"contracts/Foo.sol": "pragma solidity =0.7.6;\n\nimport ..."}
+ * [{"path": "contracts/Foo.sol", "content:" "pragma solidity =0.7.6;\n\nimport ..."}]
  * ```
  **/
-export type ContractSources = Record<string, string>;
+export type ContractSources = Array<{ path?: string, content: string }>;
 
 
 const emptyContractResult: ContractResult = {
@@ -110,22 +110,22 @@ export class EtherscanABILoader implements ABILoader {
 
 
     /** Etherscan helper for converting the encoded SourceCode result arg to a decoded ContractSources. */
-    toContractSources(result: {SourceCode: string}): ContractSources {
+    #toContractSources(result: { SourceCode: string }): ContractSources {
         if (!result.SourceCode.startsWith("{{")) {
-            return {"": result.SourceCode}
+            return [{ content: result.SourceCode }];
         }
 
         // Etherscan adds an extra {} to the encoded JSON
-        const s = JSON.parse(result.SourceCode.slice(1, result.SourceCode.length-1));
+        const s = JSON.parse(result.SourceCode.slice(1, result.SourceCode.length - 1));
 
         // Flatten sources
         // { "sources": {"foo.sol": {"content": "..."}}}
-        const sources = s.sources as Record<string, {content: string}>;
-        return Object.fromEntries(
-            Object.entries(sources).map(
-                ([path, source]) => [path, source.content]
-            )
-        );
+        const sources = s.sources as Record<string, { content: string }>;
+        return Object.entries(sources).map(
+            ([path, source]) => {
+                return { path, content: source.content };
+            }
+        )
     }
 
     async getContract(address: string): Promise<ContractResult> {
@@ -149,7 +149,7 @@ export class EtherscanABILoader implements ABILoader {
 
                 getSources: () => {
                     try {
-                        return Promise.resolve(this.toContractSources(result));
+                        return Promise.resolve(this.#toContractSources(result));
                     } catch (err: any) {
                         throw new EtherscanABILoaderError("EtherscanABILoader getContract getSources error: " + err.message, {
                             context: { url, address },
@@ -210,56 +210,61 @@ export class SourcifyABILoader implements ABILoader {
         this.chainId = config?.chainId ?? 1;
     }
 
+    static stripPathPrefix(path: string): string {
+        return path.replace(/^\/contracts\/(full|partial)_match\/\d*\/\w*\/(sources\/)?/, "");
+    }
+
+    async #loadContract(url: string): Promise<ContractResult> {
+        try {
+            const r = await fetchJSON(url);
+            const files : Array<{ name: string, path: string, content: string }> = r.files ?? r;
+
+            // Metadata is usually the first one
+            const metadata = files.find((f) => f.name === "metadata.json")
+            if (metadata === undefined) throw new SourcifyABILoaderError("metadata.json not found");
+
+            // Note: Sometimes metadata.json contains sources, but not always. So we can't rely on just the metadata.json
+            const m = JSON.parse(metadata.content);
+
+            return {
+                abi: m.output.abi,
+                name: m.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
+                evmVersion: m.settings.evmVersion,
+                compilerVersion: m.compiler.version,
+                runs: m.settings.optimizer.runs,
+
+                // TODO: Paths will have a sourcify prefix, do we want to strip it to help normalize? It doesn't break anything keeping the prefix, so not sure.
+                // E.g. /contracts/full_match/1/0x1F98431c8aD98523631AE4a59f267346ea31F984/sources/contracts/interfaces/IERC20Minimal.sol
+                // Can use stripPathPrefix helper to do this, but maybe we want something like getSources({ normalize: true })?
+                getSources: () => Promise.resolve(files.map(({ path, content }) => { return { path, content } })),
+
+                ok: true,
+            };
+        } catch (err: any) {
+            if (isSourcifyNotFound(err)) return emptyContractResult;
+            throw new SourcifyABILoaderError("SourcifyABILoader load contract error: " + err.message, {
+                context: { url },
+                cause: err,
+            });
+        }
+    }
+
     async getContract(address: string): Promise<ContractResult> {
         // Sourcify doesn't like it when the address is not checksummed
         address = addressWithChecksum(address);
 
         {
             // Full match index includes verification settings that matches exactly
-            const url = "https://repo.sourcify.dev/contracts/full_match/" + this.chainId + "/" + address + "/metadata.json";
-            try {
-                const r = await fetchJSON(url);
-                return {
-                    abi: r.output.abi,
-                    name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
-                    evmVersion: r.settings.evmVersion,
-                    compilerVersion: r.compiler.version,
-                    runs: r.settings.optimizer.runs,
-
-                    ok: true,
-                };
-            } catch (err: any) {
-                if (!isSourcifyNotFound(err)) {
-                    throw new SourcifyABILoaderError("SourcifyABILoader getContract error: " + err.message, {
-                        context: { address, url },
-                        cause: err,
-                    });
-                }
-            }
+            const url = "https://sourcify.dev/server/files/" + this.chainId + "/" + address;
+            const r = await this.#loadContract(url);
+            if (r.ok) return r;
         }
 
         {
             // Partial match index is for verified contracts whose settings didn't match exactly
-            const url = "https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json"
-            try {
-                const r = await fetchJSON(url);
-                return {
-                    abi: r.output.abi,
-                    name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
-                    evmVersion: r.settings.evmVersion,
-                    compilerVersion: r.compiler.version,
-                    runs: r.settings.optimizer.runs,
-
-                    ok: true,
-                };
-            } catch (err: any) {
-                if (!isSourcifyNotFound(err)) {
-                    throw new SourcifyABILoaderError("SourcifyABILoader getContract error: " + err.message, {
-                        context: { address, url },
-                        cause: err,
-                    });
-                }
-            }
+            const url = "https://sourcify.dev/server/files/any/" + this.chainId + "/" + address;
+            const r = await this.#loadContract(url);
+            if (r.ok) return r;
         }
 
         return emptyContractResult;

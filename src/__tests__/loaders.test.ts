@@ -12,7 +12,7 @@ import {
 } from "../loaders";
 import { selectorsFromABI } from "../index";
 
-import { online_test } from "./env";
+import { online_test, test } from "./env";
 
 const SLOW_ETHERSCAN_TIMEOUT = 30000;
 
@@ -76,6 +76,12 @@ describe('loaders module', () => {
     expect(name).toBeFalsy()
   })
 
+  online_test('SourcifyABILoader_getContract_missing', async () => {
+    const loader = new SourcifyABILoader();
+    const r = await loader.getContract("0x0000000000000000000000000000000000000000");
+    expect(r.ok).toBeFalsy();
+  })
+
   online_test('SourcifyABILoader_getContract_UniswapV3Factory', async () => {
     const loader = new SourcifyABILoader();
     const {abi, name} = await loader.getContract("0x1F98431c8aD98523631AE4a59f267346ea31F984");
@@ -93,7 +99,7 @@ describe('loaders module', () => {
     expect(selectors).toContain(sig);
 
     const sources = result.getSources && await result.getSources();
-    expect(sources[""]).toContain("pragma solidity");
+    expect(sources && sources[0].content).toContain("pragma solidity");
 
   }, SLOW_ETHERSCAN_TIMEOUT)
 
@@ -157,7 +163,9 @@ describe('loaders module', () => {
     expect(res.name).toEqual("UniswapV3Factory");
 
     const sources = res.getSources && await res.getSources();
-    expect(sources["contracts/libraries/UnsafeMath.sol"]).contains("pragma solidity");
+    expect(
+      sources?.find(s => s.path?.endsWith("contracts/libraries/UnsafeMath.sol"))?.content
+    ).contains("pragma solidity");
   }, SLOW_ETHERSCAN_TIMEOUT);
 
   online_test('SamczunSignatureLookup', async () => {
@@ -181,3 +189,15 @@ describe('loaders module', () => {
     expect(selectors).toContain(sig);
   })
 })
+
+describe('loaders helpers', () => {
+  test('SourcifyABILoader.stripPathPrefix', () => {
+    expect(
+      SourcifyABILoader.stripPathPrefix("/contracts/full_match/1/0x1F98431c8aD98523631AE4a59f267346ea31F984/sources/contracts/interfaces/IERC20Minimal.sol")
+    ).toEqual("contracts/interfaces/IERC20Minimal.sol");
+
+    expect(
+      SourcifyABILoader.stripPathPrefix("/contracts/full_match/1/0x1F98431c8aD98523631AE4a59f267346ea31F984/metadata.json")
+    ).toEqual("metadata.json");
+  });
+});
