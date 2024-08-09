@@ -2,7 +2,7 @@ name: Deploy docs
 
 on:
   push:
-    branches: [$default-branch]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
