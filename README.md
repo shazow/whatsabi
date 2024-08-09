@@ -166,14 +166,16 @@ console.log("Resolved to:", address);
 
 ## See Also
 
-### Projects using WhatsABI
+### Projects powered by WhatsABI
 
 * [callthis.link](https://callthis.link/) - Transaction builder powered by WhatsABI
 * [otterscan.io](https://otterscan.io/) - Open source block explorer, [contract interactions powered by WhatsABI](https://x.com/otterscan/status/1817261257994756569)
-* [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/) - A frontend for whatsabi by [@w1nt3r_eth](https://twitter.com/w1nt3r_eth) - https://github.com/w1nt3r-eth/abi.w1nt3r.xyz
+* [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/) - A frontend for whatsabi by [@w1nt3r_eth](https://twitter.com/w1nt3r_eth)
 * [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, [uses whatsabi for unverified contracts](https://github.com/verynifty/ethcmd)
 * [monobase.xyz](https://monobase.xyz) - Universal frontend, [uses whatsabi for unverified contracts](https://twitter.com/nazar_ilamanov/status/1659648915195707392)
-* [savvy](https://svvy.sh/) - Contract explorer with in-browser devnet execution, ABI loaded by WhatsABI!
+* [savvy](https://svvy.sh/) - Contract explorer with in-browser devnet execution
+* [rivet](https://github.com/paradigmxyz/rivet) - Developer Wallet & DevTools for Anvil
+* [ondora.xyz](https://www.ondora.xyz/) - Cross-chain explorer and search engine
 
 ### Talks & Presentations
 
