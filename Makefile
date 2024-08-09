@@ -4,6 +4,9 @@ build:
 docs:
 	pnpm build:docs
 
+serve-docs:
+	python -m http.server -d ./docs
+
 watch:
 	tsc --project tsconfig.esm.json -w
 

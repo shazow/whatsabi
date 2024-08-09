@@ -1,4 +1,30 @@
-import { addressWithChecksum, fetchJSON } from "./utils.js";
+/**
+ * @module loaders
+ * @example
+ * Verified contract source code:
+ * ```ts
+ * const loader = whatsabi.loaders.defaultsWithEnv(env);
+ * const result = await loader.getContract(address);
+ * const sources = await result.getSources();
+ *
+ * for (const s of sources) {
+ *   console.log(s.path, " -> ", s.content + "...");
+ * }
+ * ```
+ *
+ * @example
+ * Combine loaders with custom settings behind a single interface, or use {@link defaultsWithEnv} as a shortcut for this.
+ * ```ts
+ * const loader = new whatsabi.loaders.MultiABILoader([
+ *   new whatsabi.loaders.SourcifyABILoader({ chainId: 8453 }),
+ *   new whatsabi.loaders.EtherscanABILoader({
+ *     baseURL: "https://api.basescan.org/api",
+ *     apiKey: "...", // Replace the value with your API key
+ *   }),
+ * ]);
+ * ```
+ */
+import { fetchJSON } from "./utils.js";
 import * as errors from "./errors.js";
 
 export type ContractResult = {
@@ -9,7 +35,33 @@ export type ContractResult = {
     runs: number;
 
     ok: boolean; // False if no result is found
+
+    /**
+     * getSources returns the imports -> source code mapping for the contract, if available.
+     *
+     * Caveats:
+     * - Not all loaders support this, so the property could be undefined.
+     * - This call could trigger additional fetch requests, depending on the loader.
+     **/
+    getSources?: () => Promise<ContractSources>;
 }
+
+/**
+ * ContractSources is a list of source files.
+ * If the source was flattened, it will lack a path attribute.
+ *
+ * @example
+ * ```typescript
+ * [{"content": "pragma solidity =0.7.6;\n\nimport ..."}]
+ * ```
+ *
+ * @example
+ * ```typescript
+ * [{"path": "contracts/Foo.sol", "content:" "pragma solidity =0.7.6;\n\nimport ..."}]
+ * ```
+ **/
+export type ContractSources = Array<{ path?: string, content: string }>;
+
 
 const emptyContractResult: ContractResult = {
     ok: false,
@@ -38,7 +90,7 @@ export class MultiABILoader implements ABILoader {
         for (const loader of this.loaders) {
             try {
                 const r = await loader.getContract(address);
-                if (r && r.abi.length > 0) return Promise.resolve(r);
+                if (r && r.abi.length > 0) return r;
             } catch (err: any) {
                 if (err.status === 404) continue;
 
@@ -57,7 +109,7 @@ export class MultiABILoader implements ABILoader {
                 const r = await loader.loadABI(address);
 
                 // Return the first non-empty result
-                if (r.length > 0) return Promise.resolve(r);
+                if (r.length > 0) return r;
             } catch (err: any) {
                 throw new MultiABILoaderError("MultiABILoader loadABI error: " + err.message, {
                     context: { loader, address },
@@ -65,7 +117,7 @@ export class MultiABILoader implements ABILoader {
                 });
             }
         }
-        return Promise.resolve([]);
+        return [];
     }
 }
 
@@ -80,6 +132,26 @@ export class EtherscanABILoader implements ABILoader {
         if (config === undefined) config = {};
         this.apiKey = config.apiKey;
         this.baseURL = config.baseURL || "https://api.etherscan.io/api";
+    }
+
+
+    /** Etherscan helper for converting the encoded SourceCode result arg to a decoded ContractSources. */
+    #toContractSources(result: { SourceCode: string }): ContractSources {
+        if (!result.SourceCode.startsWith("{{")) {
+            return [{ content: result.SourceCode }];
+        }
+
+        // Etherscan adds an extra {} to the encoded JSON
+        const s = JSON.parse(result.SourceCode.slice(1, result.SourceCode.length - 1));
+
+        // Flatten sources
+        // { "sources": {"foo.sol": {"content": "..."}}}
+        const sources = s.sources as Record<string, { content: string }>;
+        return Object.entries(sources).map(
+            ([path, source]) => {
+                return { path, content: source.content };
+            }
+        )
     }
 
     async getContract(address: string): Promise<ContractResult> {
@@ -100,6 +172,17 @@ export class EtherscanABILoader implements ABILoader {
                 evmVersion: result.EVMVersion,
                 compilerVersion: result.CompilerVersion,
                 runs: result.Runs,
+
+                getSources: async () => {
+                    try {
+                        return this.#toContractSources(result);
+                    } catch (err: any) {
+                        throw new EtherscanABILoaderError("EtherscanABILoader getContract getSources error: " + err.message, {
+                            context: { url, address },
+                            cause: err,
+                        });
+                    }
+                },
 
                 ok: true,
             };
@@ -153,68 +236,67 @@ export class SourcifyABILoader implements ABILoader {
         this.chainId = config?.chainId ?? 1;
     }
 
-    async getContract(address: string): Promise<ContractResult> {
-        // Sourcify doesn't like it when the address is not checksummed
-        address = addressWithChecksum(address);
+    static stripPathPrefix(path: string): string {
+        return path.replace(/^\/contracts\/(full|partial)_match\/\d*\/\w*\/(sources\/)?/, "");
+    }
 
+    async #loadContract(url: string): Promise<ContractResult> {
+        try {
+            const r = await fetchJSON(url);
+            const files: Array<{ name: string, path: string, content: string }> = r.files ?? r;
+
+            // Metadata is usually the first one
+            const metadata = files.find((f) => f.name === "metadata.json")
+            if (metadata === undefined) throw new SourcifyABILoaderError("metadata.json not found");
+
+            // Note: Sometimes metadata.json contains sources, but not always. So we can't rely on just the metadata.json
+            const m = JSON.parse(metadata.content);
+
+            return {
+                abi: m.output.abi,
+                name: m.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
+                evmVersion: m.settings.evmVersion,
+                compilerVersion: m.compiler.version,
+                runs: m.settings.optimizer.runs,
+
+                // TODO: Paths will have a sourcify prefix, do we want to strip it to help normalize? It doesn't break anything keeping the prefix, so not sure.
+                // E.g. /contracts/full_match/1/0x1F98431c8aD98523631AE4a59f267346ea31F984/sources/contracts/interfaces/IERC20Minimal.sol
+                // Can use stripPathPrefix helper to do this, but maybe we want something like getSources({ normalize: true })?
+                getSources: async () => files.map(({ path, content }) => { return { path, content } }),
+
+                ok: true,
+            };
+        } catch (err: any) {
+            if (isSourcifyNotFound(err)) return emptyContractResult;
+            throw new SourcifyABILoaderError("SourcifyABILoader load contract error: " + err.message, {
+                context: { url },
+                cause: err,
+            });
+        }
+    }
+
+    async getContract(address: string): Promise<ContractResult> {
         {
             // Full match index includes verification settings that matches exactly
-            const url = "https://repo.sourcify.dev/contracts/full_match/" + this.chainId + "/" + address + "/metadata.json";
-            try {
-                const r = await fetchJSON(url);
-                return {
-                    abi: r.output.abi,
-                    name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
-                    evmVersion: r.settings.evmVersion,
-                    compilerVersion: r.compiler.version,
-                    runs: r.settings.optimizer.runs,
-
-                    ok: true,
-                };
-            } catch (err: any) {
-                if (!isSourcifyNotFound(err)) {
-                    throw new SourcifyABILoaderError("SourcifyABILoader getContract error: " + err.message, {
-                        context: { address, url },
-                        cause: err,
-                    });
-                }
-            }
+            const url = "https://sourcify.dev/server/files/" + this.chainId + "/" + address;
+            const r = await this.#loadContract(url);
+            if (r.ok) return r;
         }
 
         {
             // Partial match index is for verified contracts whose settings didn't match exactly
-            const url = "https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json"
-            try {
-                const r = await fetchJSON(url);
-                return {
-                    abi: r.output.abi,
-                    name: r.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
-                    evmVersion: r.settings.evmVersion,
-                    compilerVersion: r.compiler.version,
-                    runs: r.settings.optimizer.runs,
-
-                    ok: true,
-                };
-            } catch (err: any) {
-                if (!isSourcifyNotFound(err)) {
-                    throw new SourcifyABILoaderError("SourcifyABILoader getContract error: " + err.message, {
-                        context: { address, url },
-                        cause: err,
-                    });
-                }
-            }
+            const url = "https://sourcify.dev/server/files/any/" + this.chainId + "/" + address;
+            const r = await this.#loadContract(url);
+            if (r.ok) return r;
         }
 
         return emptyContractResult;
     }
 
     async loadABI(address: string): Promise<any[]> {
-        // Sourcify doesn't like it when the address is not checksummed
-        address = addressWithChecksum(address);
-
         {
             // Full match index includes verification settings that matches exactly
-            const url = "https://repo.sourcify.dev/contracts/full_match/" + this.chainId + "/" + address + "/metadata.json";
+            const url = "https://sourcify.dev/server/repository/contracts/full_match/" + this.chainId + "/" + address + "/metadata.json";
             try {
                 return (await fetchJSON(url)).output.abi;
             } catch (err: any) {
@@ -229,7 +311,7 @@ export class SourcifyABILoader implements ABILoader {
 
         {
             // Partial match index is for verified contracts whose settings didn't match exactly
-            const url = "https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json";
+            const url = "https://sourcify.dev/server/repository/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json";
             try {
                 return (await fetchJSON(url)).output.abi;
             } catch (err: any) {
@@ -267,9 +349,9 @@ export class MultiSignatureLookup implements SignatureLookup {
             const r = await lookup.loadFunctions(selector);
 
             // Return the first non-empty result
-            if (r.length > 0) return Promise.resolve(r);
+            if (r.length > 0) return r;
         }
-        return Promise.resolve([]);
+        return [];
     }
 
     async loadEvents(hash: string): Promise<string[]> {
@@ -277,9 +359,9 @@ export class MultiSignatureLookup implements SignatureLookup {
             const r = await lookup.loadEvents(hash);
 
             // Return the first non-empty result
-            if (r.length > 0) return Promise.resolve(r);
+            if (r.length > 0) return r;
         }
-        return Promise.resolve([]);
+        return [];
     }
 }
 
@@ -356,19 +438,25 @@ type LoaderEnv = {
  *
  * @example
  * ```ts
- * whatsabi.autoload(address, {provider, ...defaultsWithEnv(process.env)})
+ * whatsabi.autoload(address, {provider, ...whatsabi.loaders.defaultsWithEnv(process.env)})
  * ```
  *
  * @example
  * ```ts
  * whatsabi.autoload(address, {
  *     provider,
- *     ...defaultsWithEnv({
+ *     ...whatsabi.loaders.defaultsWithEnv({
  *         SOURCIFY_CHAIN_ID: 42161,
  *         ETHERSCAN_BASE_URL: "https://api.arbiscan.io/api",
  *         ETHERSCAN_API_KEY: "MYSECRETAPIKEY",
  *     }),
  * })
+ * ```
+ *
+ * @example
+ * Can be useful for stand-alone usage too!
+ * ```ts
+ * const { abiLoader, signatureLookup } = whatsabi.loaders.defaultsWithEnv(env);
  * ```
  */
 export function defaultsWithEnv(env: LoaderEnv): Record<string, ABILoader | SignatureLookup> {
