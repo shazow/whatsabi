@@ -166,13 +166,19 @@ console.log("Resolved to:", address);
 
 ## See Also
 
-* [callthis.link](https://callthis.link/) - Transaction builder powered by whatsabi
+### Projects using WhatsABI
+
+* [callthis.link](https://callthis.link/) - Transaction builder powered by WhatsABI
 * [otterscan.io](https://otterscan.io/) - Open source block explorer, [contract interactions powered by WhatsABI](https://x.com/otterscan/status/1817261257994756569)
-* [WhatsABI? - Seminar for Spearbit](https://www.youtube.com/watch?v=sfgassm8SKw) (April 2023)
 * [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/) - A frontend for whatsabi by [@w1nt3r_eth](https://twitter.com/w1nt3r_eth) - https://github.com/w1nt3r-eth/abi.w1nt3r.xyz
 * [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, [uses whatsabi for unverified contracts](https://github.com/verynifty/ethcmd)
 * [monobase.xyz](https://monobase.xyz) - Universal frontend, [uses whatsabi for unverified contracts](https://twitter.com/nazar_ilamanov/status/1659648915195707392)
-* [savvy](https://svvy.sh/) - Contract explorer that uses whatsabi to fetch ABIs and execute against an in-browser devnet, built by [0xpolarzero](https://x.com/0xpolarzero)
+* [savvy](https://svvy.sh/) - Contract explorer with in-browser devnet execution, ABI loaded by WhatsABI!
+
+### Talks & Presentations
+
+* [The Bytecode with Shafu - WhatsABI](https://www.youtube.com/watch?v=Io8bcYFjoEE) (July 2024)
+* [WhatsABI? - Seminar for Spearbit](https://www.youtube.com/watch?v=sfgassm8SKw) (April 2023)
 
 ## Some Cool People Said...
 
