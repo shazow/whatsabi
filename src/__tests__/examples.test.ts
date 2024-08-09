@@ -18,7 +18,7 @@ cached_test('README usage', async ({ provider, withCache }) => {
     )
 
     const selectors = whatsabi.selectorsFromBytecode(code); // Get the callable selectors
-    
+
     // console.log(selectors); // ["0x06fdde03", "0x46423aa7", "0x55944a42", ...]
     expect(selectors).toEqual(expect.arrayContaining(["0x06fdde03", "0x46423aa7", "0x55944a42"]));
 
@@ -32,9 +32,9 @@ cached_test('README usage', async ({ provider, withCache }) => {
         //        ...
         // ]
 
-        expect(abi).toContainEqual({"hash": "0x721c20121297512b72821b97f5326877ea8ecf4bb9948fea5bfcb6453074d37f", "type": "event"});
+        expect(abi).toContainEqual({ "hash": "0x721c20121297512b72821b97f5326877ea8ecf4bb9948fea5bfcb6453074d37f", "type": "event" });
         expect(abi).toContainEqual(
-            {"payable": true, "selector": "0xb3a34c4c", "type": "function", "stateMutability": "payable", "inputs": [{"type": "bytes", "name": ""}], "outputs": [{"type": "bytes", "name": ""}]},
+            { "payable": true, "selector": "0xb3a34c4c", "type": "function", "stateMutability": "payable", "inputs": [{ "type": "bytes", "name": "" }], "outputs": [{ "type": "bytes", "name": "" }] },
         );
     }
 
@@ -64,7 +64,7 @@ online_test('README autoload', async ({ provider }) => {
             // signatureLoader: whatsabi.loaders.defaultSignatureLookup,
 
             // There is a handy helper for adding the default loaders but with your own settings
-            ... whatsabi.loaders.defaultsWithEnv({
+            ...whatsabi.loaders.defaultsWithEnv({
                 SOURCIFY_CHAIN_ID: 42161,
                 ETHERSCAN_BASE_URL: "https://api.arbiscan.io/api",
                 //ETHERSCAN_API_KEY: "MYSECRETAPIKEY",
@@ -83,20 +83,28 @@ online_test('README autoload', async ({ provider }) => {
         });
         expect(result.abi).toContainEqual(
             // 'function name() pure returns (string contractName)'
-            {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"contractName","type":"string"}],"stateMutability":"pure","type":"function"}
+            { "inputs": [], "name": "name", "outputs": [{ "internalType": "string", "name": "contractName", "type": "string" }], "stateMutability": "pure", "type": "function" }
         );
 
         if (result.followProxies) {
-                result = await result.followProxies();
+            result = await result.followProxies();
         }
     }
 
     {
-            const { abi, address } = await whatsabi.autoload("0x4f8AD938eBA0CD19155a835f617317a6E788c868", {
-                    provider,
-                    followProxies: true,
-            });
-            expect(abi.length).toBeGreaterThan(0);
-            expect(address).toBe("0x964f84048f0d9bb24b82413413299c0a1d61ea9f");
+        const { abi, address } = await whatsabi.autoload("0x4f8AD938eBA0CD19155a835f617317a6E788c868", {
+            provider,
+            followProxies: true,
+        });
+        expect(abi.length).toBeGreaterThan(0);
+        expect(address).toBe("0x964f84048f0d9bb24b82413413299c0a1d61ea9f");
     }
+
+    {
+        // Check defaultsWithEnv decomposition
+        const { abiLoader, signatureLookup } = whatsabi.loaders.defaultsWithEnv({});
+        expect(abiLoader).toBeDefined();
+        expect(signatureLookup).toBeDefined();
+    }
+
 }, TIMEOUT);

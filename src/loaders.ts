@@ -1,3 +1,29 @@
+/**
+ * @module loaders
+ * @example
+ * Verified contract source code:
+ * ```ts
+ * const loader = whatsabi.loaders.defaultsWithEnv(env);
+ * const result = await loader.getContract(address);
+ * const sources = await result.getSources();
+ *
+ * for (const s of sources) {
+ *   console.log(s.path, " -> ", s.content + "...");
+ * }
+ * ```
+ *
+ * @example
+ * Combine loaders with custom settings behind a single interface, or use {@link defaultsWithEnv} as a shortcut for this.
+ * ```ts
+ * const loader = new whatsabi.loaders.MultiABILoader([
+ *   new whatsabi.loaders.SourcifyABILoader({ chainId: 8453 }),
+ *   new whatsabi.loaders.EtherscanABILoader({
+ *     baseURL: "https://api.basescan.org/api",
+ *     apiKey: "...", // Replace the value with your API key
+ *   }),
+ * ]);
+ * ```
+ */
 import { fetchJSON } from "./utils.js";
 import * as errors from "./errors.js";
 
@@ -217,7 +243,7 @@ export class SourcifyABILoader implements ABILoader {
     async #loadContract(url: string): Promise<ContractResult> {
         try {
             const r = await fetchJSON(url);
-            const files : Array<{ name: string, path: string, content: string }> = r.files ?? r;
+            const files: Array<{ name: string, path: string, content: string }> = r.files ?? r;
 
             // Metadata is usually the first one
             const metadata = files.find((f) => f.name === "metadata.json")
@@ -412,19 +438,25 @@ type LoaderEnv = {
  *
  * @example
  * ```ts
- * whatsabi.autoload(address, {provider, ...defaultsWithEnv(process.env)})
+ * whatsabi.autoload(address, {provider, ...whatsabi.loaders.defaultsWithEnv(process.env)})
  * ```
  *
  * @example
  * ```ts
  * whatsabi.autoload(address, {
  *     provider,
- *     ...defaultsWithEnv({
+ *     ...whatsabi.loaders.defaultsWithEnv({
  *         SOURCIFY_CHAIN_ID: 42161,
  *         ETHERSCAN_BASE_URL: "https://api.arbiscan.io/api",
  *         ETHERSCAN_API_KEY: "MYSECRETAPIKEY",
  *     }),
  * })
+ * ```
+ *
+ * @example
+ * Can be useful for stand-alone usage too!
+ * ```ts
+ * const { abiLoader, signatureLookup } = whatsabi.loaders.defaultsWithEnv(env);
  * ```
  */
 export function defaultsWithEnv(env: LoaderEnv): Record<string, ABILoader | SignatureLookup> {
