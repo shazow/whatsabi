@@ -40,7 +40,7 @@ describe('loaders module', () => {
 
   online_test('SourcifyABILoader', async () => {
     const loader = new SourcifyABILoader();
-    const abi = await loader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
+    const abi = await loader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d"); // Unchecksummed address
     const selectors = Object.values(selectorsFromABI(abi));
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     expect(selectors).toContain(sig);

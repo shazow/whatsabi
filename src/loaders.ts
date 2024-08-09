@@ -1,4 +1,4 @@
-import { addressWithChecksum, fetchJSON } from "./utils.js";
+import { fetchJSON } from "./utils.js";
 import * as errors from "./errors.js";
 
 export type ContractResult = {
@@ -250,9 +250,6 @@ export class SourcifyABILoader implements ABILoader {
     }
 
     async getContract(address: string): Promise<ContractResult> {
-        // Sourcify doesn't like it when the address is not checksummed
-        address = addressWithChecksum(address);
-
         {
             // Full match index includes verification settings that matches exactly
             const url = "https://sourcify.dev/server/files/" + this.chainId + "/" + address;
@@ -271,12 +268,9 @@ export class SourcifyABILoader implements ABILoader {
     }
 
     async loadABI(address: string): Promise<any[]> {
-        // Sourcify doesn't like it when the address is not checksummed
-        address = addressWithChecksum(address);
-
         {
             // Full match index includes verification settings that matches exactly
-            const url = "https://repo.sourcify.dev/contracts/full_match/" + this.chainId + "/" + address + "/metadata.json";
+            const url = "https://sourcify.dev/server/repository/contracts/full_match/" + this.chainId + "/" + address + "/metadata.json";
             try {
                 return (await fetchJSON(url)).output.abi;
             } catch (err: any) {
@@ -291,7 +285,7 @@ export class SourcifyABILoader implements ABILoader {
 
         {
             // Partial match index is for verified contracts whose settings didn't match exactly
-            const url = "https://repo.sourcify.dev/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json";
+            const url = "https://sourcify.dev/server/repository/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json";
             try {
                 return (await fetchJSON(url)).output.abi;
             } catch (err: any) {
