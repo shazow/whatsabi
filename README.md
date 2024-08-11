@@ -229,6 +229,7 @@ $ nix develop  # Or use your system's package manager to install node/ts/etc
   having a helpful assembler sub-package was inspiring.
 * [@jacobdehart](https://twitter.com/jacobdehart) for the library name and logo
   that is totally a wasabi and not a green poop!
+* [Etherscan](https://etherscan.io/) for increasing our API limits.
 
 
 ## License
