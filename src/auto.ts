@@ -6,6 +6,7 @@ import { type ProxyResolver, DiamondProxyResolver } from "./proxies.js";
 import type { ABILoader, SignatureLookup } from "./loaders.js";
 import * as errors from "./errors.js";
 
+import { keccak256 } from "./utils.js";
 import { CompatibleProvider } from "./providers.js";
 import { defaultABILoader, defaultSignatureLookup } from "./loaders.js";
 import { abiFromBytecode, disasm } from "./disasm.js";
@@ -91,6 +92,14 @@ export type AutoloadConfig = {
     crossChainLoad?: AutoloadConfig;
 
     /**
+     * Keccak256 hash of the contract bytecode (0x-prefixed hex string).
+     *
+     * Confirm that the bytecode we get for the contract matches some existing assumed bytecode.
+     * This is used by crossChainLoad to verify that the bytecode matches on both chains.
+     */
+    assertBytecodeHash?: string;
+
+    /**
      * Enable pulling additional metadata from WhatsABI's static analysis, still unreliable
      *
      * @group Settings
@@ -167,7 +176,22 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     }
     if (!bytecode) return result; // Must be an EOA
 
-    onProgress("disasm", { bytecode });
+    // We only need to get the hash if we're asserting, so let's be lazy
+    let bytecodeHash : string = (config.assertBytecodeHash || config.crossChainLoad) ? keccak256(bytecode) : "";
+
+    if (config.assertBytecodeHash) {
+        if (!config.assertBytecodeHash.startsWith("0x")) {
+            throw new errors.AutoloadError(`assertBytecodeHash must be a hex string starting with 0x`, {
+                context: { address, assertBytecodeHash: config.assertBytecodeHash },
+            });
+        }
+        if (config.assertBytecodeHash !== bytecodeHash) {
+            throw new errors.AutoloadError(`Contract bytecode hash does not match assertBytecodeHash`, {
+                context: { address, bytecodeHash, assertBytecodeHash: config.assertBytecodeHash },
+            });
+        }
+    }
+
     const program = disasm(bytecode);
 
     // FIXME: Sort them in some reasonable way
@@ -226,11 +250,14 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     if (config.crossChainLoad) {
         onProgress("crossChainLoad", { address });
         try {
-            const r = await autoload(address, config.crossChainLoad);
+            const r = await autoload(
+                address,
+                Object.assign({ assertBytecodeHash: bytecodeHash }, config.crossChainLoad),
+            );
             if (r.isVerified) {
                 result.abi = r.abi;
-                // We don't set verified here because we're not checking code equality yet
-                // result.isVerified = true;
+                result.isVerified = true; // Bytecode is asserted, so we claim it's verified
+                return result;
             }
         } catch (error: any) {
             if (onError("crossChainLoad", error) === true) return result;
