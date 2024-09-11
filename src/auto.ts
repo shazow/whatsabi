@@ -24,6 +24,9 @@ export type AutoloadResult = {
     address: string,
     abi: ABI;
 
+    /** Whether the `abi` is loaded from a verified source */
+    isVerified: boolean;
+
     /** List of resolveable proxies detected in the contract */
     proxies: ProxyResolver[],
 
@@ -79,6 +82,15 @@ export type AutoloadConfig = {
     followProxies?: boolean;
 
     /**
+     * By default, we'll only try to load the ABI from the respective chain.
+     * But if it doesn't exist, we can check if the same verified contract exists on another network and use it instead.
+     * Suggest setting { signatureLookup: false } for this, as it would be redundant.
+     *
+     * @group Settings
+     */
+    crossChainLoad?: AutoloadConfig;
+
+    /**
      * Enable pulling additional metadata from WhatsABI's static analysis, still unreliable
      *
      * @group Settings
@@ -118,6 +130,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         address,
         abi: [],
         proxies: [],
+        isVerified: false,
     };
 
     let abiLoader = config.abiLoader;
@@ -154,6 +167,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     }
     if (!bytecode) return result; // Must be an EOA
 
+    onProgress("disasm", { bytecode });
     const program = disasm(bytecode);
 
     // FIXME: Sort them in some reasonable way
@@ -199,10 +213,27 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
                 return [addresses[i], abi];
             }));
             result.abi = pruneFacets(facets, abis);
-            if (result.abi.length > 0) return result;
+            if (result.abi.length > 0) {
+                result.isVerified = true;
+                return result;
+            }
         } catch (error: any) {
             // TODO: Catch useful errors
-            if (onError("abiLoad", error) === true) return result;
+            if (onError("abiLoader", error) === true) return result;
+        }
+    }
+
+    if (config.crossChainLoad) {
+        onProgress("crossChainLoad", { address });
+        try {
+            const r = await autoload(address, config.crossChainLoad);
+            if (r.isVerified) {
+                result.abi = r.abi;
+                // We don't set verified here because we're not checking code equality yet
+                // result.isVerified = true;
+            }
+        } catch (error: any) {
+            if (onError("crossChainLoad", error) === true) return result;
         }
     }
 
