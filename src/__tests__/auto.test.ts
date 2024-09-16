@@ -71,7 +71,7 @@ online_test('autoload non-contract', async ({ provider, env }) => {
     expect(abi).toStrictEqual([]);
 });
 
-online_test('autoload crossload', async ({ provider, env }) => {
+online_test('autoload fallback', async ({ provider, env }) => {
     const address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT, available on both PulseChain and Mainnet (but only verified on mainnet)
     const pulseChainProvider = makeProvider("https://pulsechain-rpc.publicnode.com");
     {
@@ -99,10 +99,10 @@ online_test('autoload crossload', async ({ provider, env }) => {
             signatureLookup: false,
             abiLoader: false,
             // onProgress: (phase: string, ...args: any[]) => { console.debug("Mainnet PROGRESS", phase, args); },
-            crossChainLoad: {
+            fallbackLoad: {
                 provider,
                 signatureLookup: false,
-                // onProgress: (phase: string, ...args: any[]) => { console.debug("CrossChain PROGRESS", phase, args); },
+                // onProgress: (phase: string, ...args: any[]) => { console.debug("fallback PROGRESS", phase, args); },
                 ...whatsabi.loaders.defaultsWithEnv(env),
             }
         });

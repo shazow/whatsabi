@@ -89,13 +89,13 @@ export type AutoloadConfig = {
      *
      * @group Settings
      */
-    crossChainLoad?: AutoloadConfig;
+    fallbackLoad?: AutoloadConfig;
 
     /**
      * Keccak256 hash of the contract bytecode (0x-prefixed hex string).
      *
      * Confirm that the bytecode we get for the contract matches some existing assumed bytecode.
-     * This is used by crossChainLoad to verify that the bytecode matches on both chains.
+     * This is used by fallbackLoad to verify that the bytecode matches on both chains.
      */
     assertBytecodeHash?: string;
 
@@ -177,7 +177,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     if (!bytecode) return result; // Must be an EOA
 
     // We only need to get the hash if we're asserting, so let's be lazy
-    let bytecodeHash : string = (config.assertBytecodeHash || config.crossChainLoad) ? keccak256(bytecode) : "";
+    let bytecodeHash : string = (config.assertBytecodeHash || config.fallbackLoad) ? keccak256(bytecode) : "";
 
     if (config.assertBytecodeHash) {
         if (!config.assertBytecodeHash.startsWith("0x")) {
@@ -247,12 +247,12 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         }
     }
 
-    if (config.crossChainLoad) {
+    if (config.fallbackLoad) {
         onProgress("crossChainLoad", { address });
         try {
             const r = await autoload(
                 address,
-                Object.assign({ assertBytecodeHash: bytecodeHash }, config.crossChainLoad),
+                Object.assign({ assertBytecodeHash: bytecodeHash }, config.fallbackLoad),
             );
             if (r.isVerified) {
                 result.abi = r.abi;
