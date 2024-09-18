@@ -2,7 +2,7 @@
  * @module proxies
  * @example
  * Using WhatsABI to only resolve proxies with a known bytecode:
- * ```
+ * ```ts
  * const address = "0x...";
  * const bytecode = "0x..."; // Already loaded from somewhere
  * const cachedCodeProvider = whatsabi.providers.WithCachedCode(provider, {
@@ -14,8 +14,8 @@
  *   signatureLookup: false, // Skip looking up selector signatures
  * })
  *
- * if (result.address != address) console.log(`Resolved proxy: ${address} -> ${result.address}`);
- * if (result.proxies.length) console.log("Proxies detected:", result.proxies);
+ * if (result.address !== address) console.log(`Resolved proxy: ${address} -> ${result.address}`);
+ * if (result.proxies.length > 0) console.log("Proxies detected:", result.proxies);
  * // Note that some proxies can only be resolved relative to a selector, like DiamondProxy. These will need to be resolved manually via result.proxies.
  * ```
  */
