@@ -18,9 +18,13 @@ export type {
 } from "./auto.js";
 
 import * as loaders from "./loaders.js";
-import * as proxies from "./proxies.js";
 export { loaders };
+
+import * as proxies from "./proxies.js";
 export { proxies };
+
+import * as providers from "./providers.js";
+export { providers };
 
 import * as errors from "./errors.js";
 export { errors };
