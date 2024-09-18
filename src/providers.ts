@@ -65,6 +65,24 @@ export function CompatibleProvider(provider: any): Provider {
     });
 }
 
+/**
+ * @param codeCache - Object containing address => code mappings
+ * @param provider - Any existing provider
+* @returns {Provider} - Provider that will return a fixed getCode result for items defined in codeCache.
+ */
+export function WithCachedCode(codeCache: Record<string, string>, provider: Provider): Provider {
+    return {
+        ...provider,
+        async getCode(address: string): Promise<string> {
+            if (codeCache[address]) {
+                return codeCache[address];
+            }
+            return await provider.getCode(address);
+        }
+    };
+}
+
+
 // RPCPRovider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
 // and instead have a discovery for the lowest-level RPC call function that we can use directly.
 // At least whenever possible. Higher-level functionality like getAddress is still tricky.
