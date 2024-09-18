@@ -44,6 +44,9 @@ export type ContractResult = {
      * - This call could trigger additional fetch requests, depending on the loader.
      **/
     getSources?: () => Promise<ContractSources>;
+
+    userdoc?: any;
+    devdoc?: any;
 }
 
 /**
@@ -263,6 +266,9 @@ export class SourcifyABILoader implements ABILoader {
                 // E.g. /contracts/full_match/1/0x1F98431c8aD98523631AE4a59f267346ea31F984/sources/contracts/interfaces/IERC20Minimal.sol
                 // Can use stripPathPrefix helper to do this, but maybe we want something like getSources({ normalize: true })?
                 getSources: async () => files.map(({ path, content }) => { return { path, content } }),
+
+                userdoc: m.output.userdoc,
+                devdoc: m.output.devdoc,
 
                 ok: true,
             };
