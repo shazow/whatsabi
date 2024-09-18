@@ -83,6 +83,23 @@ export type AutoloadConfig = {
     followProxies?: boolean;
 
     /**
+     * By default, we'll only try to load the ABI from the respective chain.
+     * But if it doesn't exist, we can check if the same verified contract exists on another network and use it instead.
+     * Suggest setting { signatureLookup: false } for this, as it would be redundant.
+     *
+     * @group Settings
+     */
+    fallbackLoad?: AutoloadConfig;
+
+    /**
+     * Keccak256 hash of the contract bytecode (0x-prefixed hex string).
+     *
+     * Confirm that the bytecode we get for the contract matches some existing assumed bytecode.
+     * This is used by fallbackLoad to verify that the bytecode matches on both chains.
+     */
+    assertBytecodeHash?: string;
+
+    /**
      * Enable pulling additional metadata from WhatsABI's static analysis, still unreliable
      *
      * @group Settings
@@ -159,6 +176,22 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     }
     if (!bytecode) return result; // Must be an EOA
 
+    // We only need to get the hash if we're asserting, so let's be lazy
+    let bytecodeHash : string = (config.assertBytecodeHash || config.fallbackLoad) ? keccak256(bytecode) : "";
+
+    if (config.assertBytecodeHash) {
+        if (!config.assertBytecodeHash.startsWith("0x")) {
+            throw new errors.AutoloadError(`assertBytecodeHash must be a hex string starting with 0x`, {
+                context: { address, assertBytecodeHash: config.assertBytecodeHash },
+            });
+        }
+        if (config.assertBytecodeHash !== bytecodeHash) {
+            throw new errors.AutoloadError(`Contract bytecode hash does not match assertBytecodeHash`, {
+                context: { address, bytecodeHash, assertBytecodeHash: config.assertBytecodeHash },
+            });
+        }
+    }
+
     const program = disasm(bytecode);
 
     // FIXME: Sort them in some reasonable way
@@ -211,6 +244,23 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         } catch (error: any) {
             // TODO: Catch useful errors
             if (onError("abiLoader", error) === true) return result;
+        }
+    }
+
+    if (config.fallbackLoad) {
+        onProgress("crossChainLoad", { address });
+        try {
+            const r = await autoload(
+                address,
+                Object.assign({ assertBytecodeHash: bytecodeHash }, config.fallbackLoad),
+            );
+            if (r.isVerified) {
+                result.abi = r.abi;
+                result.isVerified = true; // Bytecode is asserted, so we claim it's verified
+                return result;
+            }
+        } catch (error: any) {
+            if (onError("crossChainLoad", error) === true) return result;
         }
     }
 
