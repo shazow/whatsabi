@@ -6,7 +6,6 @@ import { type ProxyResolver, DiamondProxyResolver } from "./proxies.js";
 import type { ABILoader, SignatureLookup } from "./loaders.js";
 import * as errors from "./errors.js";
 
-import { keccak256 } from "./utils.js";
 import { CompatibleProvider } from "./providers.js";
 import { defaultABILoader, defaultSignatureLookup } from "./loaders.js";
 import { abiFromBytecode, disasm } from "./disasm.js";
