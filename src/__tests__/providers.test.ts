@@ -9,9 +9,9 @@ const fakeProvider = whatsabi.providers.CompatibleProvider({
 
 test('provider WithCachedCode helper', async () => {
     const address = "0x0000000000000000000000000000000000000001";
-    const provider = whatsabi.providers.WithCachedCode({
+    const provider = whatsabi.providers.WithCachedCode(fakeProvider, {
         [address]: "0xf00",
-    }, fakeProvider);
+    });
 
     expect(await provider.getCode(address)).toStrictEqual("0xf00");
     expect(await provider.getCode("not cached")).toBeUndefined();
