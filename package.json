@@ -45,14 +45,14 @@
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
-    "npm": "^10.8.2",
+    "npm": "^10.8.3",
     "size-limit": "^8.2.6",
-    "tsx": "^4.17.0",
-    "typedoc": "^0.26.5",
+    "tsx": "^4.19.1",
+    "typedoc": "^0.26.7",
     "typedoc-plugin-missing-exports": "^3.0.0",
-    "viem": "^2.19.4",
+    "viem": "^2.21.7",
     "vitest": "^0.34.6",
-    "web3": "^4.11.1"
+    "web3": "^4.12.1"
   },
   "main": "./lib.cjs/index.js",
   "module": "./lib.esm/index.js",
