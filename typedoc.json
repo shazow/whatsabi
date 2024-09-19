@@ -2,7 +2,7 @@
     "$schema": "https://typedoc.org/schema.json",
     "out": "./docs",
     "entryPoints": [
-        "./src/index.ts"
+        "./src/whatsabi.ts"
     ],
     "plugin": [
         "typedoc-plugin-missing-exports"
