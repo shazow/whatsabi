@@ -73,7 +73,7 @@ describe('loaders module', () => {
     const selectors = Object.values(selectorsFromABI(abi));
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     expect(selectors).toContain(sig);
-    expect(name).toBeFalsy()
+    expect(name).toBe("UniswapV2Router02");
 
     expect(userdoc).toBeDefined();
     expect(devdoc).toBeDefined();
