@@ -35,6 +35,7 @@ export type ContractResult = {
     runs: number;
 
     ok: boolean; // False if no result is found
+    loader?: ABILoader;
 
     /**
      * getSources returns the imports -> source code mapping for the contract, if available.
@@ -77,13 +78,21 @@ const emptyContractResult: ContractResult = {
 }
 
 export interface ABILoader {
+    readonly name: string;
+
     loadABI(address: string): Promise<any[]>;
     getContract(address: string): Promise<ContractResult>
 }
 
 // Load ABIs from multiple providers until a result is found.
 export class MultiABILoader implements ABILoader {
+    readonly name: string = "MultiABILoader";
+
     loaders: ABILoader[];
+
+    // Note: This callback is used to pull out which loader succeeded without modifying the return API.
+    // We can remove it once we switch to using getContract for autoload.
+    onLoad?: (loader: ABILoader) => void;
 
     constructor(loaders: ABILoader[]) {
         this.loaders = loaders;
@@ -93,7 +102,10 @@ export class MultiABILoader implements ABILoader {
         for (const loader of this.loaders) {
             try {
                 const r = await loader.getContract(address);
-                if (r && r.abi.length > 0) return r;
+                if (r && r.abi.length > 0) {
+                    if (this.onLoad) this.onLoad(loader);
+                    return r;
+                }
             } catch (err: any) {
                 if (err.status === 404) continue;
 
@@ -112,7 +124,10 @@ export class MultiABILoader implements ABILoader {
                 const r = await loader.loadABI(address);
 
                 // Return the first non-empty result
-                if (r.length > 0) return r;
+                if (r.length > 0) {
+                    if (this.onLoad) this.onLoad(loader);
+                    return r;
+                }
             } catch (err: any) {
                 throw new MultiABILoaderError("MultiABILoader loadABI error: " + err.message, {
                     context: { loader, address },
@@ -128,6 +143,8 @@ export class MultiABILoaderError extends errors.LoaderError { };
 
 
 export class EtherscanABILoader implements ABILoader {
+    readonly name = "EtherscanABILoader";
+
     apiKey?: string;
     baseURL: string;
 
@@ -188,6 +205,7 @@ export class EtherscanABILoader implements ABILoader {
                 },
 
                 ok: true,
+                loader: this,
             };
         } catch (err: any) {
             throw new EtherscanABILoaderError("EtherscanABILoader getContract error: " + err.message, {
@@ -233,6 +251,8 @@ function isSourcifyNotFound(error: any): boolean {
 
 // https://sourcify.dev/
 export class SourcifyABILoader implements ABILoader {
+    readonly name = "SourcifyABILoader";
+
     chainId?: number;
 
     constructor(config?: { chainId?: number }) {
@@ -271,6 +291,7 @@ export class SourcifyABILoader implements ABILoader {
                 devdoc: m.output.devdoc,
 
                 ok: true,
+                loader: this,
             };
         } catch (err: any) {
             if (isSourcifyNotFound(err)) return emptyContractResult;
