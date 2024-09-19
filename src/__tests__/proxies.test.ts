@@ -19,6 +19,8 @@ describe('proxy detection', () => {
         expect(program.proxies[0]).toBeInstanceOf(proxies.FixedProxyResolver);
         const proxy = program.proxies[0] as proxies.FixedProxyResolver;
         expect(proxy.resolvedAddress).toBe("0xbebebebebebebebebebebebebebebebebebebebe");
+        expect(proxy.name).toBe("FixedProxy");
+        expect(proxy.toString()).toBe("FixedProxy");
     });
 
     test('EIP-1167 Proxy: Uniswap v1', async () => {
@@ -55,6 +57,7 @@ describe('proxy detection', () => {
 
         const program = disasm(bytecode);
         expect(program.proxies[0]).toBeInstanceOf(proxies.GnosisSafeProxyResolver);
+        expect(program.proxies[0].name).toBe("GnosisSafeProxy");
     });
 
     test('ZeppelinOS Proxy', async () => {

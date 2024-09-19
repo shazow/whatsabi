@@ -275,9 +275,19 @@ export class SourcifyABILoader implements ABILoader {
             // Note: Sometimes metadata.json contains sources, but not always. So we can't rely on just the metadata.json
             const m = JSON.parse(metadata.content);
 
+            // Sourcify includes a title from the Natspec comments
+            let name = m.output.devdoc?.title;
+            if (!name && m.settings.compilationTarget) {
+                // Try to use the compilation target name as a fallback
+                const targetNames = Object.values(m.settings.compilationTarget);
+                if (targetNames.length > 0) {
+                    name = targetNames[0];
+                }
+            }
+
             return {
                 abi: m.output.abi,
-                name: m.output.devdoc?.title ?? null, // Sourcify includes a title from the Natspec comments
+                name: name ?? null,
                 evmVersion: m.settings.evmVersion,
                 compilerVersion: m.compiler.version,
                 runs: m.settings.optimizer.runs,

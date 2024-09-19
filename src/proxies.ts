@@ -24,6 +24,7 @@ import { addSlotOffset, readArray, joinSlot } from "./slots.js";
 import { addressWithChecksum } from "./utils.js";
 
 export interface ProxyResolver {
+    readonly name: string;
     resolve(provider: StorageProvider|CallProvider, address: string, selector?: string): Promise<string>
     toString(): string,
 }
@@ -77,6 +78,8 @@ const EIP1967FallbackSelectors = [
 ];
 
 export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "EIP1967Proxy";
+
     async resolve(provider: StorageProvider & CallProvider, address: string): Promise<string> {
         // Is there an implementation defined?
         const implAddr = addressFromPadded(await provider.getStorageAt(address, slots.EIP1967_IMPL));
@@ -116,6 +119,8 @@ const diamondSelectors = [
 
 // ERC2535 - Diamond/Facet Proxy
 export class DiamondProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "DiamondProxy";
+
     async resolve(provider: StorageProvider & CallProvider, address: string, selector: string): Promise<string> {
         if (!selector) {
             throw "DiamondProxy requires a selector to resolve to a specific facet";
@@ -215,12 +220,16 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
 }
 
 export class ZeppelinOSProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "ZeppelinOSProxy";
+
     async resolve(provider: StorageProvider, address: string): Promise<string> {
         return addressFromPadded(await provider.getStorageAt(address, slots.ZEPPELINOS_IMPL));
     }
 }
 
 export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "PROXIABLEProxy";
+
     async resolve(provider: StorageProvider, address: string): Promise<string> {
         return addressFromPadded(await provider.getStorageAt(address, slots.PROXIABLE));
     }
@@ -229,12 +238,10 @@ export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyRe
 // https://github.com/0xsequence/wallet-contracts/blob/master/contracts/Wallet.sol
 // Implementation pointer is stored in slot keyed on the deployed address.
 export class SequenceWalletProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "SequenceWalletProxy";
+
     async resolve(provider: StorageProvider, address: string): Promise<string> {
         return addressFromPadded(await provider.getStorageAt(address, address.toLowerCase().slice(2)));
-    }
-
-    toString(): string {
-        return "SequenceWalletProxy";
     }
 }
 
@@ -242,6 +249,7 @@ export class SequenceWalletProxyResolver extends BaseProxyResolver implements Pr
 // No additional resolving required
 // Example: EIP-1167
 export class FixedProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "FixedProxy";
     readonly resolvedAddress : string;
 
     constructor(name: string, resolvedAddress: string) {
