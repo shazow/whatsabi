@@ -166,7 +166,7 @@ describe('loaders module', () => {
     expect(result.name).toEqual("Canonical Uniswap V3 factory");
     expect(result.userdoc).toBeDefined();
     expect(result.devdoc).toBeDefined();
-    expect(result.loader?.name).toStrictEqual(EtherscanABILoader.name);
+    expect(result.loader?.name).toStrictEqual(SourcifyABILoader.name);
   }, SLOW_ETHERSCAN_TIMEOUT);
 
   online_test('MultiABILoader_EtherscanOnly_getContract_UniswapV3Factory', async () => {
