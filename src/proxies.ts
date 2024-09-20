@@ -4,6 +4,8 @@
  * Using WhatsABI to only resolve proxies with a known bytecode:
  * ```ts
  * const address = "0x...";
+ *
+ * // Skip this and use the regular `provider` if you don't already have the bytecode or don't care about saving an RPC call. :)
  * const bytecode = "0x..."; // Already loaded from somewhere
  * const cachedCodeProvider = whatsabi.providers.WithCachedCode(provider, {
  *   [address]: bytecode,
