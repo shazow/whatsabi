@@ -18,6 +18,19 @@
  * if (result.proxies.length > 0) console.log("Proxies detected:", result.proxies);
  * // Note that some proxies can only be resolved relative to a selector, like DiamondProxy. These will need to be resolved manually via result.proxies.
  * ```
+ * @example
+ * Resolve a DiamondProxy:
+ * ```ts
+ * // Let's say we have a result with a DiamondProxy in it, from the above example
+ * const resolver = result.proxies[0] as whatsabi.proxies.DiamondProxyResolver;
+ * 
+ * // DiamondProxies have different contracts mapped relative to the selector,
+ * // so we must resolve them against a selector.
+ * const selector = "0x6e9960c3";  // function getAdmin() returns (address)
+ *
+ * const implementationAddress = await resolver.resolve(provider, address, selector);
+ * ```
+ *
  */
 import type { StorageProvider, CallProvider } from "./providers.js";
 import { addSlotOffset, readArray, joinSlot } from "./slots.js";
