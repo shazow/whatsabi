@@ -1,5 +1,11 @@
 /**
  * @module proxies
+ * This module contains code to resolve a variety of types of proxies.
+ *
+ * The resolvers are detected and configured by whatsabi.autoload(...).
+ *
+ * If you already know which proxy it is and how it's configured, then the resolvers could be used manually too.
+ *
  * @example
  * Using WhatsABI to only resolve proxies with a known bytecode:
  * ```ts
