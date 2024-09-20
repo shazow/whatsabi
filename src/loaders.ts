@@ -90,8 +90,9 @@ export class MultiABILoader implements ABILoader {
 
     loaders: ABILoader[];
 
-    // Note: This callback is used to pull out which loader succeeded without modifying the return API.
-    // We can remove it once we switch to using getContract for autoload.
+    /// Note: This callback is used to pull out which loader succeeded without modifying the return API.
+    /// We can remove it once we switch to using getContract for autoload.
+    /// @internal
     onLoad?: (loader: ABILoader) => void;
 
     constructor(loaders: ABILoader[]) {
