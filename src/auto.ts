@@ -197,11 +197,13 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         const loader = abiLoader;
 
         let abiLoadedFrom;
+        let originalOnLoad;
         if (loader instanceof MultiABILoader) {
             // This is a workaround for avoiding to change the loadABI signature, we can remove it if we use getContract instead.
             const onLoad = (loader: ABILoader) => {
                 abiLoadedFrom = loader;
             }
+            originalOnLoad = loader.onLoad;
             if (!loader.onLoad) loader.onLoad = onLoad;
             else {
                 // Just in case someone uses this feature, let's wrap it to include both. Not ideal... Is there a better way here?
@@ -225,6 +227,10 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         } catch (error: any) {
             // TODO: Catch useful errors
             if (onError("abiLoader", error) === true) return result;
+        } finally {
+            if (loader instanceof MultiABILoader) {
+                loader.onLoad = originalOnLoad;
+            }
         }
     }
 
