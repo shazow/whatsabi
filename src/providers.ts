@@ -65,6 +65,36 @@ export function CompatibleProvider(provider: any): Provider {
     });
 }
 
+/**
+ * Wrap an existing provider into one that will return a fixed getCode result for items defined in codeCache.
+ * The cache is treated as read-only, it will not be updated. Mainly used to avoid an extra RPC call when we already have the bytcode.
+ * @param provider - Any existing provider
+ * @param codeCache - Object containing address => code mappings
+ * @returns {Provider} - Provider that will return a fixed getCode result for items defined in codeCache.
+ * @example
+ * ```ts
+ * const address = "0x0000000000000000000000000000000000000001";
+ * const bytecode = "0x6001600101"
+ * const cachedProvider = WithCachedCode(provider, {
+ *   [address]: bytecode,
+ * });
+ * const code = await cachedProvider.getCode(address);
+ * console.log(code); // "0x6001600101"
+ * ```
+ */
+export function WithCachedCode(provider: Provider, codeCache: Record<string, string>): Provider {
+    return {
+        ...provider,
+        async getCode(address: string): Promise<string> {
+            if (codeCache[address]) {
+                return codeCache[address];
+            }
+            return await provider.getCode(address);
+        }
+    };
+}
+
+
 // RPCPRovider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
 // and instead have a discovery for the lowest-level RPC call function that we can use directly.
 // At least whenever possible. Higher-level functionality like getAddress is still tricky.

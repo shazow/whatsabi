@@ -70,3 +70,12 @@ online_test('autoload non-contract', async ({ provider, env }) => {
     });
     expect(abi).toStrictEqual([]);
 });
+
+online_test('autoload verified etherscan', async ({ provider, env }) => {
+    const address = "0x8f8ef111b67c04eb1641f5ff19ee54cda062f163"; // Uniswap v3 pool, verified on Etherscan and Sourcify
+    const result = await autoload(address, {
+        provider: provider,
+        ...whatsabi.loaders.defaultsWithEnv(env),
+    });
+    expect(result.abiLoadedFrom?.name).toBeTruthy()
+});

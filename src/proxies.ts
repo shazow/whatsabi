@@ -1,8 +1,43 @@
+/**
+ * @module proxies
+ * @example
+ * Using WhatsABI to only resolve proxies with a known bytecode:
+ * ```ts
+ * const address = "0x...";
+ * const bytecode = "0x..."; // Already loaded from somewhere
+ * const cachedCodeProvider = whatsabi.providers.WithCachedCode(provider, {
+ *   [address]: bytecode,
+ * });
+ *
+ * const result = whatsabi.autoload(cachedCodeProvider, address, {
+ *   abiLoader: false, // Skip ABI loaders
+ *   signatureLookup: false, // Skip looking up selector signatures
+ * })
+ *
+ * if (result.address !== address) console.log(`Resolved proxy: ${address} -> ${result.address}`);
+ * if (result.proxies.length > 0) console.log("Proxies detected:", result.proxies);
+ * // Note that some proxies can only be resolved relative to a selector, like DiamondProxy. These will need to be resolved manually via result.proxies.
+ * ```
+ * @example
+ * Resolve a DiamondProxy:
+ * ```ts
+ * // Let's say we have a result with a DiamondProxy in it, from the above example
+ * const resolver = result.proxies[0] as whatsabi.proxies.DiamondProxyResolver;
+ * 
+ * // DiamondProxies have different contracts mapped relative to the selector,
+ * // so we must resolve them against a selector.
+ * const selector = "0x6e9960c3";  // function getAdmin() returns (address)
+ *
+ * const implementationAddress = await resolver.resolve(provider, address, selector);
+ * ```
+ *
+ */
 import type { StorageProvider, CallProvider } from "./providers.js";
 import { addSlotOffset, readArray, joinSlot } from "./slots.js";
 import { addressWithChecksum } from "./utils.js";
 
 export interface ProxyResolver {
+    readonly name: string;
     resolve(provider: StorageProvider|CallProvider, address: string, selector?: string): Promise<string>
     toString(): string,
 }
@@ -56,6 +91,8 @@ const EIP1967FallbackSelectors = [
 ];
 
 export class EIP1967ProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "EIP1967Proxy";
+
     async resolve(provider: StorageProvider & CallProvider, address: string): Promise<string> {
         // Is there an implementation defined?
         const implAddr = addressFromPadded(await provider.getStorageAt(address, slots.EIP1967_IMPL));
@@ -95,6 +132,8 @@ const diamondSelectors = [
 
 // ERC2535 - Diamond/Facet Proxy
 export class DiamondProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "DiamondProxy";
+
     async resolve(provider: StorageProvider & CallProvider, address: string, selector: string): Promise<string> {
         if (!selector) {
             throw "DiamondProxy requires a selector to resolve to a specific facet";
@@ -194,12 +233,16 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
 }
 
 export class ZeppelinOSProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "ZeppelinOSProxy";
+
     async resolve(provider: StorageProvider, address: string): Promise<string> {
         return addressFromPadded(await provider.getStorageAt(address, slots.ZEPPELINOS_IMPL));
     }
 }
 
 export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "PROXIABLEProxy";
+
     async resolve(provider: StorageProvider, address: string): Promise<string> {
         return addressFromPadded(await provider.getStorageAt(address, slots.PROXIABLE));
     }
@@ -208,12 +251,10 @@ export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyRe
 // https://github.com/0xsequence/wallet-contracts/blob/master/contracts/Wallet.sol
 // Implementation pointer is stored in slot keyed on the deployed address.
 export class SequenceWalletProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "SequenceWalletProxy";
+
     async resolve(provider: StorageProvider, address: string): Promise<string> {
         return addressFromPadded(await provider.getStorageAt(address, address.toLowerCase().slice(2)));
-    }
-
-    toString(): string {
-        return "SequenceWalletProxy";
     }
 }
 
@@ -221,6 +262,7 @@ export class SequenceWalletProxyResolver extends BaseProxyResolver implements Pr
 // No additional resolving required
 // Example: EIP-1167
 export class FixedProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "FixedProxy";
     readonly resolvedAddress : string;
 
     constructor(name: string, resolvedAddress: string) {

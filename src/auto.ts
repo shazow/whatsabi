@@ -9,6 +9,7 @@ import * as errors from "./errors.js";
 import { CompatibleProvider } from "./providers.js";
 import { defaultABILoader, defaultSignatureLookup } from "./loaders.js";
 import { abiFromBytecode, disasm } from "./disasm.js";
+import { MultiABILoader } from "./loaders.js";
 
 function isAddress(address: string) {
     return address.length === 42 && address.startsWith("0x") && Number(address) >= 0;
@@ -25,7 +26,7 @@ export type AutoloadResult = {
     abi: ABI;
 
     /** Whether the `abi` is loaded from a verified source */
-    isVerified: boolean;
+    abiLoadedFrom?: ABILoader;
 
     /** List of resolveable proxies detected in the contract */
     proxies: ProxyResolver[],
@@ -121,7 +122,6 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         address,
         abi: [],
         proxies: [],
-        isVerified: false,
     };
 
     let abiLoader = config.abiLoader;
@@ -195,6 +195,23 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         // Attempt to load the ABI from a contract database, if exists
         onProgress("abiLoader", { address, facets: Object.keys(facets) });
         const loader = abiLoader;
+
+        let abiLoadedFrom;
+        let originalOnLoad;
+        if (loader instanceof MultiABILoader) {
+            // This is a workaround for avoiding to change the loadABI signature, we can remove it if we use getContract instead.
+            const onLoad = (loader: ABILoader) => {
+                abiLoadedFrom = loader;
+            }
+            originalOnLoad = loader.onLoad;
+            if (!loader.onLoad) loader.onLoad = onLoad;
+            else {
+                // Just in case someone uses this feature, let's wrap it to include both. Not ideal... Is there a better way here?
+                const original = loader.onLoad;
+                loader.onLoad = (loader: ABILoader) => { original(loader); onLoad(loader); };
+            }
+        }
+
         try {
             const addresses = Object.keys(facets);
             const promises = addresses.map(addr => loader.loadABI(addr));
@@ -204,12 +221,16 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
             }));
             result.abi = pruneFacets(facets, abis);
             if (result.abi.length > 0) {
-                result.isVerified = true;
+                result.abiLoadedFrom = abiLoadedFrom;
                 return result;
             }
         } catch (error: any) {
             // TODO: Catch useful errors
             if (onError("abiLoader", error) === true) return result;
+        } finally {
+            if (loader instanceof MultiABILoader) {
+                loader.onLoad = originalOnLoad;
+            }
         }
     }
 
