@@ -50,9 +50,9 @@
     "tsx": "^4.19.1",
     "typedoc": "^0.26.7",
     "typedoc-plugin-missing-exports": "^3.0.0",
-    "viem": "^2.21.7",
+    "viem": "^2.21.14",
     "vitest": "^0.34.6",
-    "web3": "^4.12.1"
+    "web3": "^4.13.0"
   },
   "main": "./lib.cjs/index.js",
   "module": "./lib.esm/index.js",
