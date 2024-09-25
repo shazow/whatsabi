@@ -255,7 +255,7 @@ export class EtherscanABILoader implements ABILoader {
 
 export class EtherscanABILoaderError extends errors.LoaderError { };
 
-// Etherscan Contract Source API response
+/// Etherscan Contract Source API response
 export type EtherscanContractResult = {
   SourceCode: string;
   ABI: string;
