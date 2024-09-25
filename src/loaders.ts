@@ -60,7 +60,7 @@ export type ContractResult = {
      *
      * @experimental
      */
-    loaderResult?: EtherscanContractResult | ContractMetadata | any;
+    loaderResult?: EtherscanContractResult | SourcifyContractMetadata | any;
 }
 
 /**
@@ -305,7 +305,7 @@ export class SourcifyABILoader implements ABILoader {
             if (metadata === undefined) throw new SourcifyABILoaderError("metadata.json not found");
 
             // Note: Sometimes metadata.json contains sources, but not always. So we can't rely on just the metadata.json
-            const m = JSON.parse(metadata.content) as ContractMetadata;
+            const m = JSON.parse(metadata.content) as SourcifyContractMetadata;
 
             // Sourcify includes a title from the Natspec comments
             let name = m.output.devdoc?.title;
@@ -397,15 +397,16 @@ export class SourcifyABILoader implements ABILoader {
 
 export class SourcifyABILoaderError extends errors.LoaderError { };
 
-interface ContractMetadata {
+// Contract metadata from Sourcify
+interface SourcifyContractMetadata {
     compiler: {
         version: string;
     };
     language: string;
     output: {
         abi: any[];
-        devdoc: any;
-        userdoc: any;
+        devdoc?: any;
+        userdoc?: any;
     };
     settings: {
         compilationTarget: Record<string, string>;
