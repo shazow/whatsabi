@@ -176,7 +176,7 @@ export function isSwap(op: OpCode): boolean {
 }
 
 export function isHalt(op: OpCode): boolean {
-    return op === opcodes.STOP || op === opcodes.RETURN || op >= opcodes.REVERT;
+    return op === opcodes.STOP || op === opcodes.RETURN || op >= opcodes.REVERT; // includes opcodes.SUICIDE, opcodes.INVALID
 }
 
 export function isCompare(op: OpCode): boolean {
