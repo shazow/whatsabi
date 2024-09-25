@@ -23,6 +23,7 @@ export type bytecodeToStringConfig = {
     startPos?: number,
     stopPos?: number,
     highlightPos?: number,
+    boundaryPos?: number,
     opcodeLookup?: { [key: OpCode]: string },
 };
 
@@ -33,7 +34,7 @@ export function* bytecodeToString(
     const code = new BytecodeIter(bytecode);
 
     if (config === undefined) config = {};
-    let { startPos, stopPos, highlightPos, opcodeLookup } = config;
+    let { startPos, stopPos, highlightPos, boundaryPos, opcodeLookup } = config;
     if (!opcodeLookup) opcodeLookup = mnemonics;
 
     while (code.hasMore()) {
@@ -42,6 +43,12 @@ export function* bytecodeToString(
 
         if (startPos && pos < startPos) continue;
         if (stopPos && pos > stopPos) break;
+        if (boundaryPos === pos) {
+            // const line = bytecode.slice(2 + pos * 2); // pos is byte offset, bytecode is hex string
+            const line = bytesToHex(code.bytecode.slice(pos));
+            yield line;
+            break;
+        }
 
         const highlight = (highlightPos === pos) ? " <--" : "";
         const line = BytecodeIterString(code) + highlight;
