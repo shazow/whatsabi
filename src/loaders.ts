@@ -60,7 +60,7 @@ export type ContractResult = {
      *
      * @experimental
      */
-    loaderResult?: any;
+    loaderResult?: EtherscanContractResult | ContractMetadata | any;
 }
 
 /**
@@ -199,7 +199,7 @@ export class EtherscanABILoader implements ABILoader {
                 throw new Error(r.result);    // This gets wrapped below
             }
 
-            const result = r.result[0];
+            const result = r.result[0] as EtherscanContractResult;
             return {
                 abi: JSON.parse(result.ABI),
                 name: result.ContractName,
@@ -255,6 +255,23 @@ export class EtherscanABILoader implements ABILoader {
 
 export class EtherscanABILoaderError extends errors.LoaderError { };
 
+// Etherscan Contract Source API response
+export type EtherscanContractResult = {
+  SourceCode: string;
+  ABI: string;
+  ContractName: string;
+  CompilerVersion: string;
+  OptimizationUsed: number;
+  Runs: number;
+  ConstructorArguments: string;
+  EVMVersion: string;
+  Library: string;
+  LicenseType: string;
+  Proxy: "1" | "0";
+  Implementation: string;
+  SwarmSource: string;
+}
+
 
 function isSourcifyNotFound(error: any): boolean {
     return (
@@ -288,7 +305,7 @@ export class SourcifyABILoader implements ABILoader {
             if (metadata === undefined) throw new SourcifyABILoaderError("metadata.json not found");
 
             // Note: Sometimes metadata.json contains sources, but not always. So we can't rely on just the metadata.json
-            const m = JSON.parse(metadata.content);
+            const m = JSON.parse(metadata.content) as ContractMetadata;
 
             // Sourcify includes a title from the Natspec comments
             let name = m.output.devdoc?.title;
@@ -380,6 +397,27 @@ export class SourcifyABILoader implements ABILoader {
 
 export class SourcifyABILoaderError extends errors.LoaderError { };
 
+interface ContractMetadata {
+    compiler: {
+        version: string;
+    };
+    language: string;
+    output: {
+        abi: any[];
+        devdoc: any;
+        userdoc: any;
+    };
+    settings: {
+        compilationTarget: Record<string, string>;
+        evmVersion: string;
+        libraries: Record<string, string>;
+        metadata: Record<string, string>;
+        optimizer: any;
+        remappings: string[];
+    };
+    sources: Record<string, any>;
+    version: number;
+}
 
 export interface SignatureLookup {
     loadFunctions(selector: string): Promise<string[]>;
