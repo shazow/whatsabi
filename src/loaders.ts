@@ -398,7 +398,7 @@ export class SourcifyABILoader implements ABILoader {
 export class SourcifyABILoaderError extends errors.LoaderError { };
 
 // Contract metadata from Sourcify
-interface SourcifyContractMetadata {
+export interface SourcifyContractMetadata {
     compiler: {
         version: string;
     };
