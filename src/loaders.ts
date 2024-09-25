@@ -35,7 +35,6 @@ export type ContractResult = {
     runs: number;
 
     ok: boolean; // False if no result is found
-    loader?: ABILoader;
 
     /**
      * getSources returns the imports -> source code mapping for the contract, if available.
@@ -46,8 +45,22 @@ export type ContractResult = {
      **/
     getSources?: () => Promise<ContractSources>;
 
-    userdoc?: any;
-    devdoc?: any;
+    /**
+     * Loader that provided the result.
+     * We can make assumptions about the verified status if a verifying loader returned the result.
+     */
+    loader?: ABILoader;
+
+    /**
+     * Contains the full result from the loader provder.
+     * There are no stability guarantees for the data layout of the result, so it's marked as experimental.
+     *
+     * Any useful attributes that can be normalized across loaders should be uplifted into ContractResult.
+     * Please open an issue if you end up relying on rawResponse for properties that should be uplifted.
+     *
+     * @experimental
+     */
+    loaderResult?: any;
 }
 
 /**
@@ -207,6 +220,7 @@ export class EtherscanABILoader implements ABILoader {
 
                 ok: true,
                 loader: this,
+                loaderResult: result,
             };
         } catch (err: any) {
             throw new EtherscanABILoaderError("EtherscanABILoader getContract error: " + err.message, {
@@ -298,11 +312,9 @@ export class SourcifyABILoader implements ABILoader {
                 // Can use stripPathPrefix helper to do this, but maybe we want something like getSources({ normalize: true })?
                 getSources: async () => files.map(({ path, content }) => { return { path, content } }),
 
-                userdoc: m.output.userdoc,
-                devdoc: m.output.devdoc,
-
                 ok: true,
                 loader: this,
+                loaderResult: m,
             };
         } catch (err: any) {
             if (isSourcifyNotFound(err)) return emptyContractResult;
