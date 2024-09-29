@@ -71,11 +71,27 @@ online_test('autoload non-contract', async ({ provider, env }) => {
     expect(abi).toStrictEqual([]);
 });
 
-online_test('autoload verified etherscan', async ({ provider, env }) => {
+online_test('autoload verified multi', async ({ provider, env }) => {
     const address = "0x8f8ef111b67c04eb1641f5ff19ee54cda062f163"; // Uniswap v3 pool, verified on Etherscan and Sourcify
     const result = await autoload(address, {
         provider: provider,
         ...whatsabi.loaders.defaultsWithEnv(env),
     });
-    expect(result.abiLoadedFrom?.name).toBeTruthy()
+    expect(result.abiLoadedFrom?.name).toBeTruthy();
+});
+
+online_test('autoload loadContractResult verified etherscan', async ({ provider, env }) => {
+    const address = "0xc3d688b66703497daa19211eedff47f25384cdc3"; // Compound USDC proxy
+    const result = await autoload(address, {
+        provider: provider,
+        loadContractResult: true,
+        followProxies: false,
+        abiLoader: new whatsabi.loaders.EtherscanABILoader({ apiKey: env.ETHERSCAN_API_KEY }),
+    });
+    expect(result.abiLoadedFrom?.name).toBe("EtherscanABILoader");
+    expect(result.contractResult?.ok).toBeTruthy();
+    expect(result.contractResult?.name).toBe("TransparentUpgradeableProxy");
+    expect(result.contractResult?.compilerVersion).toBe("v0.8.15+commit.e14f2714");
+    expect(result.contractResult?.loaderResult?.Proxy).toBe("1");
+    expect(result.contractResult?.loaderResult?.Implementation).toBe("0x8a807d39f1d642dd8c12fe2e249fe97847f01ba0");
 });

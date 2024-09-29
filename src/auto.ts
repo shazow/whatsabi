@@ -3,7 +3,7 @@ import { Fragment, FunctionFragment } from "ethers";
 import type { AnyProvider } from "./providers.js";
 import type { ABI, ABIFunction } from "./abi.js";
 import { type ProxyResolver, DiamondProxyResolver } from "./proxies.js";
-import type { ABILoader, SignatureLookup } from "./loaders.js";
+import type { ABILoader, SignatureLookup, ContractResult } from "./loaders.js";
 import * as errors from "./errors.js";
 
 import { CompatibleProvider } from "./providers.js";
@@ -27,6 +27,9 @@ export type AutoloadResult = {
 
     /** Whether the `abi` is loaded from a verified source */
     abiLoadedFrom?: ABILoader;
+
+    /** Full contract metadata result, only included if {@link AutoloadConfig.loadContractResult} is true. */
+    contractResult?: ContractResult;
 
     /** List of resolveable proxies detected in the contract */
     proxies: ProxyResolver[],
@@ -81,6 +84,15 @@ export type AutoloadConfig = {
      * @group Settings
      */
     followProxies?: boolean;
+
+
+    /**
+    * Load full contract metadata result, include it in {@link AutoloadResult.ContractResult} if successful.
+    *
+    * This changes the behaviour of autoload to use {@link ABILoader.getContract} instead of {@link ABILoader.loadABI},
+    * which returns a larger superset result including all of the available verified contract metadata.
+    */
+    loadContractResult?: boolean;
 
     /**
      * Enable pulling additional metadata from WhatsABI's static analysis, still unreliable
@@ -213,16 +225,27 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         }
 
         try {
-            const addresses = Object.keys(facets);
-            const promises = addresses.map(addr => loader.loadABI(addr));
-            const results = await Promise.all(promises);
-            const abis = Object.fromEntries(results.map((abi, i) => {
-                return [addresses[i], abi];
-            }));
-            result.abi = pruneFacets(facets, abis);
-            if (result.abi.length > 0) {
-                result.abiLoadedFrom = abiLoadedFrom;
-                return result;
+            if (config.loadContractResult) {
+                const contractResult = await loader.getContract(address);
+                if (contractResult) {
+                    result.contractResult = contractResult;
+                    result.abi = contractResult.abi;
+                    result.abiLoadedFrom = contractResult.loader;
+                    return result;
+                }
+            } else {
+                // Load ABIs of all available facets and merge
+                const addresses = Object.keys(facets);
+                const promises = addresses.map(addr => loader.loadABI(addr));
+                const results = await Promise.all(promises);
+                const abis = Object.fromEntries(results.map((abi, i) => {
+                    return [addresses[i], abi];
+                }));
+                result.abi = pruneFacets(facets, abis);
+                if (result.abi.length > 0) {
+                    result.abiLoadedFrom = abiLoadedFrom;
+                    return result;
+                }
             }
         } catch (error: any) {
             // TODO: Catch useful errors
