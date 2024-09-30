@@ -161,7 +161,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     try {
         bytecode = await provider.getCode(address);
     } catch (err) {
-        throw new errors.AutoloadError(`Failed to fetch contract code due to provider error: ${err instanceof Error ? err.message : String(err) }`,
+        throw new errors.AutoloadError(`Failed to fetch contract code due to provider error: ${err instanceof Error ? err.message : String(err)}`,
             {
                 context: { address },
                 cause: err as Error,
@@ -182,13 +182,30 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     };
 
     if (result.proxies.length === 1 && result.proxies[0] instanceof DiamondProxyResolver) {
-        onProgress("loadDiamondFacets", { address });
         const diamondProxy = result.proxies[0] as DiamondProxyResolver;
-        const f = await diamondProxy.facets(provider, address);
-        Object.assign(facets, f);
+        if (config.followProxies) {
+            onProgress("loadDiamondFacets", { address });
+            const f = await diamondProxy.facets(provider, address);
+            Object.assign(facets, f);
+        } else {
+            result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
+                if (selector) {
+                    // Follow a single selector for DiamondProxy
+                    onProgress("followProxies", { resolver: diamondProxy, address });
+                    const resolved = await diamondProxy.resolve(provider, address, selector);
+                    if (resolved !== undefined) return await autoload(resolved, config);
+                }
+                // Resolve all facets, unfortunately this requires doing the whole thing again with followProxy
+                // FIXME: Can we improve this codeflow easily?
+                // We could override the privider with a cached one here, but might be too magical and cause surprising bugs?
+                return await autoload(address, Object.assign({}, config, { followProxies: true }));
+            };
+        }
 
     } else if (result.proxies.length > 0) {
         result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
+            // This attempts to follow the first proxy that resolves successfully.
+            // FIXME: If there are multiple proxies, should we attempt to merge them somehow?
             for (const resolver of result.proxies) {
                 onProgress("followProxies", { resolver: resolver, address });
                 const resolved = await resolver.resolve(provider, address, selector);
@@ -208,7 +225,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         onProgress("abiLoader", { address, facets: Object.keys(facets) });
         const loader = abiLoader;
 
-        let abiLoadedFrom;
+        let abiLoadedFrom = loader;
         let originalOnLoad;
         if (loader instanceof MultiABILoader) {
             // This is a workaround for avoiding to change the loadABI signature, we can remove it if we use getContract instead.
@@ -228,6 +245,8 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
             if (config.loadContractResult) {
                 const contractResult = await loader.getContract(address);
                 if (contractResult) {
+                    // We assume that a verified contract ABI contains all of the relevant resolved proxy functions
+                    // so we don't need to mess with resolving facets and can return immediately.
                     result.contractResult = contractResult;
                     result.abi = contractResult.abi;
                     result.abiLoadedFrom = contractResult.loader;
