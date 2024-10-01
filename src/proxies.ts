@@ -17,7 +17,8 @@
  *   [address]: bytecode,
  * });
  *
- * const result = whatsabi.autoload(cachedCodeProvider, address, {
+ * const result = whatsabi.autoload(address, {
+ *   provider: cachedCodeProvider,
  *   abiLoader: false, // Skip ABI loaders
  *   signatureLookup: false, // Skip looking up selector signatures
  * })
