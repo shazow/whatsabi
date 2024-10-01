@@ -182,25 +182,11 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     };
 
     if (result.proxies.length === 1 && result.proxies[0] instanceof DiamondProxyResolver) {
+        // TODO: Respect config.followProxies, see https://github.com/shazow/whatsabi/issues/132
+        onProgress("loadDiamondFacets", { address });
         const diamondProxy = result.proxies[0] as DiamondProxyResolver;
-        if (config.followProxies) {
-            onProgress("loadDiamondFacets", { address });
-            const f = await diamondProxy.facets(provider, address);
-            Object.assign(facets, f);
-        } else {
-            result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
-                if (selector) {
-                    // Follow a single selector for DiamondProxy
-                    onProgress("followProxies", { resolver: diamondProxy, address });
-                    const resolved = await diamondProxy.resolve(provider, address, selector);
-                    if (resolved !== undefined) return await autoload(resolved, config);
-                }
-                // Resolve all facets, unfortunately this requires doing the whole thing again with followProxy
-                // FIXME: Can we improve this codeflow easily?
-                // We could override the privider with a cached one here, but might be too magical and cause surprising bugs?
-                return await autoload(address, Object.assign({}, config, { followProxies: true }));
-            };
-        }
+        const f = await diamondProxy.facets(provider, address);
+        Object.assign(facets, f);
 
     } else if (result.proxies.length > 0) {
         result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
