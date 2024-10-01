@@ -3,7 +3,7 @@ import { Fragment, FunctionFragment } from "ethers";
 import type { AnyProvider } from "./providers.js";
 import type { ABI, ABIFunction } from "./abi.js";
 import { type ProxyResolver, DiamondProxyResolver } from "./proxies.js";
-import type { ABILoader, SignatureLookup } from "./loaders.js";
+import type { ABILoader, SignatureLookup, ContractResult } from "./loaders.js";
 import * as errors from "./errors.js";
 
 import { CompatibleProvider } from "./providers.js";
@@ -27,6 +27,9 @@ export type AutoloadResult = {
 
     /** Whether the `abi` is loaded from a verified source */
     abiLoadedFrom?: ABILoader;
+
+    /** Full contract metadata result, only included if {@link AutoloadConfig.loadContractResult} is true. */
+    contractResult?: ContractResult;
 
     /** List of resolveable proxies detected in the contract */
     proxies: ProxyResolver[],
@@ -81,6 +84,15 @@ export type AutoloadConfig = {
      * @group Settings
      */
     followProxies?: boolean;
+
+
+    /**
+    * Load full contract metadata result, include it in {@link AutoloadResult.ContractResult} if successful.
+    *
+    * This changes the behaviour of autoload to use {@link ABILoader.getContract} instead of {@link ABILoader.loadABI},
+    * which returns a larger superset result including all of the available verified contract metadata.
+    */
+    loadContractResult?: boolean;
 
     /**
      * Enable pulling additional metadata from WhatsABI's static analysis, still unreliable
@@ -149,7 +161,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     try {
         bytecode = await provider.getCode(address);
     } catch (err) {
-        throw new errors.AutoloadError(`Failed to fetch contract code due to provider error: ${err instanceof Error ? err.message : String(err) }`,
+        throw new errors.AutoloadError(`Failed to fetch contract code due to provider error: ${err instanceof Error ? err.message : String(err)}`,
             {
                 context: { address },
                 cause: err as Error,
@@ -170,6 +182,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
     };
 
     if (result.proxies.length === 1 && result.proxies[0] instanceof DiamondProxyResolver) {
+        // TODO: Respect config.followProxies, see https://github.com/shazow/whatsabi/issues/132
         onProgress("loadDiamondFacets", { address });
         const diamondProxy = result.proxies[0] as DiamondProxyResolver;
         const f = await diamondProxy.facets(provider, address);
@@ -177,6 +190,8 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
 
     } else if (result.proxies.length > 0) {
         result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
+            // This attempts to follow the first proxy that resolves successfully.
+            // FIXME: If there are multiple proxies, should we attempt to merge them somehow?
             for (const resolver of result.proxies) {
                 onProgress("followProxies", { resolver: resolver, address });
                 const resolved = await resolver.resolve(provider, address, selector);
@@ -196,7 +211,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         onProgress("abiLoader", { address, facets: Object.keys(facets) });
         const loader = abiLoader;
 
-        let abiLoadedFrom;
+        let abiLoadedFrom = loader;
         let originalOnLoad;
         if (loader instanceof MultiABILoader) {
             // This is a workaround for avoiding to change the loadABI signature, we can remove it if we use getContract instead.
@@ -213,16 +228,29 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         }
 
         try {
-            const addresses = Object.keys(facets);
-            const promises = addresses.map(addr => loader.loadABI(addr));
-            const results = await Promise.all(promises);
-            const abis = Object.fromEntries(results.map((abi, i) => {
-                return [addresses[i], abi];
-            }));
-            result.abi = pruneFacets(facets, abis);
-            if (result.abi.length > 0) {
-                result.abiLoadedFrom = abiLoadedFrom;
-                return result;
+            if (config.loadContractResult) {
+                const contractResult = await loader.getContract(address);
+                if (contractResult) {
+                    // We assume that a verified contract ABI contains all of the relevant resolved proxy functions
+                    // so we don't need to mess with resolving facets and can return immediately.
+                    result.contractResult = contractResult;
+                    result.abi = contractResult.abi;
+                    result.abiLoadedFrom = contractResult.loader;
+                    return result;
+                }
+            } else {
+                // Load ABIs of all available facets and merge
+                const addresses = Object.keys(facets);
+                const promises = addresses.map(addr => loader.loadABI(addr));
+                const results = await Promise.all(promises);
+                const abis = Object.fromEntries(results.map((abi, i) => {
+                    return [addresses[i], abi];
+                }));
+                result.abi = pruneFacets(facets, abis);
+                if (result.abi.length > 0) {
+                    result.abiLoadedFrom = abiLoadedFrom;
+                    return result;
+                }
             }
         } catch (error: any) {
             // TODO: Catch useful errors

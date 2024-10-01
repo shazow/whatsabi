@@ -26,6 +26,7 @@
  * if (result.proxies.length > 0) console.log("Proxies detected:", result.proxies);
  * // Note that some proxies can only be resolved relative to a selector, like DiamondProxy. These will need to be resolved manually via result.proxies.
  * ```
+ *
  * @example
  * Resolve a DiamondProxy:
  * ```ts
@@ -39,6 +40,13 @@
  * const implementationAddress = await resolver.resolve(provider, address, selector);
  * ```
  *
+ * @example
+ * Get all facets and selectors for a DiamondProxy:
+ * ```ts
+ * // Let's say we have a result with a DiamondProxy in it, from the above example
+ * const diamondResolver = result.proxies[0] as DiamondProxyResolver;
+ * const facets = await diamondResolver.facets(provider, address); // All possible address -> selector[] mappings
+ * ```
  */
 import type { StorageProvider, CallProvider } from "./providers.js";
 import { addSlotOffset, readArray, joinSlot } from "./slots.js";
