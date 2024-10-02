@@ -95,7 +95,8 @@ export type AutoloadConfig = {
     loadContractResult?: boolean;
 
     /**
-     * Enable pulling additional metadata from WhatsABI's static analysis, still unreliable
+     * Enable pulling additional metadata from WhatsABI's static analysis which may be unreliable.
+     * For now, this is primarily for event topics.
      *
      * @group Settings
      */
@@ -119,6 +120,17 @@ export type AutoloadConfig = {
  * const result = await whatsabi.autoload(address, { provider });
  * console.log(result.abi);
  * // -> [ ... ]
+ * ```
+ * @example
+ * See {@link AutoloadConfig} for additional features that can be enabled.
+ * ```typescript
+ * const result = await whatsabi.autoload(address, {
+ *   provider,
+ *   followProxies: true,
+ *   loadContractResult: true, // Load full contract metadata (slower)
+ *   enableExperimentalMetadata: true, // Include less reliable static analysis results (e.g. event topics)
+ *   // and more! See AutoloadConfig for all the options.
+ * });
  * ```
  */
 export async function autoload(address: string, config: AutoloadConfig): Promise<AutoloadResult> {
