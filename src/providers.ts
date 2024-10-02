@@ -18,7 +18,7 @@ export interface ENSProvider {
     getAddress(name: string): Promise<string>;
 }
 
-export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider { };
+export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider {};
 
 
 export interface AnyProvider { }; // TODO: Can we narrow this more?
@@ -36,7 +36,22 @@ interface EIP1193 {
 
 // Abstract away web3 provider inconsistencies
 
+function isCompatibleProvider(provider: any): boolean {
+    // FIXME: Is there a better way to use the TypeScript type system to do this?
+    // `provider isinstance Provider` does not work because Provider is an interface, not a class. Should it be?
+    return (
+        typeof provider.getStorageAt === "function" &&
+        typeof provider.call === "function" &&
+        typeof provider.getCode === "function" &&
+        typeof provider.getAddress === "function"
+    );
+}
+
 export function CompatibleProvider(provider: any): Provider {
+    if (isCompatibleProvider(provider)) {
+        // Already compatible, avoid rewrapping it
+        return provider;
+    }
     if (typeof provider.getAddress === "function") {
         return new HighLevelProvider(provider);
     }
@@ -82,14 +97,15 @@ export function CompatibleProvider(provider: any): Provider {
  * console.log(code); // "0x6001600101"
  * ```
  */
-export function WithCachedCode(provider: Provider, codeCache: Record<string, string>): Provider {
+export function WithCachedCode(provider: AnyProvider, codeCache: Record<string, string>): Provider {
+    const compatibleProvider = CompatibleProvider(provider);
     return {
-        ...provider,
+        ...compatibleProvider,
         async getCode(address: string): Promise<string> {
             if (codeCache[address]) {
                 return codeCache[address];
             }
-            return await provider.getCode(address);
+            return await compatibleProvider.getCode(address);
         }
     };
 }
