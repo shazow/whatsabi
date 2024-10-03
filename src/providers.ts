@@ -83,6 +83,9 @@ export function CompatibleProvider(provider: any): Provider {
 /**
  * Wrap an existing provider into one that will return a fixed getCode result for items defined in codeCache.
  * The cache is treated as read-only, it will not be updated. Mainly used to avoid an extra RPC call when we already have the bytcode.
+ *
+ * For more advanced behaviours, consider copying this code and modifying it to your needs.
+ *
  * @param provider - Any existing provider
  * @param codeCache - Object containing address => code mappings
  * @returns {Provider} - Provider that will return a fixed getCode result for items defined in codeCache.
@@ -99,15 +102,14 @@ export function CompatibleProvider(provider: any): Provider {
  */
 export function WithCachedCode(provider: AnyProvider, codeCache: Record<string, string>): Provider {
     const compatibleProvider = CompatibleProvider(provider);
-    return {
-        ...compatibleProvider,
-        async getCode(address: string): Promise<string> {
-            if (codeCache[address]) {
-                return codeCache[address];
-            }
-            return await compatibleProvider.getCode(address);
+    const p = Object.create(compatibleProvider); // use compatibleProvider as the prototype
+    p.getCode = async function getCode(address: string): Promise<string> {
+        if (codeCache[address]) {
+            return codeCache[address];
         }
+        return await compatibleProvider.getCode(address);
     };
+    return p;
 }
 
 
