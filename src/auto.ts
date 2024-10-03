@@ -242,7 +242,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         try {
             if (config.loadContractResult) {
                 const contractResult = await loader.getContract(address);
-                if (contractResult) {
+                if (contractResult && Array.isArray(contractResult.abi) && contractResult.abi.length > 0) {
                     // We assume that a verified contract ABI contains all of the relevant resolved proxy functions
                     // so we don't need to mess with resolving facets and can return immediately.
                     result.contractResult = contractResult;
