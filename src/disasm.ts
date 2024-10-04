@@ -237,6 +237,7 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
     let checkJumpTable: boolean = true;
     let resumeJumpTable = new Set<number>();
     let runtimeOffset = 0; // Non-zero if init deploy code is included
+    let boundaryPos = -1;
 
     let currentFunction: Function = new Function();
     p.dests[0] = currentFunction;
@@ -328,6 +329,11 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             // if (code.at(pos - 1) === opcodes.RETURN) { ... }
 
             continue;
+        } else if (isHalt(code.at(-2))) {
+            // HALT without JUMPDEST following
+            // Did we just find the end of the program?
+            boundaryPos = pos;
+            break;
         }
 
         // Annotate current function
@@ -483,6 +489,17 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             resumeJumpTable.add(offsetDest);
 
             continue;
+        }
+    }
+
+    if (boundaryPos > 0 && p.proxies.length === 0) {
+        // Slots could be stored outside of the program boudnary and copied in
+        // and we haven't found any proxy slots yet so let's check just in case...
+        // This is unstructured data, so it could be anything. We can't parse it reliably.
+        const auxData = bytesToHex(code.bytecode.slice(boundaryPos));
+        for (const [slot, resolver] of Object.entries(slotResolvers)) {
+            if (auxData.lastIndexOf(slot.slice(2)) === -1) continue;
+            p.proxies.push(resolver);
         }
     }
 

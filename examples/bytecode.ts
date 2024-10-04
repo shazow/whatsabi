@@ -13,6 +13,7 @@ const provider = INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA
 async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
     const jumpdest = process.env["JUMPDEST"] || process.argv[3];
+    const boundary = process.env["BOUNDARY"] || process.argv[4];
 
     let code : string;
     if (!address) {
@@ -41,10 +42,12 @@ async function main() {
         );
     }
     if (jumpdest) {
-
         const pos = jumpdest.startsWith("0x") ? parseInt(jumpdest, 16) : parseInt(jumpdest); 
         config.startPos = config.highlightPos = pos;
         config.stopPos = pos + 40;
+    }
+    if (boundary) {
+        config.boundaryPos = Number(boundary);
     }
 
     const iter = bytecodeToString(code, config);
