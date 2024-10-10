@@ -1,6 +1,6 @@
 import { expect, describe, test } from 'vitest';
 
-import { cached_test, online_test } from './env';
+import { cached_test, online_test, makeProvider } from './env';
 
 import { disasm } from '../disasm';
 import { addSlotOffset, readArray, joinSlot } from "../slots.js";
@@ -125,6 +125,25 @@ describe('known proxy resolving', () => {
     // FIXME: Is there one on mainnet? Seems they're all on polygon
     //online_test('SequenceWallet Proxy', async() => {
     //});
+
+    cached_test('LayerrProxy on Sepolia', async({ withCache }) => {
+        // For issue #139: https://github.com/shazow/whatsabi/issues/139
+        const provider = makeProvider("https://ethereum-sepolia-rpc.publicnode.com");
+        const address = "0x2f4eeccbe817e2b9f66e8123387aa81bae08dfec";
+        const code = await withCache(
+            `${address}_code`,
+            async () => {
+                return await provider.getCode(address)
+            },
+        );
+
+        const program = disasm(code);
+        const resolver = program.proxies[0];
+        const got = await resolver.resolve(provider, address);
+        const wantImplementation = "0x0000000000f7a60f1c88f317f369e3d8679c6689";
+
+        expect(got).toEqual(wantImplementation);
+    });
 });
 
 

@@ -272,7 +272,11 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             if (isPush(code.at(-3))) {
                 // Hardcoded delegate address
                 // TODO: We can probably do more here to determine which kind? Do we care?
-                const addr = bytesToHex(code.valueAt(-3), 20);
+                const val = code.valueAt(-3);
+                const addr = bytesToHex(
+                    val.slice(val.length-20), // Might be padded with zeros
+                    20,
+                );
                 p.proxies.push(new FixedProxyResolver("HardcodedDelegateProxy", addr));
 
             } else if (
