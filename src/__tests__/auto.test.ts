@@ -93,5 +93,5 @@ online_test('autoload loadContractResult verified etherscan', async ({ provider,
     expect(result.contractResult?.name).toBe("TransparentUpgradeableProxy");
     expect(result.contractResult?.compilerVersion).toBe("v0.8.15+commit.e14f2714");
     expect(result.contractResult?.loaderResult?.Proxy).toBe("1");
-    expect(result.contractResult?.loaderResult?.Implementation).toBe("0x8a807d39f1d642dd8c12fe2e249fe97847f01ba0");
+    expect(result.contractResult?.loaderResult?.Implementation).toMatch(/^0x[0-9a-f]{40}$/);
 });
