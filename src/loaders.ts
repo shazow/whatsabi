@@ -199,6 +199,11 @@ export class EtherscanABILoader implements ABILoader {
                 throw new Error(r.result);    // This gets wrapped below
             }
 
+            // Status 1 means success, but the result could still be empty
+            if (r.result.length > 0 && r.result[0].ABI === "Contract source code not verified")  {
+                return emptyContractResult;
+            }
+
             const result = r.result[0] as EtherscanContractResult;
             return {
                 abi: JSON.parse(result.ABI),
