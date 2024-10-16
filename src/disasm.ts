@@ -277,7 +277,10 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
                     val.slice(val.length-20), // Might be padded with zeros
                     20,
                 );
-                p.proxies.push(new FixedProxyResolver("HardcodedDelegateProxy", addr));
+                // Check if proxy is already found. Rare to have more than 1, so we'll just O(N) here
+                if (!p.proxies.find(p => p instanceof FixedProxyResolver && p.resolvedAddress === addr)) {
+                    p.proxies.push(new FixedProxyResolver("HardcodedDelegateProxy", addr));
+                }
 
             } else if (
                 code.at(-3) === opcodes.SLOAD &&

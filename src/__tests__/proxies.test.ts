@@ -219,3 +219,20 @@ describe('proxy internal slot reading', () => {
         expect(got.length).to.not.equal(0);
     });
 });
+
+
+describe('multiple proxy resolving', () => {
+    cached_test('resolve WeightedRateSetCollectionPool', async ({ withCache, provider }) => {
+        const address = "0x56C5Aef1296d004707475c8440f540DdA409b53D";
+        const code = await withCache(
+            `${address}_code`,
+            async () => {
+                return await provider.getCode(address)
+            },
+        );
+        const program = disasm(code);
+
+        expect(program.proxies.length).to.be.equal(4);
+    });
+
+});
