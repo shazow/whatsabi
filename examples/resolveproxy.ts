@@ -33,8 +33,10 @@ async function main() {
         }
     }
 
+    console.log("Detected proxies: ", program.proxies);
+
     for (const resolver of program.proxies) {
-        console.log("Proxy found:", resolver.toString());
+        console.log("Resolving proxy:", resolver.toString());
 
         if (!selector && resolver instanceof DiamondProxyResolver) {
             const facets = await (resolver as DiamondProxyResolver).facets(provider, address);
