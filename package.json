@@ -37,7 +37,7 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "ethers": "^6.13.3"
+    "ethers": "^6.13.4"
   },
   "peerDependencies": {
     "@noble/hashes": "^1"
@@ -48,9 +48,9 @@
     "npm": "^10.9.0",
     "size-limit": "^8.2.6",
     "tsx": "^4.19.1",
-    "typedoc": "^0.26.8",
+    "typedoc": "^0.26.10",
     "typedoc-plugin-missing-exports": "^3.0.0",
-    "viem": "^2.21.22",
+    "viem": "^2.21.32",
     "vitest": "^0.34.6",
     "web3": "^4.13.0"
   },
