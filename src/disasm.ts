@@ -513,15 +513,29 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
         }
     }
 
-    if (boundaryPos > 0 && p.proxies.length === 0) {
-        // Slots could be stored outside of the program boudnary and copied in
+    if ((boundaryPos > 0 && p.proxies.length === 0)) {
+        // Slots could be stored outside of the program boundary and copied in
         // and we haven't found any proxy slots yet so let's check just in case...
         // This is unstructured data, so it could be anything. We can't parse it reliably.
-        // TODO: We can skip the CBOR encoding based on length defined in the final byte
-        const auxData = bytesToHex(code.bytecode.slice(boundaryPos));
-        for (const [slot, resolver] of Object.entries(slotResolvers)) {
-            if (auxData.lastIndexOf(slot.slice(2)) === -1) continue;
-            p.proxies.push(resolver);
+
+        // We can skip the CBOR encoding based on length defined in the final byte
+        // https://playground.sourcify.dev/
+
+        // TODO: Pull CBOR out and add to result
+        let endBoundary : number|undefined = undefined;
+        const finalByte = code.bytecode.slice(-1)[0];
+        if (!isHalt(finalByte)) {
+            const cborLength = valueToOffset(code.bytecode.slice(-2));
+            endBoundary = -(cborLength + 4); // +4 for the length bytes
+        }
+
+        const auxData = bytesToHex(code.bytecode.slice(boundaryPos, endBoundary));
+        if (auxData.length > 2) { // 0x is empty
+            // Look for known slots in extra data segment that could be CODECOPY'd
+            for (const [slot, resolver] of Object.entries(slotResolvers)) {
+                if (auxData.lastIndexOf(slot.slice(2)) === -1) continue;
+                p.proxies.push(resolver);
+            }
         }
     }
 
