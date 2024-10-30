@@ -341,7 +341,11 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             // if (code.at(pos - 1) === opcodes.RETURN) { ... }
 
             continue;
-        } else if ((isHalt(code.at(-2)) || code.at(-2) === opcodes.JUMP) && runtimeOffset < pos) {
+        } else if (
+            (isHalt(code.at(-2)) || code.at(-2) === opcodes.JUMP) &&
+            runtimeOffset < pos &&
+            maxJumpDest < pos
+        ) {
             // Did we just find the end of the program?
             boundaryPos = pos;
             break;
