@@ -124,6 +124,8 @@ const interestingOpCodes : Set<OpCode> = new Set([
     opcodes.SLOAD, // Not pure
     opcodes.SSTORE, // Not view
     opcodes.REVERT,
+    opcodes.CREATE, // Factory
+    opcodes.CREATE2, // Factory
     // TODO: Add LOGs to track event emitters?
 ]);
 
@@ -151,6 +153,7 @@ export class Program {
     eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
     proxySlots: Array<string>; // PUSH32 found that match known proxy slots
     proxies: Array<ProxyResolver>;
+    isFactory: boolean; // CREATE or CREATE2 detected
 
     init?: Program; // Program embedded as init code
 
@@ -161,6 +164,7 @@ export class Program {
         this.eventCandidates = [];
         this.proxySlots = [];
         this.proxies = [];
+        this.isFactory = false;
         this.init = init;
     }
 }
@@ -349,6 +353,11 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             // Tag current function with interesting opcodes (not including above)
             if (interestingOpCodes.has(inst)) {
                 currentFunction.opTags.add(inst);
+
+                // CREATE/CREATE2 are part of interestingOpCodes so we can leverage this short circuit
+                if (inst === opcodes.CREATE || inst === opcodes.CREATE2) {
+                    p.isFactory = true;
+                }
             }
         }
 

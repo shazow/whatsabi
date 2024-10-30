@@ -3,7 +3,7 @@ import { expect } from 'vitest';
 import { whatsabi } from "../index";
 import { autoload } from "../auto";
 
-import { test, online_test, makeProvider } from "./env";
+import { test, online_test, cached_test, makeProvider } from "./env";
 
 const TIMEOUT = 15000;
 
@@ -95,3 +95,20 @@ online_test('autoload loadContractResult verified etherscan', async ({ provider,
     expect(result.contractResult?.loaderResult?.Proxy).toBe("1");
     expect(result.contractResult?.loaderResult?.Implementation).toMatch(/^0x[0-9a-f]{40}$/);
 });
+
+cached_test('autoload isFactory', async ({ provider, env, withCache }) => {
+    const address = "0x7dB8637A5fd20BbDab1176BdF49C943A96F2E9c6"; // Factory that makes proxies
+
+    const code = await withCache(
+        `${address}_code`,
+        async () => {
+            return await provider.getCode(address)
+        },
+    )
+    const result = await autoload(address, {
+        provider: provider,
+        ...whatsabi.loaders.defaultsWithEnv(env),
+    });
+    expect(result.isFactory).toBeTruthy();
+});
+

@@ -40,6 +40,15 @@ export type AutoloadResult = {
      * Note: Some proxies operate relative to a specific selector (such as DiamondProxy facets), in this case we'll need to specify a selector that we care about.
      */
     followProxies?: (selector?: string) => Promise<AutoloadResult>,
+
+    /**
+     * Set to true when a CREATE or CREATE2 opcode is present in the bytecode.
+     * This means that some of the results could have been mistaken from the embedded contract that gets created by the factory.
+     * For example, we can have a non-proxy contract which creates a proxy contract on call. WhatsABI may not yet be able to distinguish them reliably.
+     *
+     * @experimental
+     */
+    isFactory?: boolean;
 }
 
 
@@ -87,11 +96,11 @@ export type AutoloadConfig = {
 
 
     /**
-    * Load full contract metadata result, include it in {@link AutoloadResult.ContractResult} if successful.
-    *
-    * This changes the behaviour of autoload to use {@link ABILoader.getContract} instead of {@link ABILoader.loadABI},
-    * which returns a larger superset result including all of the available verified contract metadata.
-    */
+     * Load full contract metadata result, include it in {@link AutoloadResult.ContractResult} if successful.
+     *
+     * This changes the behaviour of autoload to use {@link ABILoader.getContract} instead of {@link ABILoader.loadABI},
+     * which returns a larger superset result including all of the available verified contract metadata.
+     */
     loadContractResult?: boolean;
 
     /**
@@ -99,6 +108,7 @@ export type AutoloadConfig = {
      * For now, this is primarily for event topics.
      *
      * @group Settings
+     * @experimental
      */
     enableExperimentalMetadata?: boolean;
 }
@@ -184,8 +194,8 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
 
     const program = disasm(bytecode);
 
-    // FIXME: Sort them in some reasonable way
-    result.proxies = program.proxies;
+    result.proxies = program.proxies; // FIXME: Sort them in some reasonable way
+    result.isFactory = program.isFactory;
 
     // Mapping of address-to-valid-selectors. Non-empty mapping values will prune ABIs to the selectors before returning.
     // This is mainly to support multiple proxies and diamond proxies.
