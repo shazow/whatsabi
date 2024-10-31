@@ -155,6 +155,7 @@ export class Program {
     proxies: Array<ProxyResolver>;
     isFactory: boolean; // CREATE or CREATE2 detected
     sstoreCount: number; // Number of SSTORE instructions detected, used to determine if this may be a destination contract (vs a proxy)
+    metadata?: Record<string, string>; // CBOR metadata at the end of the contract
 
     init?: Program; // Program embedded as init code
 
@@ -522,22 +523,30 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
         }
     }
 
+    let endBoundary : number|undefined = undefined;
+    const finalByte = code.bytecode.slice(-1)[0];
+    // Try to detect CBOR metadata (vs bytecode that does not include it)
+    // https://playground.sourcify.dev/
+    if (!isHalt(finalByte) || code.bytecode.slice(-2)[0] === 0) {
+        const cborLength = valueToOffset(code.bytecode.slice(-2));
+        endBoundary = -(cborLength + 2); // +4 for the length bytes
+        const cborData = code.bytecode.slice(endBoundary).slice(0, -2);
+
+        if (cborData.length === 51) {
+            // We're going to cheat if we suspect it's {ipfs, solc}
+            p.metadata = {
+                ipfs: bytesToHex(cborData.slice(8, 42)),  // 2 bytes map + 6 bytes "ipfs" for 34 bytes value
+                solc: bytesToHex(cborData.slice(48, 51)),  // 2 bytes map + 6 bytes "solc" for 3 bytes value
+            }
+        }
+    }
+
     if ((boundaryPos > 0 && p.proxies.length === 0)) {
         // Slots could be stored outside of the program boundary and copied in
         // and we haven't found any proxy slots yet so let's check just in case...
         // This is unstructured data, so it could be anything. We can't parse it reliably.
 
         // We can skip the CBOR encoding based on length defined in the final byte
-        // https://playground.sourcify.dev/
-
-        // TODO: Pull CBOR out and add to result
-        let endBoundary : number|undefined = undefined;
-        const finalByte = code.bytecode.slice(-1)[0];
-        if (!isHalt(finalByte)) {
-            const cborLength = valueToOffset(code.bytecode.slice(-2));
-            endBoundary = -(cborLength + 4); // +4 for the length bytes
-        }
-
         const auxData = bytesToHex(code.bytecode.slice(boundaryPos, endBoundary));
         if (auxData.length >= 2 + 64) { // 0x is empty, plus at least enough for a slot
             // Look for known slots in extra data segment that could be CODECOPY'd
