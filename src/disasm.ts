@@ -447,7 +447,7 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             isPush(code.at(-4))
         ) {
             // Found a function selector sequence, save it to check against JUMPDEST table later
-            let value = code.valueAt(-4)
+            let value = code.valueAt(-4);
             // 0-prefixed comparisons get optimized to a smaller width than PUSH4
             const selector: string = bytesToHex(value, 4);
             p.selectors[selector] = offsetDest;
@@ -534,7 +534,7 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
         }
 
         const auxData = bytesToHex(code.bytecode.slice(boundaryPos, endBoundary));
-        if (auxData.length > 2) { // 0x is empty
+        if (auxData.length >= 2 + 64) { // 0x is empty, plus at least enough for a slot
             // Look for known slots in extra data segment that could be CODECOPY'd
             for (const [slot, resolver] of Object.entries(slotResolvers)) {
                 if (auxData.lastIndexOf(slot.slice(2)) === -1) continue;
