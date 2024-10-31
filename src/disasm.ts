@@ -240,7 +240,9 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
     let lastPush32: Uint8Array = _EmptyArray;  // Track last push32 to find log topics
     let checkJumpTable: boolean = true;
     let resumeJumpTable = new Set<number>();
+    let maxJumpDest = 0;
     let runtimeOffset = 0; // Non-zero if init deploy code is included
+    let boundaryPos = -1;
 
     let currentFunction: Function = new Function();
     p.dests[0] = currentFunction;
@@ -339,6 +341,14 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             // if (code.at(pos - 1) === opcodes.RETURN) { ... }
 
             continue;
+        } else if (
+            (isHalt(code.at(-2)) || code.at(-2) === opcodes.JUMP) &&
+            runtimeOffset < pos &&
+            maxJumpDest < pos
+        ) {
+            // Did we just find the end of the program?
+            boundaryPos = pos;
+            break;
         }
 
         // Annotate current function
@@ -348,6 +358,7 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             if ((inst === opcodes.JUMP || inst === opcodes.JUMPI) && isPush(code.at(-2))) {
                 const jumpOffset = valueToOffset(code.valueAt(-2));
                 currentFunction.jumps.push(jumpOffset - runtimeOffset);
+                maxJumpDest = Math.max(maxJumpDest, jumpOffset);
             }
 
             // Tag current function with interesting opcodes (not including above)
@@ -364,8 +375,12 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
         // Did we just copy code that might be the runtime code?
         // PUSH2 <RUNTIME OFFSET> PUSH1 0x00 CODECOPY
         if (code.at(-1) === opcodes.CODECOPY &&
-            code.at(-2) === opcodes.PUSH1 &&
-            code.at(-3) === opcodes.PUSH2
+            (   // Add 0x00 to stack
+                code.at(-2) === opcodes.PUSH1 ||
+                code.at(-2) === opcodes.PUSH0 ||
+                code.at(-2) === opcodes.RETURNDATASIZE
+            ) &&
+            isPush(code.at(-3))
         ) {
             const offsetDest: number = valueToOffset(code.valueAt(-3));
             resumeJumpTable.add(offsetDest);
@@ -432,7 +447,7 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             isPush(code.at(-4))
         ) {
             // Found a function selector sequence, save it to check against JUMPDEST table later
-            let value = code.valueAt(-4)
+            let value = code.valueAt(-4);
             // 0-prefixed comparisons get optimized to a smaller width than PUSH4
             const selector: string = bytesToHex(value, 4);
             p.selectors[selector] = offsetDest;
@@ -499,6 +514,32 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             resumeJumpTable.add(offsetDest);
 
             continue;
+        }
+    }
+
+    if ((boundaryPos > 0 && p.proxies.length === 0)) {
+        // Slots could be stored outside of the program boundary and copied in
+        // and we haven't found any proxy slots yet so let's check just in case...
+        // This is unstructured data, so it could be anything. We can't parse it reliably.
+
+        // We can skip the CBOR encoding based on length defined in the final byte
+        // https://playground.sourcify.dev/
+
+        // TODO: Pull CBOR out and add to result
+        let endBoundary : number|undefined = undefined;
+        const finalByte = code.bytecode.slice(-1)[0];
+        if (!isHalt(finalByte)) {
+            const cborLength = valueToOffset(code.bytecode.slice(-2));
+            endBoundary = -(cborLength + 4); // +4 for the length bytes
+        }
+
+        const auxData = bytesToHex(code.bytecode.slice(boundaryPos, endBoundary));
+        if (auxData.length >= 2 + 64) { // 0x is empty, plus at least enough for a slot
+            // Look for known slots in extra data segment that could be CODECOPY'd
+            for (const [slot, resolver] of Object.entries(slotResolvers)) {
+                if (auxData.lastIndexOf(slot.slice(2)) === -1) continue;
+                p.proxies.push(resolver);
+            }
         }
     }
 

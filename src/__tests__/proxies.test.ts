@@ -13,6 +13,7 @@ import { ZEPPELINOS_USDC, WANDERWING } from './__fixtures__/proxies'
 describe('proxy detection', () => {
     test('Minimal Proxy Pattern', async () => {
         // https://eips.ethereum.org/EIPS/eip-1167
+        // includes deploy instructions
         const bytecode = "0x3d602d80600a3d3981f3363d3d373d3d3d363d73bebebebebebebebebebebebebebebebebebebebe5af43d82803e903d91602b57fd5bf3";
 
         const program = disasm(bytecode);
