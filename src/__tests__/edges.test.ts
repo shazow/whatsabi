@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 
 import { cached_test, describe_cached } from "./env";
 import { selectorsFromBytecode } from '../index';
+import { disasm } from '../disasm';
 
 //const address = "0xbadc0defafcf6d4239bdf0b66da4d7bd36fcf05a";
 //const missingSelector = "0x69277b67";
@@ -81,6 +82,20 @@ cached_test('issue 70: negated selector', async ({ provider, withCache }) => {
 
   const r = selectorsFromBytecode(code);
   expect(r).toEqual(expect.arrayContaining(["0xfd9f1e10"]))
+});
+
+cached_test('issue 146: duplicated events', async ({ provider, withCache }) => {
+  const address = "0xd9db270c1b5e3bd161e8c8503c55ceabee709552";
+
+  const code = await withCache(
+    `${address}_code`,
+    async () => {
+      return await provider.getCode(address)
+    },
+  )
+
+  const r = disasm(code);
+  expect(Array.from(r.eventCandidates).length).toEqual(14);
 });
 
 // Addresses with false positive zero selectors:
