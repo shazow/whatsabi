@@ -150,7 +150,7 @@ export class Program {
     notPayable: { [key: number]: number }; // instruction offset -> bytes offset
     fallback?: number; // instruction offset for fallback function
 
-    eventCandidates: Array<string>; // PUSH32 found before a LOG instruction
+    eventCandidates: Set<string>; // PUSH32 found before a LOG instruction
     proxySlots: Array<string>; // PUSH32 found that match known proxy slots
     proxies: Array<ProxyResolver>;
     isFactory: boolean; // CREATE or CREATE2 detected
@@ -161,7 +161,7 @@ export class Program {
         this.dests = {};
         this.selectors = {};
         this.notPayable = {};
-        this.eventCandidates = [];
+        this.eventCandidates = new Set();
         this.proxySlots = [];
         this.proxies = [];
         this.isFactory = false;
@@ -267,7 +267,7 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             }
             continue
         } else if (isLog(inst) && lastPush32.length > 0) {
-            p.eventCandidates.push(bytesToHex(lastPush32));
+            p.eventCandidates.add(bytesToHex(lastPush32));
             continue
         }
 
