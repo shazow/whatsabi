@@ -57,8 +57,7 @@ const reTupleType = /^tuple(\[\d*\])?$/;
  * }
  *
  * @param abi The ABI to process
- * @param options Configuration options
- * @returns A new ABI with filled parameter names
+ * @returns A new ABI with tuple component names filled
  */
 export function abiFillEmptyNames(abi: ABI): ABI {
   function processComponents(components: ABIInOut[]): void {
