@@ -185,7 +185,7 @@ describe("abiFillEmptyNames", () => {
           selector: "0x12345679",
           inputs: [
             {
-              name: "s",
+              name: "",
               type: "tuple",
               components: [
                 {
@@ -217,7 +217,7 @@ describe("abiFillEmptyNames", () => {
           selector: "0x12345679",
           inputs: [
             {
-              name: "s",
+              name: "",
               type: "tuple",
               components: [
                 {
