@@ -1,9 +1,5 @@
 import type { ABI, ABIFunction, ABIInOut } from "./abi.js";
 
-// Regular expression to match tuple types.
-// Example: tuple, tuple[], tuple[5]
-const reTupleType = /^tuple(\[\d*\])?$/;
-
 /**
  * Fills tuple component's empty names in an ABI with generated names
  *
@@ -63,7 +59,7 @@ export function abiFillEmptyNames(abi: ABI): ABI {
   function processComponents(components: ABIInOut[]): void {
     components.forEach((component, index) => {
       component.name ||= `field${index}`;
-      if (component.type.match(reTupleType) && component.components) {
+      if (isTupleType(component.type) && component.components) {
         processComponents(component.components);
       }
     });
@@ -73,12 +69,12 @@ export function abiFillEmptyNames(abi: ABI): ABI {
     if (item.type === "function") {
       const func: ABIFunction = { ...item };
       func.inputs?.forEach((input) => {
-        if (input.type.match(reTupleType) && input.components) {
+        if (isTupleType(input.type) && input.components) {
           processComponents(input.components);
         }
       });
       func.outputs?.forEach((output) => {
-        if (output.type.match(reTupleType) && output.components) {
+        if (isTupleType(output.type) && output.components) {
           processComponents(output.components);
         }
       });
@@ -88,4 +84,13 @@ export function abiFillEmptyNames(abi: ABI): ABI {
   });
 
   return result;
+}
+
+/**
+ * Checks if a type is a tuple type (e.g. "tuple", "tuple[]", "tuple[2]")
+ * @param type type to check
+ * @returns true if the type is a tuple type
+ */
+function isTupleType(type: string): boolean {
+  return type.startsWith("tuple");
 }
