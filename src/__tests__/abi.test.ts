@@ -62,11 +62,11 @@ describe("abiFillEmptyNames", () => {
               type: "tuple",
               name: "",
               components: [
-                { type: "uint32", name: "field0" },
-                { type: "bytes", name: "field1" },
-                { type: "bytes32", name: "field2" },
-                { type: "uint64", name: "field3" },
-                { type: "address", name: "field4" },
+                { type: "uint32", name: "_p0" },
+                { type: "bytes", name: "_p1" },
+                { type: "bytes32", name: "_p2" },
+                { type: "uint64", name: "_p3" },
+                { type: "address", name: "_p4" },
               ],
             },
             { type: "bytes", name: "" },
@@ -76,11 +76,11 @@ describe("abiFillEmptyNames", () => {
               type: "tuple",
               name: "",
               components: [
-                { type: "uint32", name: "field0" },
-                { type: "bytes", name: "field1" },
-                { type: "bytes32", name: "field2" },
-                { type: "uint64", name: "field3" },
-                { type: "address", name: "field4" },
+                { type: "uint32", name: "_p0" },
+                { type: "bytes", name: "_p1" },
+                { type: "bytes32", name: "_p2" },
+                { type: "uint64", name: "_p3" },
+                { type: "address", name: "_p4" },
               ],
             },
             { type: "bytes", name: "" },
@@ -142,15 +142,15 @@ describe("abiFillEmptyNames", () => {
               components: [
                 {
                   type: "tuple",
-                  name: "field0",
+                  name: "_p0",
                   components: [
                     {
                       type: "tuple",
-                      name: "field0",
+                      name: "_p0",
                       components: [
                         {
                           type: "uint256",
-                          name: "field0",
+                          name: "_p0",
                         },
                         { type: "address", name: "x" },
                       ],
@@ -162,7 +162,7 @@ describe("abiFillEmptyNames", () => {
                         { type: "uint256", name: "y" },
                         {
                           type: "address",
-                          name: "field1",
+                          name: "_p1",
                         },
                       ],
                     },
@@ -220,19 +220,19 @@ describe("abiFillEmptyNames", () => {
               type: "tuple",
               components: [
                 {
-                  name: "field0",
+                  name: "_p0",
                   type: "tuple[]",
                   components: [
-                    { name: "field0", type: "uint256" },
-                    { name: "field1", type: "uint256" },
+                    { name: "_p0", type: "uint256" },
+                    { name: "_p1", type: "uint256" },
                   ],
                 },
                 {
-                  name: "field1",
+                  name: "_p1",
                   type: "tuple[2]",
                   components: [
-                    { name: "field0", type: "uint256" },
-                    { name: "field1", type: "uint256" },
+                    { name: "_p0", type: "uint256" },
+                    { name: "_p1", type: "uint256" },
                   ],
                 },
               ],
