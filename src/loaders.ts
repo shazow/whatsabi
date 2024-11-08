@@ -478,7 +478,6 @@ export class BlockscoutABILoader implements ABILoader {
             if (
                 !result.abi ||
                 !result.name ||
-                !result.evm_version ||
                 !result.compiler_version ||
                 !result.source_code
             ) {
@@ -488,7 +487,7 @@ export class BlockscoutABILoader implements ABILoader {
             return {
                 abi: result.abi,
                 name: result.name,
-                evmVersion: result.evm_version,
+                evmVersion: result.evm_version || "",
                 compilerVersion: result.compiler_version,
                 runs: result.optimization_runs || 200,
 
