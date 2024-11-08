@@ -111,13 +111,6 @@ export type AutoloadConfig = {
      * @experimental
      */
     enableExperimentalMetadata?: boolean;
-
-    /**
-     * Enable ABI helpers to apply additional transformations to the ABI before returning.
-     * @group Settings
-     * @experimental
-     */
-    abiHelpers?: Array<(abi: ABI) => ABI>;
 }
 
 /**
@@ -365,12 +358,6 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
                 cause,
             },
         );
-    }
-
-    if (config.abiHelpers) {
-        for (const helper of config.abiHelpers) {
-            result.abi = helper(result.abi);
-        }
     }
 
     return result;
