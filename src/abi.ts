@@ -96,7 +96,7 @@ export type ABI = (ABIFunction|ABIEvent)[];
 export function abiFillEmptyNames(abi: ABI): ABI {
   function processComponents(components: ABIInOut[]): void {
     components.forEach((component, index) => {
-      component.name ||= `_p${index}`;
+      component.name ||= `_param${index}`;
       if (isTupleType(component.type) && component.components) {
         processComponents(component.components);
       }
