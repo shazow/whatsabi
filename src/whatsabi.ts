@@ -26,8 +26,8 @@ export { proxies };
 import * as providers from "./providers.js";
 export { providers };
 
-import * as helpers from "./helpers.js";
-export { helpers };
+import * as abi from "./abi.js";
+export { abi };
 
 import * as errors from "./errors.js";
 export { errors };

@@ -1,7 +1,6 @@
 import { expect, describe, it } from "vitest";
 
-import { abiFillEmptyNames } from "../helpers";
-import { ABI } from "../abi";
+import { ABI, abiFillEmptyNames } from "../abi";
 
 describe("abiFillEmptyNames", () => {
   type testCase = {
