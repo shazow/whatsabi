@@ -1,8 +1,8 @@
 import { expect, describe, it } from "vitest";
 
-import { ABI, abiFillEmptyNames } from "../abi";
+import { ABI, fillEmptyNames } from "../abi";
 
-describe("abiFillEmptyNames", () => {
+describe("fillEmptyNames", () => {
   type testCase = {
     name: string;
     abi: Array<ABI[number] | unknown>;
@@ -252,7 +252,7 @@ describe("abiFillEmptyNames", () => {
 
   testCases.forEach((tc) => {
     it(tc.name, () => {
-      expect(abiFillEmptyNames(tc.abi as ABI)).toStrictEqual(tc.want);
+      expect(fillEmptyNames(tc.abi as ABI)).toStrictEqual(tc.want);
     });
   });
 });

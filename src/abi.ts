@@ -93,7 +93,7 @@ export type ABI = (ABIFunction|ABIEvent)[];
  * @param abi The ABI to process
  * @returns A new ABI with tuple component names filled
  */
-export function abiFillEmptyNames(abi: ABI): ABI {
+export function fillEmptyNames(abi: ABI): ABI {
   function processComponents(components: ABIInOut[]): void {
     components.forEach((component, index) => {
       component.name ||= `_param${index}`;
