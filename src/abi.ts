@@ -76,11 +76,11 @@ export type ABI = (ABIFunction|ABIEvent)[];
  *       "type": "tuple",
  *       "name": "",
  *       "components": [
- *         { "type": "uint32", "name": "field0" },
- *         { "type": "bytes", "name": "field1" },
- *         { "type": "bytes32", "name": "field2" },
- *         { "type": "uint64", "name": "field3" },
- *         { "type": "address", "name": "field4" }
+ *         { "type": "uint32", "name": "_param0" },
+ *         { "type": "bytes", "name": "_param1" },
+ *         { "type": "bytes32", "name": "_param2" },
+ *         { "type": "uint64", "name": "_param3" },
+ *         { "type": "address", "name": "_param4" }
  *       ]
  *     },
  *     { "type": "bytes", "name": "" }
