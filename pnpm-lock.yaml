@@ -11,9 +11,9 @@ importers:
       '@noble/hashes':
         specifier: ^1
         version: 1.5.0
-      ethers:
-        specifier: ^6.13.4
-        version: 6.13.4
+      ox:
+        specifier: ^0.1.1
+        version: 0.1.1(typescript@5.5.3)(zod@3.23.8)
     devDependencies:
       '@size-limit/esbuild-why':
         specifier: ^8.2.6
@@ -21,6 +21,9 @@ importers:
       '@size-limit/preset-small-lib':
         specifier: ^8.2.6
         version: 8.2.6(size-limit@8.2.6)
+      ethers:
+        specifier: ^6.13.4
+        version: 6.13.4
       npm:
         specifier: ^10.9.0
         version: 10.9.0
@@ -1233,6 +1236,14 @@ packages:
   open@8.4.2:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
+
+  ox@0.1.1:
+    resolution: {integrity: sha512-KnObgOOAH6cWG/N8RhXX5XSEt+kVXGx5iKoriVePfjEzRcLRSEvsOnLE57rwOJnROmUPyH0Fp8JriW5KOS/ymg==}
+    peerDependencies:
+      typescript: '>=5.4.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   p-limit@4.0.0:
     resolution: {integrity: sha512-5b0R4txpzjPWVw/cXXUResoD4hb6U/x9BH08L7nw+GN1sezDzPdxeRvpc9c433fZhBan/wusjbCsqwqm4EIBIQ==}
@@ -2629,6 +2640,20 @@ snapshots:
       define-lazy-prop: 2.0.0
       is-docker: 2.2.1
       is-wsl: 2.2.0
+
+  ox@0.1.1(typescript@5.5.3)(zod@3.23.8):
+    dependencies:
+      '@adraffy/ens-normalize': 1.11.0
+      '@noble/curves': 1.6.0
+      '@noble/hashes': 1.5.0
+      '@scure/bip32': 1.5.0
+      '@scure/bip39': 1.4.0
+      abitype: 1.0.6(typescript@5.5.3)(zod@3.23.8)
+      eventemitter3: 5.0.1
+    optionalDependencies:
+      typescript: 5.5.3
+    transitivePeerDependencies:
+      - zod
 
   p-limit@4.0.0:
     dependencies:

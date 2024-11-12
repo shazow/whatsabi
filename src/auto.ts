@@ -1,4 +1,4 @@
-import { Fragment, FunctionFragment } from "ethers";
+import { AbiItem, AbiFunction, AbiEvent } from 'ox'
 
 import type { AnyProvider } from "./providers.js";
 import type { ABI, ABIFunction } from "./abi.js";
@@ -316,7 +316,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
                     a.sig = r[0];
 
                     // Let ethers.js extract as much metadata as it can from the signature
-                    const extracted = JSON.parse(Fragment.from("function " + a.sig).format("json"));
+                    const extracted = AbiFunction.from("function " + a.sig);
                     if (extracted.outputs.length === 0) {
                         // Outputs not included in signature databases -_- (unless something changed)
                         // Let whatsabi keep its best guess, if any.
@@ -333,7 +333,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
                     a.sig = r[0];
 
                     // Let ethers.js extract as much metadata as it can from the signature
-                    Object.assign(a, JSON.parse(Fragment.from("event " + a.sig).format("json")))
+                    Object.assign(a, AbiEvent.from("function " + a.sig));
                 }
                 if (r.length > 1) a.sigAlts = r.slice(1);
             }));
@@ -392,7 +392,7 @@ function pruneFacets(facets: Record<string, string[]>, abis: Record<string, ABI>
             a = a as ABIFunction;
             let selector = a.selector;
             if (selector === undefined && a.name) {
-                selector = FunctionFragment.getSelector(a.name, a.inputs);
+                selector = AbiFunction.getSelector(a as AbiFunction.AbiFunction);
             }
             if (allowSelectors.has(selector)) {
                 r.push(a);
