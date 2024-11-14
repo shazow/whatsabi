@@ -1,4 +1,5 @@
-import { AbiItem, AbiFunction } from 'ox'
+import * as AbiItem from 'ox/AbiItem';
+import * as AbiFunction from 'ox/AbiFunction';
 
 import { disasm } from "./disasm.js";
 

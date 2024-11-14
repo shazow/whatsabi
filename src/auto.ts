@@ -1,4 +1,5 @@
-import { AbiFunction, AbiEvent } from 'ox'
+import * as AbiFunction from 'ox/AbiFunction';
+import * as AbiEvent from 'ox/AbiEvent';
 
 import type { AnyProvider } from "./providers.js";
 import type { ABI, ABIFunction } from "./abi.js";
