@@ -1,4 +1,4 @@
-import { AbiItem, AbiFunction, AbiEvent } from 'ox'
+import { AbiFunction, AbiEvent } from 'ox'
 
 import type { AnyProvider } from "./providers.js";
 import type { ABI, ABIFunction } from "./abi.js";
@@ -315,8 +315,9 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
                 if (r.length >= 1) {
                     a.sig = r[0];
 
-                    // Let ethers.js extract as much metadata as it can from the signature
-                    const extracted = AbiFunction.from("function " + a.sig);
+                    // Extract as much metadata as it can from the signature
+                    const extracted : any = AbiFunction.from("function " + a.sig);
+                    delete (extracted.hash); // ox includes a hash for functions, not sure we want to commit to that
                     if (extracted.outputs.length === 0) {
                         // Outputs not included in signature databases -_- (unless something changed)
                         // Let whatsabi keep its best guess, if any.
@@ -332,7 +333,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
                 if (r.length >= 1) {
                     a.sig = r[0];
 
-                    // Let ethers.js extract as much metadata as it can from the signature
+                    // Extract as much metadata as it can from the signature
                     Object.assign(a, AbiEvent.from("function " + a.sig));
                 }
                 if (r.length > 1) a.sigAlts = r.slice(1);
