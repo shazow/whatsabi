@@ -1,4 +1,4 @@
-import { AbiFunction } from 'ox'
+import { AbiItem, AbiFunction } from 'ox'
 
 import { disasm } from "./disasm.js";
 
@@ -9,7 +9,7 @@ export function selectorsFromABI(abi: any[]): {[key: string]: string} {
 
     for (const el of abi) {
         if (typeof(el) !== "string" && el.type !== "function") continue;
-        const f = AbiFunction.format(AbiFunction.from(el))
+        const f = AbiItem.getSignature(el);
         const selector = AbiFunction.getSelector(el)
         r[selector] = f;
     }
