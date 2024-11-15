@@ -317,8 +317,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
                     a.sig = r[0];
 
                     // Extract as much metadata as it can from the signature
-                    const extracted : any = AbiFunction.from("function " + a.sig);
-                    delete (extracted.hash); // ox includes a hash for functions, not sure we want to commit to that
+                    const extracted : any = AbiFunction.from("function " + a.sig, { prepare: false });
                     if (extracted.outputs.length === 0) {
                         // Outputs not included in signature databases -_- (unless something changed)
                         // Let whatsabi keep its best guess, if any.
