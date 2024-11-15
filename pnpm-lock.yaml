@@ -12,8 +12,8 @@ importers:
         specifier: ^1
         version: 1.5.0
       ox:
-        specifier: ^0.1.8
-        version: 0.1.8(typescript@5.5.3)(zod@3.23.8)
+        specifier: ^0.2.0
+        version: 0.2.0(typescript@5.5.3)(zod@3.23.8)
     devDependencies:
       '@size-limit/esbuild-why':
         specifier: ^8.2.6
@@ -1245,8 +1245,8 @@ packages:
       typescript:
         optional: true
 
-  ox@0.1.8:
-    resolution: {integrity: sha512-GJl6uKXxhPq/XgyvAnIokGuGU/pt9CU8reRJjzi4a02HOpLc2CEXXD4bRCITFFAzdRqHj3DQ6GDS7PlCytPM/A==}
+  ox@0.2.0:
+    resolution: {integrity: sha512-hFFlrXuOlXHvQ9DeF/Lycrc2BkcbTm4fEGbfe0XFRhtQ/+siY5+9F3nHIjUHPDbwOZKU0K1uJSC74a0C6g3c1w==}
     peerDependencies:
       typescript: '>=5.4.0'
     peerDependenciesMeta:
@@ -2663,7 +2663,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  ox@0.1.8(typescript@5.5.3)(zod@3.23.8):
+  ox@0.2.0(typescript@5.5.3)(zod@3.23.8):
     dependencies:
       '@adraffy/ens-normalize': 1.11.0
       '@noble/curves': 1.6.0
