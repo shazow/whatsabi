@@ -469,10 +469,6 @@ export class BlockscoutABILoader implements ABILoader {
 
         try {
             const r = await fetch(url);
-            if (!r.ok) {
-                throw new Error(r.statusText);
-            }
-
             const result = (await r.json()) as BlockscoutContractResult;
 
             if (
@@ -526,12 +522,11 @@ export class BlockscoutABILoader implements ABILoader {
         if (this.apiKey) url += "?apikey=" + this.apiKey;
 
         try {
-            const result = (await fetch(url)) as BlockscoutContractResult;
-
+            const r = await fetch(url);
+            const result = (await r.json()) as BlockscoutContractResult;
             if (!result.abi) {
                 throw new Error("ABI is not found");
             }
-
             return result.abi;
         } catch (err: any) {
             throw new BlockscoutABILoaderError(
