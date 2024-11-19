@@ -11,7 +11,7 @@ WhatsABI is perfect for building procedural frontends, embedding in wallets, blo
 **What can WhatsABI do**?
 - Return selectors from bytecode.
 - Look up function signatures from selectors.
-- Helpers for looking up ABI and signatures from public databases (like Sourcify, Etherscan, OpenChain, 4Byte).
+- Helpers for looking up ABI and signatures from public databases (like Sourcify, Etherscan, Blockscout, OpenChain, 4Byte).
 - ✨ Resolve proxy contracts!
 - Small bundle (less than 15 KB) that works with Ethers.js, Viem, and others.
 
@@ -92,6 +92,9 @@ const loader = new whatsabi.loaders.MultiABILoader([
   new whatsabi.loaders.SourcifyABILoader(),
   new whatsabi.loaders.EtherscanABILoader({
     apiKey: "...", // Replace the value with your Etherscan API key
+  }),
+  new whatsabi.loaders.BlockscoutABILoader({
+    apiKey: "...", // Replace the value with your Blockscout API key
   }),
 ]);
 const { abi, name, /* ... other metadata */ } = await loader.getContract(address));
@@ -217,6 +220,7 @@ console.log("Resolved to:", address);
 $ cat .env  # Write an .env file with your keys, or `cp .env.example .env`
 export INFURA_API_KEY="..."
 export ETHERSCAN_API_KEY="..."
+export BLOCKSCOUT_API_KEY="..."
 $ nix develop  # Or use your system's package manager to install node/ts/etc
 [dev] $ npm install
 [dev] $ ONLINE=1 make test
