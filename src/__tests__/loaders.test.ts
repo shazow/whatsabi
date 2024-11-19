@@ -9,6 +9,7 @@ import {
   SamczunSignatureLookup,
   FourByteSignatureLookup,
   MultiABILoader,
+  BlockscoutABILoader,
 } from "../loaders";
 import { selectorsFromABI } from "../index";
 
@@ -53,6 +54,16 @@ describe('loaders module', () => {
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     expect(selectors).toContain(sig);
   }, SLOW_ETHERSCAN_TIMEOUT)
+
+  online_test('BlockscoutABILoader', async () => {
+    const loader = new BlockscoutABILoader({
+      apiKey: process.env["BLOCKSCOUT_API_KEY"],
+    });
+    const abi = await loader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
+    const selectors = Object.values(selectorsFromABI(abi));
+    const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
+    expect(selectors).toContain(sig);
+  })
 
   online_test('MultiABILoader', async () => {
     // A contract that is verified on etherscan but not sourcify
@@ -122,6 +133,42 @@ describe('loaders module', () => {
     expect(result.loaderResult?.Proxy).toBeTruthy();
     expect(result.loaderResult?.Implementation).toMatch(/^0x[0-9a-f]{40}$/);
   }, SLOW_ETHERSCAN_TIMEOUT)
+
+  online_test('BlockscoutABILoader_getContract', async () => {
+    const loader = new BlockscoutABILoader({
+      apiKey: process.env["BLOCKSCOUT_API_KEY"],
+    });
+    const result = await loader.getContract("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
+    const selectors = Object.values(selectorsFromABI(result.abi));
+    const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
+    expect(selectors).toContain(sig);
+    expect(result.name).toStrictEqual("UniswapV2Router02")
+    expect(result.loader?.name).toStrictEqual("BlockscoutABILoader");
+    expect(result.loaderResult?.source_code).toBeDefined();
+    expect(result.loaderResult?.compiler_settings).toBeDefined();
+
+    const sources = result.getSources && await result.getSources();
+    expect(sources && sources[0].content).toContain("pragma solidity");
+  })
+
+  online_test('BlockscoutABILoader_getContract_missing', async () => {
+    const loader = new BlockscoutABILoader({
+      apiKey: process.env["BLOCKSCOUT_API_KEY"],
+    });
+    const r = await loader.getContract("0x0000000000000000000000000000000000000000");
+    expect(r.ok).toBeFalsy();
+  })
+
+  online_test('BlockscoutABILoader_getContract_UniswapV3Factory', async () => {
+    const loader = new BlockscoutABILoader({
+      apiKey: process.env["BLOCKSCOUT_API_KEY"],
+    });
+    const { abi, name } = await loader.getContract("0x1F98431c8aD98523631AE4a59f267346ea31F984");
+    const selectors = Object.values(selectorsFromABI(abi));
+    const sig = "owner()";
+    expect(selectors).toContain(sig);
+    expect(name).toEqual("UniswapV3Factory");
+  })
 
   online_test('MultiABILoader_getContract', async () => {
     // A contract that is verified on etherscan but not sourcify
