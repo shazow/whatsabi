@@ -37,7 +37,7 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "ethers": "^6.13.4"
+    "ox": "^0.2.0"
   },
   "peerDependencies": {
     "@noble/hashes": "^1"
@@ -45,14 +45,15 @@
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
+    "ethers": "^6.13.4",
     "npm": "^10.9.0",
     "size-limit": "^8.2.6",
     "tsx": "^4.19.2",
     "typedoc": "^0.26.11",
     "typedoc-plugin-missing-exports": "^3.0.0",
-    "viem": "^2.21.40",
+    "viem": "^2.21.45",
     "vitest": "^0.34.6",
-    "web3": "^4.14.0"
+    "web3": "^4.15.0"
   },
   "main": "./lib.cjs/index.js",
   "module": "./lib.esm/index.js",
