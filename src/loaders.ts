@@ -425,6 +425,183 @@ export interface SourcifyContractMetadata {
     version: number;
 }
 
+
+export class BlockscoutABILoader implements ABILoader {
+    readonly name = "BlockscoutABILoader";
+
+    apiKey?: string;
+    baseURL: string;
+
+    constructor(config?: { apiKey?: string; baseURL?: string }) {
+        if (config === undefined) config = {};
+        this.apiKey = config.apiKey;
+        this.baseURL = config.baseURL || "https://eth.blockscout.com/api";
+    }
+
+    /** Blockscout helper for converting the result arg to a decoded ContractSources. */
+    #toContractSources(result: {
+        file_path?: string;
+        source_code?: string;
+        additional_sources?: Array<{ file_path: string; source_code: string }>;
+    }): ContractSources {
+        const sources: ContractSources = [];
+
+        if (result.source_code) {
+            sources.push({
+                path: result.file_path,
+                content: result.source_code,
+            });
+        }
+
+        result.additional_sources?.forEach((source) => {
+            sources.push({
+                path: source.file_path,
+                content: source.source_code,
+            });
+        });
+
+        return sources;
+    }
+
+    async getContract(address: string): Promise<ContractResult> {
+        let url = this.baseURL + `/v2/smart-contracts/${address}`;
+        if (this.apiKey) url += "?apikey=" + this.apiKey;
+
+        try {
+            const r = await fetch(url);
+            const result = (await r.json()) as BlockscoutContractResult;
+
+            if (
+                !result.abi ||
+                !result.name ||
+                !result.compiler_version ||
+                !result.source_code
+            ) {
+                return emptyContractResult;
+            }
+
+            return {
+                abi: result.abi,
+                name: result.name,
+                evmVersion: result.evm_version || "",
+                compilerVersion: result.compiler_version,
+                runs: result.optimization_runs || 200,
+
+                getSources: async () => {
+                    try {
+                        return this.#toContractSources(result);
+                    } catch (err: any) {
+                        throw new BlockscoutABILoaderError(
+                            "BlockscoutABILoader getContract getSources error: " +
+                                err.message,
+                            {
+                                context: { url, address },
+                                cause: err,
+                            }
+                        );
+                    }
+                },
+
+                ok: true,
+                loader: this,
+                loaderResult: result,
+            };
+        } catch (err: any) {
+            throw new BlockscoutABILoaderError(
+                "BlockscoutABILoader getContract error: " + err.message,
+                {
+                    context: { url, address },
+                    cause: err,
+                }
+            );
+        }
+    }
+
+    async loadABI(address: string): Promise<any[]> {
+        let url = this.baseURL + `/v2/smart-contracts/${address}`;
+        if (this.apiKey) url += "?apikey=" + this.apiKey;
+
+        try {
+            const r = await fetch(url);
+            const result = (await r.json()) as BlockscoutContractResult;
+            if (!result.abi) {
+                throw new Error("ABI is not found");
+            }
+            return result.abi;
+        } catch (err: any) {
+            throw new BlockscoutABILoaderError(
+                "BlockscoutABILoader loadABI error: " + err.message,
+                {
+                    context: { url, address },
+                    cause: err,
+                }
+            );
+        }
+    }
+}
+
+export class BlockscoutABILoaderError extends errors.LoaderError {}
+
+/// Blockscout Contract Source API response
+export type BlockscoutContractResult = {
+    // Basic contract information
+    name?: string;
+    language?: string;
+    license_type?: string;
+
+    // Verification status
+    is_verified?: boolean;
+    is_fully_verified?: boolean;
+    is_partially_verified?: boolean;
+    is_verified_via_sourcify?: boolean;
+    is_verified_via_eth_bytecode_db?: boolean;
+    verified_twin_address_hash?: string;
+    certified?: boolean;
+
+    // Source code and files
+    source_code?: string;
+    source_code_html?: string;
+    file_path?: string;
+    file_path_html?: string;
+    additional_sources?: Array<{ file_path: string; source_code: string }>;
+    sourcify_repo_url?: string | null;
+
+    // Bytecode and implementation
+    creation_bytecode?: string;
+    deployed_bytecode?: string;
+    is_changed_bytecode?: boolean;
+    is_self_destructed?: boolean;
+
+    // Contract interface
+    abi?: any[];
+    has_methods_read?: boolean;
+    has_methods_write?: boolean;
+    has_custom_methods_read?: boolean;
+    has_custom_methods_write?: boolean;
+    can_be_visualized_via_sol2uml?: boolean;
+
+    // Constructor and initialization
+    constructor_args?: string;
+    decoded_constructor_args?: any[];
+
+    // Compiler settings
+    compiler_version?: string;
+    compiler_settings?: any;
+    evm_version?: string;
+    optimization_enabled?: boolean;
+    optimization_runs?: number | null;
+
+    // Contract type specifics
+    is_blueprint?: boolean;
+    is_vyper_contract?: boolean;
+
+    // Proxy-related
+    proxy_type?: string;
+    implementations?: Array<{ address?: string; name?: string }>;
+    has_methods_read_proxy?: boolean;
+    has_methods_write_proxy?: boolean;
+};
+
 export interface SignatureLookup {
     loadFunctions(selector: string): Promise<string[]>;
     loadEvents(hash: string): Promise<string[]>;
