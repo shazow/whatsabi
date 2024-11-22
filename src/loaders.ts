@@ -157,7 +157,7 @@ export class MultiABILoaderError extends errors.LoaderError { };
 
 
 export class EtherscanABILoader implements ABILoader {
-    readonly name = "EtherscanABILoader";
+    readonly name: string = "EtherscanABILoader";
 
     apiKey?: string;
     baseURL: string;
@@ -189,11 +189,19 @@ export class EtherscanABILoader implements ABILoader {
     }
 
     async getContract(address: string): Promise<ContractResult> {
-        let url = this.baseURL + '?module=contract&action=getsourcecode&address=' + address;
-        if (this.apiKey) url += "&apikey=" + this.apiKey;
+        const url = new URL(this.baseURL)
+        const params = {
+            module: "contract",
+            action: "getsourcecode",
+            address: address,
+            ...(this.apiKey && { apikey: this.apiKey }),
+          };
+
+        // Using .set() to overwrite any default values that may be present in baseURL
+        Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
         try {
-            const r = await fetchJSON(url);
+            const r = await fetchJSON(url.toString());
             if (r.status === "0") {
                 if (r.result === "Contract source code not verified") return emptyContractResult;
                 throw new Error(r.result);    // This gets wrapped below
@@ -236,11 +244,19 @@ export class EtherscanABILoader implements ABILoader {
     }
 
     async loadABI(address: string): Promise<any[]> {
-        let url = this.baseURL + '?module=contract&action=getabi&address=' + address;
-        if (this.apiKey) url += "&apikey=" + this.apiKey;
+        const url = new URL(this.baseURL)
+        const params = {
+            module: "contract",
+            action: "getabi",
+            address: address,
+            ...(this.apiKey && { apikey: this.apiKey }),
+          };
+
+        // Using .set() to overwrite any default values that may be present in baseURL
+        Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
         try {
-            const r = await fetchJSON(url);
+            const r = await fetchJSON(url.toString());
 
             if (r.status === "0") {
                 if (r.result === "Contract source code not verified") return [];
@@ -275,6 +291,14 @@ export type EtherscanContractResult = {
   Proxy: "1" | "0";
   Implementation: string;
   SwarmSource: string;
+}
+
+export class EtherscanV2ABILoader extends EtherscanABILoader {
+    readonly name: string = "EtherscanV2ABILoader";
+    constructor(config: { apiKey: string, chainId?: number }) {
+        // chainId is a required parameter in v2, as is an API key
+        super({ apiKey: config.apiKey, baseURL: `https://api.etherscan.io/v2/api?chainid=${config?.chainId ?? 1}` });
+    }
 }
 
 
