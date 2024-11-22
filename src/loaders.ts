@@ -30,11 +30,11 @@ import * as errors from "./errors.js";
 export type ContractResult = {
     abi: any[];
     name: string | null;
-    evmVersion: string;
-    compilerVersion: string;
-    runs: number;
-
     ok: boolean; // False if no result is found
+    evmVersion?: string;
+    compilerVersion?: string;
+    runs?: number;
+
 
     /**
      * getSources returns the imports -> source code mapping for the contract, if available.
@@ -425,7 +425,6 @@ export interface SourcifyContractMetadata {
     version: number;
 }
 
-
 export class BlockscoutABILoader implements ABILoader {
     readonly name = "BlockscoutABILoader";
 
@@ -601,6 +600,68 @@ export type BlockscoutContractResult = {
     has_methods_read_proxy?: boolean;
     has_methods_write_proxy?: boolean;
 };
+
+
+function isAnyABINotFound(error: any): boolean {
+    return (
+        error.message === "Failed to fetch" ||
+        error.message === "ABI not found" ||
+        error.status === 404
+    );
+}
+
+// https://anyabi.xyz/
+export class AnyABILoader implements ABILoader {
+    readonly name = "AnyABILoader";
+
+    chainId?: number;
+
+    constructor(config?: { chainId?: number }) {
+        this.chainId = config?.chainId ?? 1;
+    }
+
+    async #fetchAnyABI(address: string): Promise<ContractResult> {
+        const url = "https://anyabi.xyz/api/get-abi/" + this.chainId + "/" + address;
+        try {
+            const r = await fetchJSON(url);
+            const { abi, name }: { abi: any[]; name: string } = r;
+
+            return {
+                abi: abi,
+                name: name,
+                ok: true,
+                loader: this,
+                loaderResult: r,
+            };
+        } catch (err: any) {
+            if (!isAnyABINotFound(err)) return emptyContractResult;
+            throw new AnyABILoaderError("AnyABILoader load contract error: " + err.message, {
+                context: { url },
+                cause: err,
+            });
+        }
+    }
+
+    async getContract(address: string): Promise<ContractResult> {
+        {
+            const r = await this.#fetchAnyABI(address);
+            if (r.ok) return r;
+        }
+
+        return emptyContractResult;
+    }
+
+    async loadABI(address: string): Promise<any[]> {
+        {
+            const r = await this.#fetchAnyABI(address);
+            if (r.ok) return r.abi;
+        }
+
+        return [];
+    }
+}
+
+export class AnyABILoaderError extends errors.LoaderError { };
 
 export interface SignatureLookup {
     loadFunctions(selector: string): Promise<string[]>;
