@@ -121,7 +121,7 @@ export class MultiABILoader implements ABILoader {
                     return r;
                 }
             } catch (err: any) {
-                if (err.status === 404) continue;
+                if (err.cause?.status === 404) continue;
 
                 throw new MultiABILoaderError("MultiABILoader getContract error: " + err.message, {
                     context: { loader, address },
@@ -143,6 +143,8 @@ export class MultiABILoader implements ABILoader {
                     return r;
                 }
             } catch (err: any) {
+                if (err.cause?.status === 404) continue;
+
                 throw new MultiABILoaderError("MultiABILoader loadABI error: " + err.message, {
                     context: { loader, address },
                     cause: err,
