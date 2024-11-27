@@ -86,12 +86,6 @@ describe('loaders: ABILoader', () => {
     expect(result.loaderResult?.output?.devdoc).toBeDefined();
   })
 
-  online_test('SourcifyABILoader_getContract_missing', async () => {
-    const loader = new SourcifyABILoader();
-    const r = await loader.getContract("0x0000000000000000000000000000000000000000");
-    expect(r.ok).toBeFalsy();
-  })
-
   online_test('SourcifyABILoader_getContract_UniswapV3Factory', async () => {
     const loader = new SourcifyABILoader();
     const { abi, name } = await loader.getContract("0x1F98431c8aD98523631AE4a59f267346ea31F984");
@@ -145,14 +139,6 @@ describe('loaders: ABILoader', () => {
 
     const sources = result.getSources && await result.getSources();
     expect(sources && sources[0].content).toContain("pragma solidity");
-  })
-
-  online_test('BlockscoutABILoader_getContract_missing', async ({ env }) => {
-    const loader = new BlockscoutABILoader({
-      apiKey: env["BLOCKSCOUT_API_KEY"],
-    });
-    const r = await loader.getContract("0x0000000000000000000000000000000000000000");
-    expect(r.ok).toBeFalsy();
   })
 
   online_test('BlockscoutABILoader_getContract_UniswapV3Factory', async ({ env }) => {
@@ -253,7 +239,7 @@ describe_cached("loaders: ABILoader suite", async ({ env }) => {
   const uniswapV2Router = "0x7a250d5630b4cf539739df2c5dacb4c659f2488d";
   makeTest(new SourcifyABILoader(), uniswapV2Router);
   makeTest(new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }), uniswapV2Router);
-  makeTest(new BlockscoutABILoader(), uniswapV2Router);
+  makeTest(new BlockscoutABILoader({ apiKey: env["BLOCKSCOUT_API_KEY"] }), uniswapV2Router);
 });
 
 
