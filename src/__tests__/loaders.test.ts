@@ -227,20 +227,33 @@ describe('loaders: ABILoader', () => {
   }, SLOW_ETHERSCAN_TIMEOUT);
 });
 
-describe_cached("loaders: ABILoader check no result", async ({ env }) => {
-  function makeTest(loader: ABILoader) {
-    online_test(loader.name, async () => {
-      // Addess we know won't have a verified ABI 
-      const address = "0x0000000000000000000000000000000000000001";
-      const r = await loader.getContract(address);
+describe_cached("loaders: ABILoader suite", async ({ env }) => {
+  // Addess we know won't have a verified ABI 
+  const knownUnverified = "0x0000000000000000000000000000000000000001";
+
+  function makeTest(loader: ABILoader, knownVerified: string) {
+    online_test(`${loader.name} unverified getContract`, async () => {
+      const r = await loader.getContract(knownUnverified);
       expect(r.ok).toBeFalsy();
       expect(r.abi).toStrictEqual([]);
     });
+
+    online_test(`${loader.name} unverified loadABI`, async () => {
+      const r = await loader.loadABI(knownUnverified);
+      expect(r).toStrictEqual([]);
+    });
+
+    online_test(`${loader.name} verified getContract`, async () => {
+      const r = await loader.getContract(knownVerified);
+      expect(r.ok).toBeTruthy();
+      expect(r.abi).not.toStrictEqual([]);
+    });
   }
 
-  makeTest(new SourcifyABILoader());
-  makeTest(new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }));
-  makeTest(new BlockscoutABILoader());
+  const uniswapV2Router = "0x7a250d5630b4cf539739df2c5dacb4c659f2488d";
+  makeTest(new SourcifyABILoader(), uniswapV2Router);
+  makeTest(new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }), uniswapV2Router);
+  makeTest(new BlockscoutABILoader(), uniswapV2Router);
 });
 
 
