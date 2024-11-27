@@ -3,21 +3,27 @@ import { expect, describe } from 'vitest';
 import {
   defaultABILoader,
   defaultSignatureLookup,
+
   SourcifyABILoader,
   EtherscanABILoader,
+  BlockscoutABILoader,
+  MultiABILoader,
+
   OpenChainSignatureLookup,
   SamczunSignatureLookup,
   FourByteSignatureLookup,
-  MultiABILoader,
-  BlockscoutABILoader,
 } from "../loaders";
+import type {
+  ABILoader
+} from "../loaders";
+
 import { selectorsFromABI } from "../index";
 
-import { online_test, test } from "./env";
+import { describe_cached, online_test, test } from "./env";
 
 const SLOW_ETHERSCAN_TIMEOUT = 30000;
 
-describe('loaders module', () => {
+describe('loaders: ABILoader', () => {
   online_test('defaultABILoader', async () => {
     const addr = "0x7a250d5630b4cf539739df2c5dacb4c659f2488d";
     const abi = await defaultABILoader.loadABI(addr);
@@ -29,16 +35,6 @@ describe('loaders module', () => {
     expect(selectors["0x7ff36ab5"]).toStrictEqual("swapExactETHForTokens(uint256,address[],address,uint256)");
   });
 
-  online_test('defaultSignatureLookup', async () => {
-    const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
-    const selector = "0x7ff36ab5"
-    const selectors = selectorsFromABI([sig]);
-    expect(Object.keys(selectors)).toContain(selector);
-
-    const r = await defaultSignatureLookup.loadFunctions(selector);
-    expect(r).toContain(sig);
-  });
-
   online_test('SourcifyABILoader', async () => {
     const loader = new SourcifyABILoader();
     const abi = await loader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d"); // Unchecksummed address
@@ -47,17 +43,17 @@ describe('loaders module', () => {
     expect(selectors).toContain(sig);
   })
 
-  online_test('EtherscanABILoader', async () => {
-    const loader = new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] });
+  online_test('EtherscanABILoader', async ({ env }) => {
+    const loader = new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
     const abi = await loader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
     const selectors = Object.values(selectorsFromABI(abi));
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     expect(selectors).toContain(sig);
   }, SLOW_ETHERSCAN_TIMEOUT)
 
-  online_test('BlockscoutABILoader', async () => {
+  online_test('BlockscoutABILoader', async ({ env }) => {
     const loader = new BlockscoutABILoader({
-      apiKey: process.env["BLOCKSCOUT_API_KEY"],
+      apiKey: env["BLOCKSCOUT_API_KEY"],
     });
     const abi = await loader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
     const selectors = Object.values(selectorsFromABI(abi));
@@ -65,12 +61,12 @@ describe('loaders module', () => {
     expect(selectors).toContain(sig);
   })
 
-  online_test('MultiABILoader', async () => {
+  online_test('MultiABILoader', async ({ env }) => {
     // A contract that is verified on etherscan but not sourcify
     const address = "0xa9a57f7d2A54C1E172a7dC546fEE6e03afdD28E2";
     const loader = new MultiABILoader([
       new SourcifyABILoader(),
-      new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] }),
+      new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
     ]);
     const abi = await loader.loadABI(address);
     const sig = "getMagistrate()";
@@ -105,8 +101,8 @@ describe('loaders module', () => {
     expect(name).toEqual("Canonical Uniswap V3 factory");
   })
 
-  online_test('EtherscanABILoader_getContract', async () => {
-    const loader = new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] });
+  online_test('EtherscanABILoader_getContract', async ({ env }) => {
+    const loader = new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
     const result = await loader.getContract("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
     const selectors = Object.values(selectorsFromABI(result.abi));
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
@@ -117,8 +113,8 @@ describe('loaders module', () => {
 
   }, SLOW_ETHERSCAN_TIMEOUT)
 
-  online_test('EtherscanABILoader_getContract_UniswapV3Factory', async () => {
-    const loader = new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] });
+  online_test('EtherscanABILoader_getContract_UniswapV3Factory', async ({ env }) => {
+    const loader = new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
     const { abi, name } = await loader.getContract("0x1F98431c8aD98523631AE4a59f267346ea31F984");
     const selectors = Object.values(selectorsFromABI(abi));
     const sig = "owner()";
@@ -126,17 +122,17 @@ describe('loaders module', () => {
     expect(name).toEqual("UniswapV3Factory");
   }, SLOW_ETHERSCAN_TIMEOUT)
 
-  online_test('EtherscanABILoader_getContract_CompoundUSDCProxy', async () => {
-    const loader = new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] });
+  online_test('EtherscanABILoader_getContract_CompoundUSDCProxy', async ({ env }) => {
+    const loader = new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
     const result = await loader.getContract("0xc3d688b66703497daa19211eedff47f25384cdc3");
     expect(result.name).toEqual("TransparentUpgradeableProxy");
     expect(result.loaderResult?.Proxy).toBeTruthy();
     expect(result.loaderResult?.Implementation).toMatch(/^0x[0-9a-f]{40}$/);
   }, SLOW_ETHERSCAN_TIMEOUT)
 
-  online_test('BlockscoutABILoader_getContract', async () => {
+  online_test('BlockscoutABILoader_getContract', async ({ env }) => {
     const loader = new BlockscoutABILoader({
-      apiKey: process.env["BLOCKSCOUT_API_KEY"],
+      apiKey: env["BLOCKSCOUT_API_KEY"],
     });
     const result = await loader.getContract("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
     const selectors = Object.values(selectorsFromABI(result.abi));
@@ -151,17 +147,17 @@ describe('loaders module', () => {
     expect(sources && sources[0].content).toContain("pragma solidity");
   })
 
-  online_test('BlockscoutABILoader_getContract_missing', async () => {
+  online_test('BlockscoutABILoader_getContract_missing', async ({ env }) => {
     const loader = new BlockscoutABILoader({
-      apiKey: process.env["BLOCKSCOUT_API_KEY"],
+      apiKey: env["BLOCKSCOUT_API_KEY"],
     });
     const r = await loader.getContract("0x0000000000000000000000000000000000000000");
     expect(r.ok).toBeFalsy();
   })
 
-  online_test('BlockscoutABILoader_getContract_UniswapV3Factory', async () => {
+  online_test('BlockscoutABILoader_getContract_UniswapV3Factory', async ({ env }) => {
     const loader = new BlockscoutABILoader({
-      apiKey: process.env["BLOCKSCOUT_API_KEY"],
+      apiKey: env["BLOCKSCOUT_API_KEY"],
     });
     const { abi, name } = await loader.getContract("0x1F98431c8aD98523631AE4a59f267346ea31F984");
     const selectors = Object.values(selectorsFromABI(abi));
@@ -170,12 +166,12 @@ describe('loaders module', () => {
     expect(name).toEqual("UniswapV3Factory");
   })
 
-  online_test('MultiABILoader_getContract', async () => {
+  online_test('MultiABILoader_getContract', async ({ env }) => {
     // A contract that is verified on etherscan but not sourcify
     const address = "0xa9a57f7d2A54C1E172a7dC546fEE6e03afdD28E2";
     const loader = new MultiABILoader([
       new SourcifyABILoader(),
-      new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] }),
+      new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
     ]);
     const result = await loader.getContract(address);
     const sig = "getMagistrate()";
@@ -185,11 +181,11 @@ describe('loaders module', () => {
     expect(result.loader?.name).toStrictEqual(EtherscanABILoader.name);
   }, SLOW_ETHERSCAN_TIMEOUT);
 
-  online_test('MultiABILoader_getContract_UniswapV3Factory', async () => {
+  online_test('MultiABILoader_getContract_UniswapV3Factory', async ({ env }) => {
     const address = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
     const loader = new MultiABILoader([
       new SourcifyABILoader(),
-      new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] }),
+      new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
     ]);
     const { abi, name } = await loader.getContract(address);
     const sig = "owner()";
@@ -213,10 +209,10 @@ describe('loaders module', () => {
     expect(result.loaderResult?.output?.devdoc).toBeDefined();
   }, SLOW_ETHERSCAN_TIMEOUT);
 
-  online_test('MultiABILoader_EtherscanOnly_getContract_UniswapV3Factory', async () => {
+  online_test('MultiABILoader_EtherscanOnly_getContract_UniswapV3Factory', async ({ env }) => {
     const address = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
     const loader = new MultiABILoader([
-      new EtherscanABILoader({ apiKey: process.env["ETHERSCAN_API_KEY"] }),
+      new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
     ]);
     const res = await loader.getContract(address);
     const sig = "owner()";
@@ -229,6 +225,35 @@ describe('loaders module', () => {
       sources?.find(s => s.path?.endsWith("contracts/libraries/UnsafeMath.sol"))?.content
     ).contains("pragma solidity");
   }, SLOW_ETHERSCAN_TIMEOUT);
+});
+
+describe_cached("loaders: ABILoader check no result", async ({ env }) => {
+  function makeTest(loader: ABILoader) {
+    online_test(loader.name, async () => {
+      // Addess we know won't have a verified ABI 
+      const address = "0x0000000000000000000000000000000000000001";
+      const r = await loader.getContract(address);
+      expect(r.ok).toBeFalsy();
+      expect(r.abi).toStrictEqual([]);
+    });
+  }
+
+  makeTest(new SourcifyABILoader());
+  makeTest(new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }));
+  makeTest(new BlockscoutABILoader());
+});
+
+
+describe('loaders: SignatureLookup', () => {
+  online_test('defaultSignatureLookup', async () => {
+    const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
+    const selector = "0x7ff36ab5"
+    const selectors = selectorsFromABI([sig]);
+    expect(Object.keys(selectors)).toContain(selector);
+
+    const r = await defaultSignatureLookup.loadFunctions(selector);
+    expect(r).toContain(sig);
+  });
 
   online_test('SamczunSignatureLookup', async () => {
     const lookup = new SamczunSignatureLookup();
@@ -250,9 +275,10 @@ describe('loaders module', () => {
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
     expect(selectors).toContain(sig);
   })
-})
+});
 
-describe('loaders helpers', () => {
+
+describe('loaders: helpers', () => {
   test('SourcifyABILoader.stripPathPrefix', () => {
     expect(
       SourcifyABILoader.stripPathPrefix("/contracts/full_match/1/0x1F98431c8aD98523631AE4a59f267346ea31F984/sources/contracts/interfaces/IERC20Minimal.sol")

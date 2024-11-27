@@ -62,6 +62,8 @@ type TestWithContext = (
     timeout?: number
 ) => void;
 
+// TODO: Switch to using test.extend? https://vitest.dev/api/#test-extend
+
 function testerWithContext(tester: ItConcurrent, context: any): TestWithContext {
     return (name, fn, timeout) => tester(name, () => fn(context), timeout);
 }
