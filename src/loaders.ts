@@ -630,9 +630,9 @@ export type BlockscoutContractResult = {
 
 function isAnyABINotFound(error: any): boolean {
     return (
-        error.message === "Failed to fetch" ||
-        error.message === "ABI not found" ||
-        error.status === 404
+        error.status === 404 ||
+        // "ABI not found" or "Not found"
+        /not found/i.test(error.message)
     );
 }
 
@@ -660,7 +660,7 @@ export class AnyABILoader implements ABILoader {
                 loaderResult: r,
             };
         } catch (err: any) {
-            if (!isAnyABINotFound(err)) return emptyContractResult;
+            if (isAnyABINotFound(err)) return emptyContractResult;
             throw new AnyABILoaderError("AnyABILoader load contract error: " + err.message, {
                 context: { url },
                 cause: err,
