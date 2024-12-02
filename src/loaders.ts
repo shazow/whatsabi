@@ -97,7 +97,7 @@ export interface ABILoader {
     getContract(address: string): Promise<ContractResult>
 }
 
-// Load ABIs from multiple providers until a result is found.
+/** Load ABIs from multiple providers until a result is found. */
 export class MultiABILoader implements ABILoader {
     readonly name: string = "MultiABILoader";
 
@@ -158,6 +158,7 @@ export class MultiABILoader implements ABILoader {
 export class MultiABILoaderError extends errors.LoaderError { };
 
 
+/** Etherscan v1 API loader */
 export class EtherscanABILoader implements ABILoader {
     readonly name: string = "EtherscanABILoader";
 
@@ -295,6 +296,8 @@ export type EtherscanContractResult = {
   SwarmSource: string;
 }
 
+
+/** Etherscan v2 API loader */
 export class EtherscanV2ABILoader extends EtherscanABILoader {
     readonly name: string = "EtherscanV2ABILoader";
     constructor(config: { apiKey: string, chainId?: number }) {
@@ -451,6 +454,7 @@ export interface SourcifyContractMetadata {
     version: number;
 }
 
+/** Blockscout API loader: https://docs.blockscout.com/ */
 export class BlockscoutABILoader implements ABILoader {
     readonly name = "BlockscoutABILoader";
 
@@ -636,7 +640,7 @@ function isAnyABINotFound(error: any): boolean {
     );
 }
 
-// https://anyabi.xyz/
+/** https://anyabi.xyz/ */
 export class AnyABILoader implements ABILoader {
     readonly name = "AnyABILoader";
 
@@ -723,7 +727,7 @@ export class MultiSignatureLookup implements SignatureLookup {
     }
 }
 
-// https://www.4byte.directory/
+/** https://www.4byte.directory/ */
 export class FourByteSignatureLookup implements SignatureLookup {
     async load(url: string): Promise<string[]> {
         try {
@@ -750,8 +754,10 @@ export class FourByteSignatureLookup implements SignatureLookup {
 
 export class FourByteSignatureLookupError extends errors.LoaderError { };
 
-// openchain.xyz
-// Formerly: https://sig.eth.samczsun.com/
+/**
+ * https://openchain.xyz/
+ * Formerly: https://sig.eth.samczsun.com/
+ */
 export class OpenChainSignatureLookup implements SignatureLookup {
     async load(url: string): Promise<any> {
         try {
