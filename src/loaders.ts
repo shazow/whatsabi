@@ -30,11 +30,11 @@ import * as errors from "./errors.js";
 export type ContractResult = {
     abi: any[];
     name: string | null;
-    evmVersion: string;
-    compilerVersion: string;
-    runs: number;
-
     ok: boolean; // False if no result is found
+    evmVersion?: string;
+    compilerVersion?: string;
+    runs?: number;
+
 
     /**
      * getSources returns the imports -> source code mapping for the contract, if available.
@@ -97,7 +97,7 @@ export interface ABILoader {
     getContract(address: string): Promise<ContractResult>
 }
 
-// Load ABIs from multiple providers until a result is found.
+/** Load ABIs from multiple providers until a result is found. */
 export class MultiABILoader implements ABILoader {
     readonly name: string = "MultiABILoader";
 
@@ -121,7 +121,7 @@ export class MultiABILoader implements ABILoader {
                     return r;
                 }
             } catch (err: any) {
-                if (err.status === 404) continue;
+                if (err.cause?.status === 404) continue;
 
                 throw new MultiABILoaderError("MultiABILoader getContract error: " + err.message, {
                     context: { loader, address },
@@ -143,6 +143,8 @@ export class MultiABILoader implements ABILoader {
                     return r;
                 }
             } catch (err: any) {
+                if (err.cause?.status === 404) continue;
+
                 throw new MultiABILoaderError("MultiABILoader loadABI error: " + err.message, {
                     context: { loader, address },
                     cause: err,
@@ -156,8 +158,9 @@ export class MultiABILoader implements ABILoader {
 export class MultiABILoaderError extends errors.LoaderError { };
 
 
+/** Etherscan v1 API loader */
 export class EtherscanABILoader implements ABILoader {
-    readonly name = "EtherscanABILoader";
+    readonly name: string = "EtherscanABILoader";
 
     apiKey?: string;
     baseURL: string;
@@ -189,11 +192,19 @@ export class EtherscanABILoader implements ABILoader {
     }
 
     async getContract(address: string): Promise<ContractResult> {
-        let url = this.baseURL + '?module=contract&action=getsourcecode&address=' + address;
-        if (this.apiKey) url += "&apikey=" + this.apiKey;
+        const url = new URL(this.baseURL)
+        const params = {
+            module: "contract",
+            action: "getsourcecode",
+            address: address,
+            ...(this.apiKey && { apikey: this.apiKey }),
+          };
+
+        // Using .set() to overwrite any default values that may be present in baseURL
+        Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
         try {
-            const r = await fetchJSON(url);
+            const r = await fetchJSON(url.toString());
             if (r.status === "0") {
                 if (r.result === "Contract source code not verified") return emptyContractResult;
                 throw new Error(r.result);    // This gets wrapped below
@@ -236,11 +247,19 @@ export class EtherscanABILoader implements ABILoader {
     }
 
     async loadABI(address: string): Promise<any[]> {
-        let url = this.baseURL + '?module=contract&action=getabi&address=' + address;
-        if (this.apiKey) url += "&apikey=" + this.apiKey;
+        const url = new URL(this.baseURL)
+        const params = {
+            module: "contract",
+            action: "getabi",
+            address: address,
+            ...(this.apiKey && { apikey: this.apiKey }),
+          };
+
+        // Using .set() to overwrite any default values that may be present in baseURL
+        Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
         try {
-            const r = await fetchJSON(url);
+            const r = await fetchJSON(url.toString());
 
             if (r.status === "0") {
                 if (r.result === "Contract source code not verified") return [];
@@ -275,6 +294,16 @@ export type EtherscanContractResult = {
   Proxy: "1" | "0";
   Implementation: string;
   SwarmSource: string;
+}
+
+
+/** Etherscan v2 API loader */
+export class EtherscanV2ABILoader extends EtherscanABILoader {
+    readonly name: string = "EtherscanV2ABILoader";
+    constructor(config: { apiKey: string, chainId?: number }) {
+        // chainId is a required parameter in v2, as is an API key
+        super({ apiKey: config.apiKey, baseURL: `https://api.etherscan.io/v2/api?chainid=${config?.chainId ?? 1}` });
+    }
 }
 
 
@@ -425,7 +454,7 @@ export interface SourcifyContractMetadata {
     version: number;
 }
 
-
+/** Blockscout API loader: https://docs.blockscout.com/ */
 export class BlockscoutABILoader implements ABILoader {
     readonly name = "BlockscoutABILoader";
 
@@ -602,6 +631,68 @@ export type BlockscoutContractResult = {
     has_methods_write_proxy?: boolean;
 };
 
+
+function isAnyABINotFound(error: any): boolean {
+    return (
+        error.status === 404 ||
+        // "ABI not found" or "Not found"
+        /not found/i.test(error.message)
+    );
+}
+
+/** https://anyabi.xyz/ */
+export class AnyABILoader implements ABILoader {
+    readonly name = "AnyABILoader";
+
+    chainId?: number;
+
+    constructor(config?: { chainId?: number }) {
+        this.chainId = config?.chainId ?? 1;
+    }
+
+    async #fetchAnyABI(address: string): Promise<ContractResult> {
+        const url = "https://anyabi.xyz/api/get-abi/" + this.chainId + "/" + address;
+        try {
+            const r = await fetchJSON(url);
+            const { abi, name }: { abi: any[]; name: string } = r;
+
+            return {
+                abi: abi,
+                name: name,
+                ok: true,
+                loader: this,
+                loaderResult: r,
+            };
+        } catch (err: any) {
+            if (isAnyABINotFound(err)) return emptyContractResult;
+            throw new AnyABILoaderError("AnyABILoader load contract error: " + err.message, {
+                context: { url },
+                cause: err,
+            });
+        }
+    }
+
+    async getContract(address: string): Promise<ContractResult> {
+        {
+            const r = await this.#fetchAnyABI(address);
+            if (r.ok) return r;
+        }
+
+        return emptyContractResult;
+    }
+
+    async loadABI(address: string): Promise<any[]> {
+        {
+            const r = await this.#fetchAnyABI(address);
+            if (r.ok) return r.abi;
+        }
+
+        return [];
+    }
+}
+
+export class AnyABILoaderError extends errors.LoaderError { };
+
 export interface SignatureLookup {
     loadFunctions(selector: string): Promise<string[]>;
     loadEvents(hash: string): Promise<string[]>;
@@ -636,7 +727,7 @@ export class MultiSignatureLookup implements SignatureLookup {
     }
 }
 
-// https://www.4byte.directory/
+/** https://www.4byte.directory/ */
 export class FourByteSignatureLookup implements SignatureLookup {
     async load(url: string): Promise<string[]> {
         try {
@@ -663,8 +754,10 @@ export class FourByteSignatureLookup implements SignatureLookup {
 
 export class FourByteSignatureLookupError extends errors.LoaderError { };
 
-// openchain.xyz
-// Formerly: https://sig.eth.samczsun.com/
+/**
+ * https://openchain.xyz/
+ * Formerly: https://sig.eth.samczsun.com/
+ */
 export class OpenChainSignatureLookup implements SignatureLookup {
     async load(url: string): Promise<any> {
         try {

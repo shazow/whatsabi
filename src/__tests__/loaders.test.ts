@@ -6,7 +6,9 @@ import {
 
   SourcifyABILoader,
   EtherscanABILoader,
+  EtherscanV2ABILoader,
   BlockscoutABILoader,
+  AnyABILoader,
   MultiABILoader,
 
   OpenChainSignatureLookup,
@@ -237,9 +239,20 @@ describe_cached("loaders: ABILoader suite", async ({ env }) => {
   }
 
   const uniswapV2Router = "0x7a250d5630b4cf539739df2c5dacb4c659f2488d";
-  makeTest(new SourcifyABILoader(), uniswapV2Router);
-  makeTest(new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }), uniswapV2Router);
-  makeTest(new BlockscoutABILoader({ apiKey: env["BLOCKSCOUT_API_KEY"] }), uniswapV2Router);
+
+  const loaders = [
+    new SourcifyABILoader(),
+    new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
+    new EtherscanV2ABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
+    new BlockscoutABILoader({ apiKey: env["BLOCKSCOUT_API_KEY"] }),
+    new AnyABILoader(),
+  ];
+
+  for (const loader of loaders) {
+    makeTest(loader, uniswapV2Router);
+  }
+
+  makeTest(new MultiABILoader(loaders), uniswapV2Router);
 });
 
 

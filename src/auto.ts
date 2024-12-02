@@ -97,7 +97,7 @@ export type AutoloadConfig = {
 
 
     /**
-     * Load full contract metadata result, include it in {@link AutoloadResult.ContractResult} if successful.
+     * Load full contract metadata result, include it in {@link AutoloadResult.contractResult} if successful.
      *
      * This changes the behaviour of autoload to use {@link ABILoader.getContract} instead of {@link ABILoader.loadABI},
      * which returns a larger superset result including all of the available verified contract metadata.
