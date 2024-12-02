@@ -525,7 +525,7 @@ export class BlockscoutABILoader implements ABILoader {
             const r = await fetch(url);
             const result = (await r.json()) as BlockscoutContractResult;
             if (!result.abi) {
-                throw new Error("ABI is not found");
+                return [];
             }
             return result.abi;
         } catch (err: any) {
