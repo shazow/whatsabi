@@ -50,6 +50,9 @@ export type AutoloadResult = {
      * @experimental
      */
     isFactory?: boolean;
+
+    /** Set to true if the address has deployed code */
+    hasCode: boolean;
 }
 
 
@@ -157,6 +160,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         address,
         abi: [],
         proxies: [],
+        hasCode: false,
     };
 
     let abiLoader = config.abiLoader;
@@ -191,7 +195,8 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
             },
         );
     }
-    if (!bytecode) return result; // Must be an EOA
+    if (!bytecode || bytecode === "0x") return result; // Must be an EOA
+    result.hasCode = true;
 
     const program = disasm(bytecode);
 

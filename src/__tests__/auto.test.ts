@@ -17,6 +17,15 @@ test('autoload throws typed error', async () => {
     await expect(autoload("abc.eth", { provider: fakeProvider })).rejects.toThrow(/Failed to resolve ENS/);
 });
 
+test('autoload sets hasCode to false if code is empty', async () => {
+    const fakeProvider = (code: string) => ({
+      request: () => code,
+    });
+    const address = "0x00000000219ab540356cBB839Cbe05303d7705Fa"
+    await expect(autoload(address, { provider: fakeProvider("0x") })).resolves.toMatchObject({ hasCode: false });
+    await expect(autoload(address, { provider: fakeProvider("0x1234") })).resolves.toMatchObject({ hasCode: true });
+});
+
 online_test('autoload selectors', async ({ provider }) => {
     const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
     const { abi } = await autoload(address, {
