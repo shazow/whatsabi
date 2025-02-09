@@ -177,12 +177,13 @@ console.log("Resolved to:", address);
 * ⭐ [sourcify.dev](https://sourcify.dev/) - Verified source code API, proxy resolving powered by WhatsABI
 * ⭐ [rivet](https://github.com/paradigmxyz/rivet) - Developer Wallet & DevTools for Anvil
 * ⭐ [ondora.xyz](https://www.ondora.xyz/) - Cross-chain explorer and search engine
-* [thirdweb](https://thirdweb.com/) - Web3 SDK, automatic ABI Resolution powered by WhatsABI
+* ⭐ [thirdweb](https://thirdweb.com/) - Web3 SDK, automatic ABI Resolution powered by WhatsABI
 * [callthis.link](https://callthis.link/) - Transaction builder powered by WhatsABI
 * [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/) - A frontend for whatsabi by [@w1nt3r_eth](https://twitter.com/w1nt3r_eth)
 * [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, [uses whatsabi for unverified contracts](https://github.com/verynifty/ethcmd)
 * [monobase.xyz](https://monobase.xyz) - Universal frontend, [uses whatsabi for unverified contracts](https://twitter.com/nazar_ilamanov/status/1659648915195707392)
 * [savvy](https://svvy.sh/) - Contract explorer with in-browser devnet execution
+* [curvegrid](https://www.curvegrid.com/) - Platform for building EVM applications.
 
 ### Talks & Presentations
 
