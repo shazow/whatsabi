@@ -183,7 +183,9 @@ console.log("Resolved to:", address);
 * [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, [uses whatsabi for unverified contracts](https://github.com/verynifty/ethcmd)
 * [monobase.xyz](https://monobase.xyz) - Universal frontend, [uses whatsabi for unverified contracts](https://twitter.com/nazar_ilamanov/status/1659648915195707392)
 * [savvy](https://svvy.sh/) - Contract explorer with in-browser devnet execution
+* [blockscout](https://www.blockscout.com/) - Open source block explorer
 * [curvegrid](https://www.curvegrid.com/) - Platform for building EVM applications
+* [tevm](https://tevm.sh/) - EVM toolkit for TypeScript
 
 ### Talks & Presentations
 
