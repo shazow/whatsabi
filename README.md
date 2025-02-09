@@ -183,7 +183,7 @@ console.log("Resolved to:", address);
 * [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, [uses whatsabi for unverified contracts](https://github.com/verynifty/ethcmd)
 * [monobase.xyz](https://monobase.xyz) - Universal frontend, [uses whatsabi for unverified contracts](https://twitter.com/nazar_ilamanov/status/1659648915195707392)
 * [savvy](https://svvy.sh/) - Contract explorer with in-browser devnet execution
-* [curvegrid](https://www.curvegrid.com/) - Platform for building EVM applications.
+* [curvegrid](https://www.curvegrid.com/) - Platform for building EVM applications
 
 ### Talks & Presentations
 
