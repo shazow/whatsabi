@@ -236,6 +236,7 @@ $ nix develop  # Or use your system's package manager to install node/ts/etc
 
 ## Thanks
 
+* ⭐ [Herd Labs](https://www.herd.eco/) for sponsoring WhatsABI.
 * [ethers.js](https://github.com/ethers-io/ethers.js/) for being excellent, and
   having a helpful assembler sub-package was inspiring.
 * [@jacobdehart](https://twitter.com/jacobdehart) for the library name and logo
