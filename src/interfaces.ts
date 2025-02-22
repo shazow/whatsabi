@@ -32,6 +32,8 @@ export function selectorsToInterfaces(selectors: any[], knownInterfaces?: Indexe
         knownInterfaces = defaultKnownInterfaces;
     }
     const selectorSet = new Set(selectors.map(s => {
+        if (s.length === 8) return s;
+        if (s.length === 10) return s.slice(2);
         return AbiFunction.getSelector(s).slice(2);
     }));
     for (const [name, interfaceSet] of Object.entries(knownInterfaces)) {
