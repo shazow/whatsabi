@@ -1,30 +1,52 @@
 import * as AbiFunction from 'ox/AbiFunction';
 
+import defaultKnownInterfaces from "./_generated-interfaces.js";
+
 // KnownInterfaces is a mapping from interface names to lists of function signatures that belong to that interface.
 export type KnownInterfaces = Record<string, Array<string>>;
 
 // IndexedInterfaces is an optimized mapping of interface names to sorted selectors.
 // NOTE: The definition of this type may change to improve efficiency, please use helpers like createInterfaceIndex to produce it.
-export type IndexedInterfaces = Record<string, string>;
+export type IndexedInterfaces = Record<string, Set<string>>;
 
+// Given a lookup of known interfaces, produce a lookup index to use with selectorsToInterfaces.
 export function createInterfaceIndex(known: KnownInterfaces): IndexedInterfaces {
     const r : IndexedInterfaces = {};
     for (const [name, signatures] of Object.entries(known)) {
-        // TODO: Strip 0x
-        const selectors = signatures.map(sig => AbiFunction.getSelector(sig));
-        selectors.sort();
-        r[name] = selectors.join('');
+        const selectors = signatures.map(sig => AbiFunction.getSelector(sig).slice(2));
+        if (selectors.length === 0) continue;
+        r[name] = new Set(selectors)
     }
     return r;
 }
 
-// Given a list of selectors, return a mapping of interfaces it implements to a list of present function signatures that belong to it.
+/** Given a list of selectors, return a mapping of interfaces it implements to a list of present function signatures that belong to it.
+ * @param {string[]} selectors - A list of selectors to match against.
+ * @param {KnownInterfaces?} knownInterfaces - A mapping of known interfaces to function signatures that belong to them. Use {@link createInterfaceIndex} to produce your own, or omit to use a default collection.
+ * @returns {string[]} A list of interfaces that the given selectors implement.
+ */
 export function selectorsToInterfaces(selectors: string[], knownInterfaces?: IndexedInterfaces): string[] {
     const r: string[] = [];
     if (selectors.length === 0) return r;
-    if (!knownInterfaces) { 
-        // TODO: Use defaultKnownInterfaces
+    if (!knownInterfaces) {
+        knownInterfaces = defaultKnownInterfaces;
     }
-    // XXX: Do the rest
+    const selectorSet = new Set(selectors.map(s => s.slice(-8)));
+    for (const [name, interfaceSet] of Object.entries(knownInterfaces)) {
+        // Find interfaces where we have all the selectors.
+        if (isSupersetOf(selectorSet, interfaceSet)) {
+            r.push(name);
+        }
+    }
     return r;
+}
+
+// TODO: Replace this with native Set.isSupersetOf once available
+function isSupersetOf<T>(a: Set<T>, b: Set<T>): boolean {
+    for (const elem of b) {
+        if (!a.has(elem)) {
+            return false;
+        }
+    }
+    return true;
 }
