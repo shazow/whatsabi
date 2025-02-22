@@ -1,6 +1,6 @@
 import * as AbiFunction from 'ox/AbiFunction';
 
-import defaultKnownInterfaces from "./_generated-interfaces.js";
+import defaultKnownInterfaces from './_generated-interfaces.js';
 
 // KnownInterfaces is a mapping from interface names to lists of function signatures that belong to that interface.
 export type KnownInterfaces = Record<string, Array<string>>;
@@ -25,14 +25,13 @@ export function createInterfaceIndex(known: KnownInterfaces): IndexedInterfaces 
  * @param {KnownInterfaces?} knownInterfaces - A mapping of known interfaces to function signatures that belong to them. Use {@link createInterfaceIndex} to produce your own, or omit to use a default collection.
  * @returns {string[]} A list of interfaces that the given selectors implement.
  */
-export function selectorsToInterfaces(selectors: string[], knownInterfaces?: IndexedInterfaces): string[] {
+export function selectorsToInterfaces(selectors: any[], knownInterfaces?: IndexedInterfaces): string[] {
     const r: string[] = [];
     if (selectors.length === 0) return r;
     if (!knownInterfaces) {
         knownInterfaces = defaultKnownInterfaces;
     }
     const selectorSet = new Set(selectors.map(s => {
-        if (s.length <= 10) return s.slice(-8);
         return AbiFunction.getSelector(s).slice(2);
     }));
     for (const [name, interfaceSet] of Object.entries(knownInterfaces)) {
