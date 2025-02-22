@@ -7,4 +7,6 @@ export default {
   "ERC-1155": new Set(["00fdd58e", "4e1273f4", "a22cb465", "e985e9c5", "996cd54f", "680fd525"]),
   "Ownable": new Set(["8da5cb5b", "715018a6", "f2fde38b"]),
   "Multicall": new Set(["ac9650d8"]),
+  "ISafe": new Set(["6a761202", "934f3a11", "f698da25", "affed0e0"]),
+  "EIP-1271": new Set(["1626ba7e"]),
 };

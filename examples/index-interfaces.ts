@@ -61,6 +61,13 @@ const interfaces : KnownInterfaces = {
     "Multicall": [
         "function multicall(bytes[]) returns (bytes[] memory)",
     ],
+    "ISafe": [
+        "function execTransaction(address to, uint256 value, bytes data, uint8 operation, uint256 safeTxGas, uint256 baseGas, uint256 gasPrice, address gasToken, address refundReceiver, bytes signatures) payable returns (bool success)",
+        "function checkSignatures(bytes32 dataHash, bytes data, bytes signatures) view",
+        "function domainSeparator() view returns (bytes32)",
+        "function nonce() view returns (uint256)",
+    ],
+    "EIP-1271": ["function isValidSignature(bytes32 _hash, bytes memory _signature) public view returns (bytes4 magicValue);"],
 };
 
 main().then().catch(err => {
