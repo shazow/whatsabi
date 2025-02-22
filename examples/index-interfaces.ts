@@ -72,5 +72,10 @@ async function main() {
     const r = whatsabi.interfaces.createInterfaceIndex(interfaces);
     // Print typescript structure
     console.log("// Generated using examples/index-interfaces.ts");
-    console.log("export ", JSON.stringify(r));
+    console.log("export default {");
+    for (const [key, setValue] of Object.entries(r)) {
+        if (setValue.size === 0) { continue; }
+        console.log(`  "${key}": new Set([${Array.from(setValue).map(v => `"${v}"`).join(", ")}]),`);
+    }
+    console.log("};");
 };
