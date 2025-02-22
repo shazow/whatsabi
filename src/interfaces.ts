@@ -21,7 +21,7 @@ export function createInterfaceIndex(known: KnownInterfaces): IndexedInterfaces 
 }
 
 /** Given a list of selectors, return a mapping of interfaces it implements to a list of present function signatures that belong to it.
- * @param {string[]} selectors - A list of selectors to match against.
+ * @param {string[]} selectors - A list of selectors or signatures to match against.
  * @param {KnownInterfaces?} knownInterfaces - A mapping of known interfaces to function signatures that belong to them. Use {@link createInterfaceIndex} to produce your own, or omit to use a default collection.
  * @returns {string[]} A list of interfaces that the given selectors implement.
  */
@@ -31,7 +31,10 @@ export function selectorsToInterfaces(selectors: string[], knownInterfaces?: Ind
     if (!knownInterfaces) {
         knownInterfaces = defaultKnownInterfaces;
     }
-    const selectorSet = new Set(selectors.map(s => s.slice(-8)));
+    const selectorSet = new Set(selectors.map(s => {
+        if (s.length <= 10) return s.slice(-8);
+        return AbiFunction.getSelector(s).slice(2);
+    }));
     for (const [name, interfaceSet] of Object.entries(knownInterfaces)) {
         // Find interfaces where we have all the selectors.
         if (isSupersetOf(selectorSet, interfaceSet)) {
