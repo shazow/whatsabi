@@ -40,7 +40,7 @@ export function createInterfaceIndex(known: KnownInterfaces): IndexedInterfaces 
 
 /** Given a list of selectors, return a mapping of interfaces it implements to a list of present function signatures that belong to it.
  * @param {string[]} abiOrSelectors - ABI or a list of selectors or signatures to match against.
- * @param {KnownInterfaces?} knownInterfaces - A mapping of known interfaces to function signatures that belong to them. Use {@link createInterfaceIndex} to produce your own, or omit to use a default collection.
+ * @param {KnownInterfaces?} knownInterfaces - A mapping of known interfaces to function signatures that belong to them. Use {@link createInterfaceIndex} to produce your own, or omit to use {@link defaultKnownInterfaces}.
  * @returns {string[]} A list of interfaces that the given selectors implement.
  * @example
  * ```ts
