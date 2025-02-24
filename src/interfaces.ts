@@ -11,7 +11,7 @@ export type KnownInterfaces = Record<string, Array<string>>;
 // NOTE: The definition of this type may change to improve efficiency, please use helpers like createInterfaceIndex to produce it.
 export type IndexedInterfaces = Record<string, Set<string>>;
 
-/** Given a lookup of known interfaces, produce a lookup index to use with selectorsToInterfaces.
+/** Given a lookup of known interfaces, produce a lookup index to use with {@link abiToInterfaces}.
  * @example
  * ```ts
  * const myInterfaceIndex = whatsabi.interfaces.createInterfaceIndex(
