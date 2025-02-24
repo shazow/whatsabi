@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { selectorsToInterfaces, createInterfaceIndex } from '../interfaces';
+import { abiToInterfaces, createInterfaceIndex } from '../interfaces';
 
 
 test('createInterfaceIndex', async ({ }) => {
@@ -29,7 +29,7 @@ test('createInterfaceIndex', async ({ }) => {
 
 });
 
-test('selectorsToInterfaces', async ({ }) => {
+test('abiToInterfaces', async ({ }) => {
     // Given a set of interfaces, get the interfaces that it implements
     const selectors = [
         // bunch of stuff
@@ -42,11 +42,11 @@ test('selectorsToInterfaces', async ({ }) => {
         "01ffc9a7"
     ];
 
-    const got = selectorsToInterfaces(selectors);
+    const got = abiToInterfaces(selectors);
     expect(got).toEqual(["ERC-20", "ERC-165"]);
 });
 
-test('selectorsToInterfaces with signatures', async ({ }) => {
+test('abiToInterfaces with signatures', async ({ }) => {
     const sigs = [
         "function totalSupply() view returns (uint256)",
         "function balanceOf(address) view returns (uint256)",
@@ -56,7 +56,7 @@ test('selectorsToInterfaces with signatures', async ({ }) => {
         "function transferFrom(address, address, uint256) returns (bool)",
     ];
 
-    const got = selectorsToInterfaces(sigs);
+    const got = abiToInterfaces(sigs);
     expect(got).toEqual(["ERC-20"]);
 });
 

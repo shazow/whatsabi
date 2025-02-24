@@ -2,14 +2,32 @@ import * as AbiFunction from 'ox/AbiFunction';
 
 import defaultKnownInterfaces from './_generated-interfaces.js';
 
-// KnownInterfaces is a mapping from interface names to lists of function signatures that belong to that interface.
+export { defaultKnownInterfaces };
+
+/// KnownInterfaces is a mapping from interface names to lists of function signatures that belong to that interface.
 export type KnownInterfaces = Record<string, Array<string>>;
 
-// IndexedInterfaces is an optimized mapping of interface names to sorted selectors.
+/// IndexedInterfaces is an optimized mapping of interface names to sorted selectors.
 // NOTE: The definition of this type may change to improve efficiency, please use helpers like createInterfaceIndex to produce it.
 export type IndexedInterfaces = Record<string, Set<string>>;
 
-// Given a lookup of known interfaces, produce a lookup index to use with selectorsToInterfaces.
+/** Given a lookup of known interfaces, produce a lookup index to use with selectorsToInterfaces.
+ * @example
+ * ```ts
+ * const myInterfaceIndex = whatsabi.interfaces.createInterfaceIndex(
+ *   Object.assign({},
+ *     // Include defaults?
+ *     whatsabi.interfaces.defaultKnownInterfaces,
+ *     // Our special secret interface we want to detect
+ *     {
+ *       "MyInterface": [ "function Foo() returns (uint256)", "function Bar()" ],
+ *     },
+ *   ),
+ * );
+ * 
+ * const detectedInterfaces = whatsabi.interfaces.abiToInterfaces(abi, myInterfaceIndex);
+ * ```
+ */
 export function createInterfaceIndex(known: KnownInterfaces): IndexedInterfaces {
     const r : IndexedInterfaces = {};
     for (const [name, signatures] of Object.entries(known)) {
@@ -21,17 +39,22 @@ export function createInterfaceIndex(known: KnownInterfaces): IndexedInterfaces 
 }
 
 /** Given a list of selectors, return a mapping of interfaces it implements to a list of present function signatures that belong to it.
- * @param {string[]} selectors - A list of selectors or signatures to match against.
+ * @param {string[]} abiOrSelectors - ABI or a list of selectors or signatures to match against.
  * @param {KnownInterfaces?} knownInterfaces - A mapping of known interfaces to function signatures that belong to them. Use {@link createInterfaceIndex} to produce your own, or omit to use a default collection.
  * @returns {string[]} A list of interfaces that the given selectors implement.
+ * @example
+ * ```ts
+ * const result = await whatsabi.autoload(address, { provider });
+ * const detectedInterfaces = whatsabi.interfaces.abiToInterfaces(result.abi);
+ * ```
  */
-export function selectorsToInterfaces(selectors: any[], knownInterfaces?: IndexedInterfaces): string[] {
+export function abiToInterfaces(abiOrSelectors: any[], knownInterfaces?: IndexedInterfaces): string[] {
     const r: string[] = [];
-    if (selectors.length === 0) return r;
+    if (abiOrSelectors.length === 0) return r;
     if (!knownInterfaces) {
         knownInterfaces = defaultKnownInterfaces;
     }
-    const selectorSet = new Set(selectors.map(s => {
+    const selectorSet = new Set(abiOrSelectors.map(s => {
         if (s.length === 8) return s;
         if (s.length === 10) return s.slice(2);
         return AbiFunction.getSelector(s).slice(2);
