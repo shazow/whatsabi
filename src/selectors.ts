@@ -3,7 +3,7 @@ import * as AbiFunction from 'ox/AbiFunction';
 
 import { disasm } from "./disasm.js";
 
-// Load function selectors mapping from ABI, parsed using ethers.js
+// Load function selectors mapping from ABI, parsed using oxlib
 // Mapping is selector hash to signature
 export function selectorsFromABI(abi: any[]): {[key: string]: string} {
     const r: {[key: string]: string} = {};

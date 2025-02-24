@@ -46,6 +46,8 @@ async function main() {
         const iface = new ethers.Interface(abi);
         console.log("autoload", iface.format());
         if (unresolved) console.log("unresolved", unresolved);
+        const detectedInterfaces = whatsabi.interfaces.selectorsToInterfaces(abi);
+        if (detectedInterfaces.length) console.log("detected interfaces:", detectedInterfaces);
 
         if (!r.followProxies) break;
 

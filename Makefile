@@ -38,4 +38,11 @@ run-examples:
 	./examples/dot.ts $(ADDRESS)
 	./examples/resolveproxy.ts $(ADDRESS)
 
+./src/_generated-interfaces.ts: ./examples/index-interfaces.ts
+	# Has to be done in two steps because of circular import
+	$< > $@_
+	mv $@_ $@
+
+generated: ./src/_generated-interfaces.ts
+
 .PHONY: docs
