@@ -8,6 +8,7 @@ const env = {
     ETHERSCAN_API_KEY: process.env.ETHERSCAN_API_KEY,
     PROVIDER: process.env.PROVIDER,
     NETWORK: process.env.NETWORK,
+    SKIP_LOOKUPS: process.env.SKIP_LOOKUPS,
 };
 const provider = env.INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider(env.NETWORK || "homestead");
 
@@ -33,12 +34,21 @@ async function main() {
         process.exit(1);
     }
 
+    let extraConfig : AutoloadConfig = whatsabi.loaders.defaultsWithEnv(env);
+    if (env.SKIP_LOOKUPS) {
+        console.debug("Skipping lookups, only using bytecode");
+        extraConfig = {
+            abiLoader: false,
+            signatureLookup: false,
+        };
+    }
+
     let r = await whatsabi.autoload(address, {
         provider,
         onProgress: (phase: string, ...args: string[]) => {
             console.debug("progress:", phase, ...args);
         },
-        ... whatsabi.loaders.defaultsWithEnv(env),
+        ... extraConfig
     });
 
     while (true) {
@@ -46,7 +56,7 @@ async function main() {
         const iface = new ethers.Interface(abi);
         console.log("autoload", iface.format());
         if (unresolved) console.log("unresolved", unresolved);
-        const detectedInterfaces = whatsabi.interfaces.selectorsToInterfaces(abi);
+        const detectedInterfaces = whatsabi.interfaces.abiToInterfaces(abi);
         if (detectedInterfaces.length) console.log("detected interfaces:", detectedInterfaces);
 
         if (!r.followProxies) break;
