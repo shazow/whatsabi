@@ -543,6 +543,14 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
         }
     }
 
+    if (p.init && p.proxies.length === 0 && p.init.proxies.length > 0) {
+        // If we detected a proxy in init but not in the deploy code, we're going to inherit it for now.
+        // There is a scenario where we have trouble detecting a flattened immutable EIP1967 otherwise.
+        // Hopefully we can improve this later.
+        // See: https://github.com/shazow/whatsabi/issues/171
+        p.proxies = p.init.proxies;
+    }
+
     return p;
 }
 
