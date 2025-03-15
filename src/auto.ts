@@ -12,6 +12,11 @@ import { defaultABILoader, defaultSignatureLookup } from "./loaders.js";
 import { abiFromBytecode, disasm } from "./disasm.js";
 import { MultiABILoader } from "./loaders.js";
 
+
+/// Magic number we use to determine whether a proxy is reasonably a destination contract or not.
+/// If it has many SSTORE's then it's probably doing something other than proxying.
+const PROXY_SSTORE_COUNT_MAX = 4;
+
 function isAddress(address: string) {
     return address.length === 42 && address.startsWith("0x") && Number(address) >= 0;
 }
@@ -91,8 +96,11 @@ export type AutoloadConfig = {
     /** Settings: */
 
     /**
-     * Enable following proxies automagically, if possible. Return the final result.
-     * Note that some proxies are relative to a specific selector (such as DiamondProxies), so they will not be followed
+     * Enable following proxies automagically if *reasonable*. Return the final result.
+     *
+     * Some caveats:
+     * - Proxies that are relative to a specific selector (such as DiamondProxies) will not be followed.
+     * - Contracts that are not primarily proxies will not be followed. Current heuristic is containing at most 5 SSTORE instructions. (See Issue #173)
      *
      * @group Settings
      */
@@ -216,7 +224,7 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
         const f = await diamondProxy.facets(provider, address);
         Object.assign(facets, f);
 
-    } else if (result.proxies.length > 0) {
+    } else if (result.proxies.length > 0 && program.sstoreCount <= PROXY_SSTORE_COUNT_MAX) {
         result.followProxies = async function(selector?: string): Promise<AutoloadResult> {
             // This attempts to follow the first proxy that resolves successfully.
             // FIXME: If there are multiple proxies, should we attempt to merge them somehow?

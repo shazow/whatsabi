@@ -34,7 +34,7 @@ async function main() {
         process.exit(1);
     }
 
-    let extraConfig : AutoloadConfig = whatsabi.loaders.defaultsWithEnv(env);
+    let extraConfig : object = whatsabi.loaders.defaultsWithEnv(env);
     if (env.SKIP_LOOKUPS) {
         console.debug("Skipping lookups, only using bytecode");
         extraConfig = {
@@ -59,7 +59,12 @@ async function main() {
         const detectedInterfaces = whatsabi.interfaces.abiToInterfaces(abi);
         if (detectedInterfaces.length) console.log("detected interfaces:", detectedInterfaces);
 
-        if (!r.followProxies) break;
+        if (!r.followProxies) {
+            if (r.proxies.length) {
+                console.log("proxies detected but not following:", r.proxies);
+            }
+            break;
+        }
 
         console.log("following proxies...");
         r = await r.followProxies();

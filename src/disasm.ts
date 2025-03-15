@@ -154,6 +154,7 @@ export class Program {
     proxySlots: Array<string>; // PUSH32 found that match known proxy slots
     proxies: Array<ProxyResolver>;
     isFactory: boolean; // CREATE or CREATE2 detected
+    sstoreCount: number; // Number of SSTORE instructions detected, used to determine if this may be a destination contract (vs a proxy)
 
     init?: Program; // Program embedded as init code
 
@@ -165,6 +166,7 @@ export class Program {
         this.proxySlots = [];
         this.proxies = [];
         this.isFactory = false;
+        this.sstoreCount = 0;
         this.init = init;
     }
 }
@@ -368,6 +370,8 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
                 // CREATE/CREATE2 are part of interestingOpCodes so we can leverage this short circuit
                 if (inst === opcodes.CREATE || inst === opcodes.CREATE2) {
                     p.isFactory = true;
+                } else if (inst === opcodes.SSTORE) {
+                    p.sstoreCount += 1;
                 }
             }
         }
