@@ -1,4 +1,4 @@
-import { expect } from 'vitest';
+import { expect } from "vitest";
 
 import { whatsabi } from "../index";
 import { autoload } from "../auto";
@@ -9,12 +9,12 @@ const TIMEOUT = 15000;
 
 test('autoload throws typed error', async () => {
     // @ts-expect-error: Expected 2 arguments, but got 1
-    await expect(autoload("0xf00")).rejects.toThrow(/config is undefined/);
+    await expect(autoload("0xf00")).rejects.toThrow(new RegExp("config is undefined"));
 
     const fakeProvider = {
         request: () => { },
-    }
-    await expect(autoload("abc.eth", { provider: fakeProvider })).rejects.toThrow(/Failed to resolve ENS/);
+    };
+    await expect(autoload("abc.eth", { provider: fakeProvider })).rejects.toThrow(new RegExp("Failed to resolve ENS"));
 });
 
 test('autoload sets hasCode to false if code is empty', async () => {
@@ -113,7 +113,7 @@ online_test('autoload loadContractResult verified etherscan', async ({ provider,
     expect(result.contractResult?.name).toBe("TransparentUpgradeableProxy");
     expect(result.contractResult?.compilerVersion).toBe("v0.8.15+commit.e14f2714");
     expect(result.contractResult?.loaderResult?.Proxy).toBe("1");
-    expect(result.contractResult?.loaderResult?.Implementation).toMatch(/^0x[0-9a-f]{40}$/);
+    expect(result.contractResult?.loaderResult?.Implementation).toMatch(new RegExp("^0x[0-9a-f]{40}$"));
 });
 
 cached_test('autoload isFactory', async ({ provider, env, withCache }) => {
@@ -126,9 +126,31 @@ cached_test('autoload isFactory', async ({ provider, env, withCache }) => {
         },
     )
     const result = await autoload(address, {
-        provider: provider,
+        provider: whatsabi.providers.WithCachedCode(provider, {
+            [address]: code,
+        }),
         ...whatsabi.loaders.defaultsWithEnv(env),
     });
     expect(result.isFactory).toBeTruthy();
+});
+
+cached_test('autoload ambiguous proxy', async ({ provider, env, withCache }) => {
+    // Issue #173
+    const address = "0xe1164a7a364929c3ba3da9671c8003dd71975d2d";
+
+    const code = await withCache(
+        `${address}_code`,
+        async () => {
+            return await provider.getCode(address)
+        },
+    )
+    const result = await autoload(address, {
+        provider: whatsabi.providers.WithCachedCode(provider, {
+            [address]: code,
+        }),
+        ...whatsabi.loaders.defaultsWithEnv(env),
+    });
+    expect(result.proxies.length).toBe(1);
+    expect(result.followProxies).toBeFalsy();
 });
 
