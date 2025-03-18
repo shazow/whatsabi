@@ -1,6 +1,6 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Resolve proxies and get an ABI from Ethereum bytecode, even if it's unverified",
   "type": "module",
   "scripts": {
@@ -37,7 +37,7 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "ox": "^0.6.9"
+    "ox": "^0.6.10"
   },
   "peerDependencies": {
     "@noble/hashes": "^1"
@@ -51,7 +51,7 @@
     "tsx": "^4.19.3",
     "typedoc": "^0.26.11",
     "typedoc-plugin-missing-exports": "^3.1.0",
-    "viem": "^2.23.5",
+    "viem": "^2.23.12",
     "vitest": "^0.34.6",
     "web3": "^4.16.0"
   },
