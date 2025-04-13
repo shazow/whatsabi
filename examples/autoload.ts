@@ -6,11 +6,12 @@ import { whatsabi } from "../src/index.js";
 const env = {
     INFURA_API_KEY: process.env.INFURA_API_KEY,
     ETHERSCAN_API_KEY: process.env.ETHERSCAN_API_KEY,
+    ETH_RPC_URL: process.env.ETH_RPC_URL,
     PROVIDER: process.env.PROVIDER,
     NETWORK: process.env.NETWORK,
     SKIP_LOOKUPS: process.env.SKIP_LOOKUPS,
 };
-const provider = env.INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider(env.NETWORK || "homestead");
+const defaultProvider = env.INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider(env.NETWORK || "homestead");
 
 // Helper
 // https://stackoverflow.com/questions/11731072/dividing-an-array-by-filter-function 
@@ -41,6 +42,11 @@ async function main() {
             abiLoader: false,
             signatureLookup: false,
         };
+    }
+
+    let provider = defaultProvider;
+    if (env.ETH_RPC_URL) {
+        provider = new ethers.JsonRpcProvider(env.ETH_RPC_URL);
     }
 
     let r = await whatsabi.autoload(address, {

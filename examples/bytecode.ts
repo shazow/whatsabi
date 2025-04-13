@@ -7,13 +7,23 @@ import { withCache } from "../src/internal/filecache.js";
 import { bytecodeToString } from '../src/internal/debug.js';
 import type { bytecodeToStringConfig } from '../src/internal/debug.js';
 
-const { INFURA_API_KEY, OPCODES_JSON } = process.env;
-const provider = INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
+const env = {
+    INFURA_API_KEY: process.env.INFURA_API_KEY,
+    OPCODES_JSON: process.env.OPCODES_JSON,
+    ETH_RPC_URL: process.env.ETH_RPC_URL,
+};
+
+const defaultProvider = env.INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", env.INFURA_API_KEY)) : ethers.getDefaultProvider("homestead");
 
 async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
     const jumpdest = process.env["JUMPDEST"] || process.argv[3];
     const boundary = process.env["BOUNDARY"] || process.argv[4];
+
+    let provider = defaultProvider;
+    if (env.ETH_RPC_URL) {
+        provider = new ethers.JsonRpcProvider(env.ETH_RPC_URL);
+    }
 
     let code : string;
     if (!address) {
@@ -34,8 +44,8 @@ async function main() {
 
     const config : bytecodeToStringConfig = {};
 
-    if (OPCODES_JSON) {
-        const opcodes = JSON.parse(readFileSync(OPCODES_JSON, 'utf8'));
+    if (env.OPCODES_JSON) {
+        const opcodes = JSON.parse(readFileSync(env.OPCODES_JSON, 'utf8'));
 
         config.opcodeLookup = Object.fromEntries(
             Object.entries(opcodes).map(([k, v]) => [parseInt(k, 16), v as string])
