@@ -179,9 +179,9 @@ console.log("Resolved to:", address);
 * ⭐ [ondora.xyz](https://www.ondora.xyz/) - Cross-chain explorer and search engine
 * ⭐ [thirdweb](https://thirdweb.com/) - Web3 SDK, automatic ABI Resolution powered by WhatsABI
 * [callthis.link](https://callthis.link/) - Transaction builder powered by WhatsABI
-* [abi.w1nt3r.xyz](https://abi.w1nt3r.xyz/) - A frontend for whatsabi by [@w1nt3r_eth](https://twitter.com/w1nt3r_eth)
-* [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, [uses whatsabi for unverified contracts](https://github.com/verynifty/ethcmd)
-* [monobase.xyz](https://monobase.xyz) - Universal frontend, [uses whatsabi for unverified contracts](https://twitter.com/nazar_ilamanov/status/1659648915195707392)
+* [immortal-whatsabi](https://immortal-whatsabi.on-fleek.app/) - Fetch the JSON ABI of any contract, [github.com/0xcompose/immortal-whatsabi](https://github.com/0xcompose/immortal-whatsabi)
+* [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, [uses WhatsABI for unverified contracts](https://github.com/verynifty/ethcmd)
+* [monobase.xyz](https://monobase.xyz) - Universal frontend, [uses WhatsABI for unverified contracts](https://twitter.com/nazar_ilamanov/status/1659648915195707392)
 * [savvy](https://svvy.sh/) - Contract explorer with in-browser devnet execution
 * [blockscout](https://www.blockscout.com/) - Open source block explorer
 * [curvegrid](https://www.curvegrid.com/) - Platform for building EVM applications
