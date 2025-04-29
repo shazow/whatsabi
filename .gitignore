@@ -4,3 +4,4 @@
 /lib.*
 /*.tgz
 /docs
+.cache/
