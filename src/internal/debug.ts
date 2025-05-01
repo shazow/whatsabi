@@ -11,7 +11,8 @@ export function BytecodeIterString(code : BytecodeIter): string {
     const step = code.step();
     const pos = code.pos();
     let hexpos = bytesToHex(pos);
-    if (hexpos.length < hexpads.length) hexpos = hexpads.slice(0, hexpos.length - hexpads.length) + hexpos.slice(2);
+    // Always pad to 4 sigfigs at least, excluding 0x prefix
+    hexpos = "0x" + hexpos.slice(2).padStart(4, "0");
     const inst = code.at(pos);
     const value = isPush(inst) ? bytesToHex(code.valueAt(pos)) : "";
     const name = mnemonics[inst] || bytesToHex(inst);
