@@ -346,4 +346,7 @@ export const slotResolvers : Record<string, ProxyResolver> = {
     // Not sure why, there's a compiler optimization that adds 2 to the normal slot?
     // Would love to understand this, if people have ideas
     ["0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131d"]: new DiamondProxyResolver("DiamondProxy"),
+
+    // Off-by-one slot version of EIP1967, some examples in the wild who choose to do the -1 at runtime (See issue #178)
+    ["0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbd"]: new EIP1967ProxyResolver("EIP1967Proxy"),
 };
