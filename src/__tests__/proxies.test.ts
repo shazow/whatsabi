@@ -237,3 +237,51 @@ describe('multiple proxy resolving', () => {
     });
 
 });
+
+describe('comprehensive proxy detection', () => {
+    const diamondProxies = [
+        "0x32400084c286cf3e17e7b677ea9583e60a000324",
+        "0x3caca7b48d0573d793d3b0279b5f0029180e83b6",
+        "0xc1e088fc1323b20bcbee9bd1b9fc9546db5624c5",
+        "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae",
+        "0x1c073d5045b1abb6924d5f0f8b2f667b1653a4c3",
+        "0xe21ebcd28d37a67757b9bc7b290f4c4928a430b1",
+        "0x226bf5293692610692e2c996c9875c914d2a7f73",
+        "0x07f4d0691ee248b46fb71afa15f28a08d951a002",
+        "0xd57474e76c9ebecc01b65a1494f0a1211df7bcd8",
+    ];
+
+    diamondProxies.map((address) => {
+        cached_test('DiamondProxy: ' + address, async({ withCache, provider }) => {
+            const address = "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae";
+            const code = await withCache(
+                `${address}_code`,
+                async () => {
+                    return await provider.getCode(address)
+                },
+            );
+            const program = disasm(code);
+            expect(program.proxies.length).toEqual(1);
+            const resolver = program.proxies[0];
+            expect(resolver.name).toEqual("DiamondProxy");
+        });
+    });
+
+    cached_test('DiamondProxy: LiFi on Base', async({ withCache }) => {
+        // For issue #139: https://github.com/shazow/whatsabi/issues/139
+        const provider = makeProvider("https://base-rpc.publicnode.com");
+        const address = "0x1231deb6f5749ef6ce6943a275a1d3e7486f4eae";
+        const code = await withCache(
+            `base-${address}_code`,
+            async () => {
+                return await provider.getCode(address)
+            },
+        );
+
+        const program = disasm(code);
+        expect(program.proxies.length).toEqual(1);
+        const resolver = program.proxies[0];
+        expect(resolver.name).toEqual("DiamondProxy");
+    });
+
+});
