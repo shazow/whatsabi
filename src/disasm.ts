@@ -261,8 +261,9 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
         if (inst === opcodes.PUSH32) {
             const v = code.value();
             const resolver = slotResolvers[bytesToHex(v)];
-            if (resolver !== undefined) {
-                // While we're looking at PUSH32, let's find proxy slots
+            if (resolver !== undefined && !(p.proxies.length > 0 && p.proxies[0].name === resolver.name)) {
+                // While we're looking at PUSH32, let's find proxy slots, but avoid continuous dupes based off of slots
+                // (Dupes aren't a huge deal, just cleaning up a bit, can be more comprehensive in the future.)
                 p.proxies.push(resolver);
             } else {
                 lastPush32 = v;
