@@ -336,7 +336,7 @@ export const slots : Record<string, string> = {
     // Diamond Proxy, as used by ZkSync Era contract
     // https://etherscan.io/address/0x32400084c286cf3e17e7b677ea9583e60a000324#code
     // keccak256("diamond.standard.diamond.storage") - 1;
-    DIAMOND_STORAGE: "0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b",
+    DIAMOND_STORAGE: "0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131c",
 
     // EIP-1167 minimal proxy standard
     // Parsed in disasm
