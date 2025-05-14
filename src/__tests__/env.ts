@@ -13,6 +13,7 @@ const env = {
 
     PROVIDER: process.env.PROVIDER,
     PROVIDER_RPC_URL: process.env.PROVIDER_RPC_URL,
+    ETH_RPC_URL: process.env.ETH_RPC_URL, // Override for all
 };
 
 const DEFAULT_PUBLIC_RPC = "https://ethereum-rpc.publicnode.com";
@@ -24,7 +25,9 @@ const DEFAULT_PUBLIC_RPC = "https://ethereum-rpc.publicnode.com";
 export function makeProvider(rpc_url?: string): Provider {
     return CompatibleProvider(function() {
         if (!rpc_url) {
-            if (env.INFURA_API_KEY) {
+            if (env.ETH_RPC_URL) {
+                rpc_url = env.ETH_RPC_URL;
+            } else if (env.INFURA_API_KEY) {
                 rpc_url = "https://mainnet.infura.io/v3/" + env.INFURA_API_KEY;
             } else {
                 rpc_url = env.PROVIDER_RPC_URL;
