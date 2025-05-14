@@ -62,7 +62,6 @@ export interface ProxyResolver {
 
 // Some helpers:
 
-
 const _zeroAddress = "0x0000000000000000000000000000000000000000";
 
 // Convert 32 byte hex to a 20 byte hex address
@@ -70,13 +69,6 @@ function addressFromPadded(data:string): string {
     return "0x" + data.slice(data.length - 40);
 }
 
-// Given a slot, return the +1 version because some contracts use the off-by-one version
-// Example: bbbb -> bbbc
-// Warning: No error checking! Won't work if final letter is "a", garbage in garbage out.
-// This basically exists as an internal helper to cut down on code.
-function slotOffByOne(slot: string, offset: number = 1): string {
-    return slot.slice(0, -1) + String.fromCharCode(slot.charCodeAt(slot.length - 1) + offset);
-}
 
 // Resolvers:
 
@@ -158,6 +150,12 @@ const diamondSelectors = [
 // ERC2535 - Diamond/Facet Proxy
 export class DiamondProxyResolver extends BaseProxyResolver implements ProxyResolver {
     override name = "DiamondProxy";
+    readonly storageSlot : string;
+
+    constructor(name: string, storageSlot: string) {
+        super(name);
+        this.storageSlot = storageSlot ?? slots.DIAMOND_STORAGE;
+    }
 
     async resolve(provider: StorageProvider & CallProvider, address: string, selector: string): Promise<string> {
         if (!selector) {
@@ -170,7 +168,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         //
         // ethers.utils.defaultAbiCoder.encode(["bytes4", "bytes32"], ["0x" + selector, slots.DIAMOND_STORAGE])
         // keccak256("0x" + selector.padEnd(64, "0") + slots.DIAMOND_STORAGE.slice(2));
-        const facetMappingSlot = joinSlot([selector.padEnd(64, "0"), slots.DIAMOND_STORAGE]);
+        const facetMappingSlot = joinSlot([selector.padEnd(64, "0"), this.storageSlot]);
 
         const facet = await provider.getStorageAt(address, facetMappingSlot);
 
@@ -198,7 +196,10 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
 
     // Return the facet-to-selectors mapping
     // Note that this does not respect frozen facet state.
-    async facets(provider: StorageProvider, address: string): Promise<Record<string, string[]>> {
+    async facets(provider: StorageProvider, address: string, config: { limit: number }): Promise<Record<string, string[]>> {
+        // limit is used to get partial results, mainly for testing
+        let limit = config?.limit || 0;
+
         // Would be cool if we could read the private facets storage and return known selectors... let's do it!
         //
         // Shoutout to @banteg for sharing the rest of the owl:
@@ -222,7 +223,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         //   address[] facets;
         //   bool isFrozen;
         // }
-        const storageStart = slots.DIAMOND_STORAGE;
+        const storageStart = this.storageSlot;
 
         const facetsOffset = addSlotOffset(storageStart, 2); // Facets live in the 3rd slot (0-indexed)
         const addressWidth = 20; // Addresses are 20 bytes
@@ -243,6 +244,8 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
             const facetSelectorsSlot = joinSlot([facet, slot]);
             const selectors = await readArray(provider, address, facetSelectorsSlot, selectorWidth);
             facetSelectors[addressWithChecksum(facet)] = selectors.map(s => "0x" + s);
+
+            if (--limit === 0) break;
         }
 
         return facetSelectors;
@@ -338,6 +341,9 @@ export const slots : Record<string, string> = {
     // keccak256("diamond.standard.diamond.storage") - 1;
     DIAMOND_STORAGE: "0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b",
 
+    // Same as above but some implementations don't do -1
+    DIAMOND_STORAGE_1: "0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131c",
+
     // EIP-1167 minimal proxy standard
     // Parsed in disasm
 }
@@ -350,12 +356,12 @@ export const slotResolvers : Record<string, ProxyResolver> = {
     [slots.PROXIABLE]: new PROXIABLEProxyResolver("PROXIABLE"),
     [slots.GNOSIS_SAFE_SELECTOR]: new GnosisSafeProxyResolver("GnosisSafeProxy"),
     [slots.DIAMOND_STORAGE]: new DiamondProxyResolver("DiamondProxy"),
+    [slots.DIAMOND_STORAGE_1]: new DiamondProxyResolver("DiamondProxy", slots.DIAMOND_STORAGE_1),
 
     // Not sure why, there's a compiler optimization that adds 1 or 2 to the normal slot?
     // Would love to understand this, if people have ideas
-    [slotOffByOne(slots.DIAMOND_STORAGE, 1)]: new DiamondProxyResolver("DiamondProxy"),
-    [slotOffByOne(slots.DIAMOND_STORAGE, 2)]: new DiamondProxyResolver("DiamondProxy"),
+    "0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131d": new DiamondProxyResolver("DiamondProxy"),
 
     // Off-by-one slot version of EIP1967, some examples in the wild who choose to do the -1 at runtime (See issue #178)
-    [slotOffByOne(slots.EIP1967_IMPL, 1)]: new EIP1967ProxyResolver("EIP1967Proxy"),
+    "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbd": new EIP1967ProxyResolver("EIP1967Proxy"),
 };

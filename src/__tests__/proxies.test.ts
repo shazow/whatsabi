@@ -264,6 +264,9 @@ describe('comprehensive proxy detection', () => {
             expect(program.proxies.length).toEqual(1);
             const resolver = program.proxies[0];
             expect(resolver.name).toEqual("DiamondProxy");
+
+            const facets = await (resolver as proxies.DiamondProxyResolver).facets(provider, address, { limit: 1 });
+            expect(facets).to.not.be.empty;
         });
     });
 
@@ -282,6 +285,13 @@ describe('comprehensive proxy detection', () => {
         expect(program.proxies.length).toEqual(1);
         const resolver = program.proxies[0];
         expect(resolver.name).toEqual("DiamondProxy");
+
+        const selector = "0x736eac0b";
+        const got = await resolver.resolve(provider, address, selector);
+        expect(got).not.toEqual("0x0000000000000000000000000000000000000000");
+
+        const facets = await (resolver as proxies.DiamondProxyResolver).facets(provider, address, { limit: 1 });
+        expect(facets).to.not.be.empty;
     });
 
 });
