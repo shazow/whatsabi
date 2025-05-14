@@ -152,9 +152,9 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
     override name = "DiamondProxy";
     readonly storageSlot : string;
 
-    constructor(name: string, storageSlot: string) {
+    constructor(name: string, overrideStorageSlot?: string) {
         super(name);
-        this.storageSlot = storageSlot ?? slots.DIAMOND_STORAGE;
+        this.storageSlot = overrideStorageSlot ?? slots.DIAMOND_STORAGE;
     }
 
     async resolve(provider: StorageProvider & CallProvider, address: string, selector: string): Promise<string> {
@@ -196,7 +196,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
 
     // Return the facet-to-selectors mapping
     // Note that this does not respect frozen facet state.
-    async facets(provider: StorageProvider, address: string, config: { limit: number }): Promise<Record<string, string[]>> {
+    async facets(provider: StorageProvider, address: string, config?: { limit: number }): Promise<Record<string, string[]>> {
         // limit is used to get partial results, mainly for testing
         let limit = config?.limit || 0;
 
