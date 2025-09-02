@@ -168,7 +168,7 @@ export class EtherscanABILoader implements ABILoader {
     constructor(config?: { apiKey?: string, baseURL?: string }) {
         if (config === undefined) config = {};
         this.apiKey = config.apiKey;
-        this.baseURL = config.baseURL || "https://api.etherscan.io/api";
+        this.baseURL = config.baseURL || "https://api.etherscan.io/api/v2";
     }
 
 
