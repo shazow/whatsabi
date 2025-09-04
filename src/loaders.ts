@@ -17,9 +17,9 @@
  * ```ts
  * const loader = new whatsabi.loaders.MultiABILoader([
  *   new whatsabi.loaders.SourcifyABILoader({ chainId: 8453 }),
- *   new whatsabi.loaders.EtherscanABILoader({
- *     baseURL: "https://api.basescan.org/api",
+ *   new whatsabi.loaders.EtherscanV2ABILoader({
  *     apiKey: "...", // Replace the value with your API key
+ *     chainId: 8453,
  *   }),
  * ]);
  * ```
@@ -788,12 +788,12 @@ export class OpenChainSignatureLookupError extends errors.LoaderError { };
 
 export class SamczunSignatureLookup extends OpenChainSignatureLookup { }
 
-export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanABILoader()]);
+export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanV2ABILoader({ apiKey: process.env.ETHERSCAN_API_KEY! })]);
 export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new OpenChainSignatureLookup(), new FourByteSignatureLookup()]);
 
 type LoaderEnv = {
-    ETHERSCAN_API_KEY?: string,
-    ETHERSCAN_BASE_URL?: string,
+    ETHERSCAN_API_KEY: string,
+    ETHERSCAN_CHAIN_ID?: string | number,
     SOURCIFY_CHAIN_ID?: string | number,
 }
 
@@ -811,7 +811,7 @@ type LoaderEnv = {
  *     provider,
  *     ...whatsabi.loaders.defaultsWithEnv({
  *         SOURCIFY_CHAIN_ID: 42161,
- *         ETHERSCAN_BASE_URL: "https://api.arbiscan.io/api",
+ *         ETHERSCAN_CHAIN_ID: 8453,
  *         ETHERSCAN_API_KEY: "MYSECRETAPIKEY",
  *     }),
  * })
@@ -825,13 +825,21 @@ type LoaderEnv = {
  */
 export function defaultsWithEnv(env: LoaderEnv): Record<string, ABILoader | SignatureLookup> {
     return {
-        abiLoader: new MultiABILoader([
-            new SourcifyABILoader({ chainId: env.SOURCIFY_CHAIN_ID && Number(env.SOURCIFY_CHAIN_ID) || undefined }),
-            new EtherscanABILoader({ apiKey: env.ETHERSCAN_API_KEY, baseURL: env.ETHERSCAN_BASE_URL }),
-        ]),
-        signatureLookup: new MultiSignatureLookup([
-            new OpenChainSignatureLookup(),
-            new FourByteSignatureLookup(),
-        ]),
-    }
-}
+      abiLoader: new MultiABILoader([
+        new SourcifyABILoader({
+          chainId:
+            (env.SOURCIFY_CHAIN_ID && Number(env.SOURCIFY_CHAIN_ID)) || undefined,
+        }),
+        new EtherscanV2ABILoader({
+          apiKey: env.ETHERSCAN_API_KEY,
+          chainId:
+            (env.ETHERSCAN_CHAIN_ID && Number(env.ETHERSCAN_CHAIN_ID)) ||
+            undefined,
+        }),
+      ]),
+      signatureLookup: new MultiSignatureLookup([
+        new OpenChainSignatureLookup(),
+        new FourByteSignatureLookup(),
+      ]),
+    };
+  }  
