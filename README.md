@@ -92,7 +92,7 @@ console.log(await signatureLookup.loadEvents("0x721c20121297512b72821b97f5326877
 // Each source will be attempted until a result is found.
 const loader = new whatsabi.loaders.MultiABILoader([
   new whatsabi.loaders.SourcifyABILoader(),
-  new whatsabi.loaders.EtherscanABILoader({
+  new whatsabi.loaders.EtherscanV2ABILoader({
     apiKey: "...", // Replace the value with your Etherscan API key
   }),
   new whatsabi.loaders.BlockscoutABILoader({
@@ -119,7 +119,7 @@ let result = await whatsabi.autoload(address, {
   // There is a handy helper for adding the default loaders but with your own settings
   ... whatsabi.loaders.defaultsWithEnv({
     SOURCIFY_CHAIN_ID: 42161,
-    ETHERSCAN_BASE_URL: "https://api.arbiscan.io/api",
+    ETHERSCAN_BASE_URL: "https://api.etherscan.io/v2/api",
     ETHERSCAN_API_KEY: "MYSECRETAPIKEY",
   }),
 
