@@ -45,6 +45,7 @@
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
+    "@types/node": "^24.3.1",
     "ethers": "^6.15.0",
     "npm": "^10.9.3",
     "size-limit": "^8.2.6",
