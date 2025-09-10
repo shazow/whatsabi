@@ -58,7 +58,7 @@ online_test('autoload full', async ({ provider, env }) => {
         // ...whatsabi.loaders.defaultsWithEnv(env),
         abiLoader: new whatsabi.loaders.MultiABILoader([
             new whatsabi.loaders.SourcifyABILoader(),
-            new whatsabi.loaders.EtherscanABILoader({ apiKey: env.ETHERSCAN_API_KEY }),
+            new whatsabi.loaders.EtherscanV2ABILoader({ apiKey: env.ETHERSCAN_API_KEY }),
         ]),
         signatureLookup: new whatsabi.loaders.MultiSignatureLookup([
             new whatsabi.loaders.OpenChainSignatureLookup(),
@@ -106,9 +106,9 @@ online_test('autoload loadContractResult verified etherscan', async ({ provider,
         provider: provider,
         loadContractResult: true,
         followProxies: false,
-        abiLoader: new whatsabi.loaders.EtherscanABILoader({ apiKey: env.ETHERSCAN_API_KEY }),
+        abiLoader: new whatsabi.loaders.EtherscanV2ABILoader({ apiKey: env.ETHERSCAN_API_KEY }),
     });
-    expect(result.abiLoadedFrom?.name).toBe("EtherscanABILoader");
+    expect(result.abiLoadedFrom?.name).toBe("EtherscanV2ABILoader");
     expect(result.contractResult?.ok).toBeTruthy();
     expect(result.contractResult?.name).toBe("TransparentUpgradeableProxy");
     expect(result.contractResult?.compilerVersion).toBe("v0.8.15+commit.e14f2714");

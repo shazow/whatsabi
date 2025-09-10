@@ -158,7 +158,10 @@ export class MultiABILoader implements ABILoader {
 export class MultiABILoaderError extends errors.LoaderError { };
 
 
-/** Etherscan v1 API loader */
+/**
+  * Etherscan v1 API loader
+  * @deprecated v1 API is deprecated, use EtherscanV2ABILoader instead. This class may change to default to v2 in the future.
+  */
 export class EtherscanABILoader implements ABILoader {
     readonly name: string = "EtherscanABILoader";
 
