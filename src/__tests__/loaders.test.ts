@@ -5,7 +5,6 @@ import {
   defaultSignatureLookup,
 
   SourcifyABILoader,
-  EtherscanABILoader,
   EtherscanV2ABILoader,
   BlockscoutABILoader,
   AnyABILoader,
@@ -45,8 +44,8 @@ describe('loaders: ABILoader', () => {
     expect(selectors).toContain(sig);
   })
 
-  online_test('EtherscanABILoader', async ({ env }) => {
-    const loader = new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
+  online_test('EtherscanV2ABILoader', async ({ env }) => {
+    const loader = new EtherscanV2ABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
     const abi = await loader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
     const selectors = Object.values(selectorsFromABI(abi));
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
@@ -68,7 +67,7 @@ describe('loaders: ABILoader', () => {
     const address = "0xa9a57f7d2A54C1E172a7dC546fEE6e03afdD28E2";
     const loader = new MultiABILoader([
       new SourcifyABILoader(),
-      new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
+      new EtherscanV2ABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
     ]);
     const abi = await loader.loadABI(address);
     const sig = "getMagistrate()";
@@ -97,8 +96,8 @@ describe('loaders: ABILoader', () => {
     expect(name).toEqual("Canonical Uniswap V3 factory");
   })
 
-  online_test('EtherscanABILoader_getContract', async ({ env }) => {
-    const loader = new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
+  online_test('EtherscanV2ABILoader_getContract', async ({ env }) => {
+    const loader = new EtherscanV2ABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
     const result = await loader.getContract("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
     const selectors = Object.values(selectorsFromABI(result.abi));
     const sig = "swapExactETHForTokens(uint256,address[],address,uint256)";
@@ -109,8 +108,8 @@ describe('loaders: ABILoader', () => {
 
   }, SLOW_ETHERSCAN_TIMEOUT)
 
-  online_test('EtherscanABILoader_getContract_UniswapV3Factory', async ({ env }) => {
-    const loader = new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
+  online_test('EtherscanV2ABILoader_getContract_UniswapV3Factory', async ({ env }) => {
+    const loader = new EtherscanV2ABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
     const { abi, name } = await loader.getContract("0x1F98431c8aD98523631AE4a59f267346ea31F984");
     const selectors = Object.values(selectorsFromABI(abi));
     const sig = "owner()";
@@ -118,8 +117,8 @@ describe('loaders: ABILoader', () => {
     expect(name).toEqual("UniswapV3Factory");
   }, SLOW_ETHERSCAN_TIMEOUT)
 
-  online_test('EtherscanABILoader_getContract_CompoundUSDCProxy', async ({ env }) => {
-    const loader = new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
+  online_test('EtherscanV2ABILoader_getContract_CompoundUSDCProxy', async ({ env }) => {
+    const loader = new EtherscanV2ABILoader({ apiKey: env["ETHERSCAN_API_KEY"] });
     const result = await loader.getContract("0xc3d688b66703497daa19211eedff47f25384cdc3");
     expect(result.name).toEqual("TransparentUpgradeableProxy");
     expect(result.loaderResult?.Proxy).toBeTruthy();
@@ -154,26 +153,11 @@ describe('loaders: ABILoader', () => {
     expect(name).toEqual("UniswapV3Factory");
   })
 
-  online_test('MultiABILoader_getContract', async ({ env }) => {
-    // A contract that is verified on etherscan but not sourcify
-    const address = "0xa9a57f7d2A54C1E172a7dC546fEE6e03afdD28E2";
-    const loader = new MultiABILoader([
-      new SourcifyABILoader(),
-      new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
-    ]);
-    const result = await loader.getContract(address);
-    const sig = "getMagistrate()";
-    const selectors = Object.values(selectorsFromABI(result.abi));
-    expect(selectors).toContain(sig);
-    expect(result.name).toEqual("KetherSortition");
-    expect(result.loader?.name).toStrictEqual(EtherscanABILoader.name);
-  }, SLOW_ETHERSCAN_TIMEOUT);
-
   online_test('MultiABILoader_getContract_UniswapV3Factory', async ({ env }) => {
     const address = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
     const loader = new MultiABILoader([
       new SourcifyABILoader(),
-      new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
+      new EtherscanV2ABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
     ]);
     const { abi, name } = await loader.getContract(address);
     const sig = "owner()";
@@ -200,7 +184,7 @@ describe('loaders: ABILoader', () => {
   online_test('MultiABILoader_EtherscanOnly_getContract_UniswapV3Factory', async ({ env }) => {
     const address = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
     const loader = new MultiABILoader([
-      new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
+      new EtherscanV2ABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
     ]);
     const res = await loader.getContract(address);
     const sig = "owner()";
@@ -242,7 +226,6 @@ describe_cached("loaders: ABILoader suite", async ({ env }) => {
 
   const loaders = [
     new SourcifyABILoader(),
-    new EtherscanABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
     new EtherscanV2ABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
     new BlockscoutABILoader({ apiKey: env["BLOCKSCOUT_API_KEY"] }),
     new AnyABILoader(),
