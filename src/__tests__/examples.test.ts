@@ -65,8 +65,7 @@ online_test('README autoload', async ({ provider }) => {
 
             // There is a handy helper for adding the default loaders but with your own settings
             ...whatsabi.loaders.defaultsWithEnv({
-                SOURCIFY_CHAIN_ID: 42161,
-                ETHERSCAN_BASE_URL: "https://api.arbiscan.io/api",
+                CHAIN_ID: 42161,
                 //ETHERSCAN_API_KEY: "MYSECRETAPIKEY",
             }),
 

@@ -6,7 +6,6 @@ import {
 
   SourcifyABILoader,
   EtherscanV2ABILoader,
-  EtherscanV2ABILoader,
   BlockscoutABILoader,
   AnyABILoader,
   MultiABILoader,
