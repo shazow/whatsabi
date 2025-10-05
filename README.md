@@ -102,7 +102,7 @@ const loader = new whatsabi.loaders.MultiABILoader([
 const { abi, name, /* ... other metadata */ } = await loader.getContract(address));
 ```
 
-See [whatsabi.loaders](https://shazow.github.io/whatsabi/modules/whatsabi.loaders.html) for more examples of what our loaders can do, like loading verified contract source code and compiler settings.
+See [whatsabi.loaders](https://shazow.github.io/whatsabi/modules/loaders.html) for more examples of what our loaders can do, like loading verified contract source code and compiler settings.
 
 All together with our do-all-the-things helper:
 
