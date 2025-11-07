@@ -178,7 +178,7 @@ console.log("Resolved to:", address);
 * ⭐ [ondora.xyz](https://www.ondora.xyz/) - Cross-chain explorer and search engine
 * ⭐ [thirdweb](https://thirdweb.com/) - Web3 SDK, automatic ABI Resolution powered by WhatsABI
 * [callthis.link](https://callthis.link/) - Transaction builder powered by WhatsABI
-* [immortal-whatsabi](https://immortal-whatsabi.on-fleek.app/) - Fetch the JSON ABI of any contract, [github.com/0xcompose/immortal-whatsabi](https://github.com/0xcompose/immortal-whatsabi)
+* [whatsabi-ui](https://0xcompose.github.io/whatsabi-ui/) - A simple UI for WhatsABI - [github.com/0xcompose/immortal-ui](https://github.com/0xcompose/whatsabi-ui)
 * [ethcmd.com](https://www.ethcmd.com/) - Contract explorer frontend, [uses WhatsABI for unverified contracts](https://github.com/verynifty/ethcmd)
 * [monobase.xyz](https://monobase.xyz) - Universal frontend, [uses WhatsABI for unverified contracts](https://twitter.com/nazar_ilamanov/status/1659648915195707392)
 * [savvy](https://svvy.sh/) - Contract explorer with in-browser devnet execution
