@@ -52,7 +52,7 @@ online_test('autoload selectors with experimental metadata', async ({ provider }
 
 online_test('autoload full', async ({ provider, env }) => {
     const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
-    const { abi } = await autoload(address, {
+    const { abi, abiLoadedFrom } = await autoload(address, {
         provider: provider,
         // Equivalent to:
         // ...whatsabi.loaders.defaultsWithEnv(env),
@@ -66,6 +66,7 @@ online_test('autoload full', async ({ provider, env }) => {
         ]),
         //onProgress: (phase: string, ...args: any[]) => { console.debug("PROGRESS", phase, args); },
     });
+    expect(abiLoadedFrom).toBeFalsy();
     expect(abi).toContainEqual({
         "inputs": [
             { "type": "address" },
@@ -78,8 +79,14 @@ online_test('autoload full', async ({ provider, env }) => {
         "sig": "call(address,uint256,bytes)",
         "type": "function"
     });
-
-    expect(abi).toContainEqual({ "selector": "0xec0ab6a7", "type": "function" });
+    expect(abi).toContainEqual({
+        "inputs": [ { "type": "uint256" }, { "type": "address[]" }, { "type": "bytes[]" } ],
+        "name": "batchCall",
+        "selector": "0xec0ab6a7",
+        "sig": "batchCall(uint256,address[],bytes[])",
+        "stateMutability": "nonpayable",
+        "type": "function",
+    });
 }, TIMEOUT);
 
 online_test('autoload non-contract', async ({ provider, env }) => {

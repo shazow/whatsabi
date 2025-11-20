@@ -791,7 +791,9 @@ export class OpenChainSignatureLookupError extends errors.LoaderError { };
 
 export class SamczunSignatureLookup extends OpenChainSignatureLookup { }
 
-export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanV2ABILoader({ apiKey: process?.env?.ETHERSCAN_API_KEY! })]);
+const defaultEnv = typeof process !== "undefined" ? process.env : {};
+
+export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanV2ABILoader({ apiKey: defaultEnv?.ETHERSCAN_API_KEY! })]);
 export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new OpenChainSignatureLookup(), new FourByteSignatureLookup()]);
 
 type LoaderEnv = {
