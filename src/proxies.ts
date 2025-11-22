@@ -152,6 +152,10 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
     override name = "DiamondProxy";
     readonly storageSlot : string;
 
+    // Maximum number of continuous readArray getStorageAt ops to request, otherwise throw StorageReadError.
+    // This is useful to find incorrect slot detection.
+    readArrayLimit: number = 256;
+
     constructor(name: string, overrideStorageSlot?: string) {
         super(name);
         this.storageSlot = overrideStorageSlot ?? slots.DIAMOND_STORAGE;
@@ -227,7 +231,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
 
         const facetsOffset = addSlotOffset(storageStart, 2); // Facets live in the 3rd slot (0-indexed)
         const addressWidth = 20; // Addresses are 20 bytes
-        const facets = await readArray(provider, address, facetsOffset, addressWidth);
+        const facets = await readArray(provider, address, facetsOffset, addressWidth, this.readArrayLimit);
 
         // 2. Read FacetToSelectors.selectors[] via facetToSelectors[address].selectors[]
         //
@@ -242,7 +246,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
         for (const f of facets) {
             const facet = addressFromPadded(f);
             const facetSelectorsSlot = joinSlot([facet, slot]);
-            const selectors = await readArray(provider, address, facetSelectorsSlot, selectorWidth);
+            const selectors = await readArray(provider, address, facetSelectorsSlot, selectorWidth, this.readArrayLimit);
             facetSelectors[addressWithChecksum(facet)] = selectors.map(s => "0x" + s);
 
             if (--limit === 0) break;
