@@ -28,7 +28,7 @@ export function addSlotOffset(slot: string, offset: number): string {
 export async function readArray(provider: StorageProvider, address: string, pos: number|string, width: number=32, limit: number=0): Promise<string[]> {
     // Based on https://gist.github.com/banteg/0cee21909f7c1baedfa6c3d96ffe94f2
     const num = Number(await provider.getStorageAt(address, pos));
-    if (num && num > limit) {
+    if (limit !== 0 && num > limit) {
         throw new StorageReadError(`readArray aborted: Array size ${num} exceeds limit of ${limit}`, { context: { address, pos, width, limit } });
     }
     const start = keccak256(pos.toString(16)); // toString(16) does the right thing on strings too (no-op) (:
