@@ -22,3 +22,7 @@ export class LoaderError extends WhatsABIError {
 export class ProviderError extends WhatsABIError {
     override name = 'ProviderError';
 }
+
+export class StorageReadError extends WhatsABIError {
+    override name = 'StorageReadError';
+}
