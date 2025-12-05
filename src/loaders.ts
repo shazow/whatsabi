@@ -157,23 +157,36 @@ export class MultiABILoader implements ABILoader {
 
 export class MultiABILoaderError extends errors.LoaderError { };
 
+export class EtherscanABILoaderError extends errors.LoaderError { };
 
-/**
-  * Etherscan v1 API loader
-  * @deprecated v1 API is deprecated, use EtherscanV2ABILoader instead. This class may change to default to v2 in the future.
-  */
-export class EtherscanABILoader implements ABILoader {
-    readonly name: string = "EtherscanABILoader";
+/// Etherscan Contract Source API response
+export type EtherscanContractResult = {
+    SourceCode: string;
+    ABI: string;
+    ContractName: string;
+    CompilerVersion: string;
+    OptimizationUsed: number;
+    Runs: number;
+    ConstructorArguments: string;
+    EVMVersion: string;
+    Library: string;
+    LicenseType: string;
+    Proxy: "1" | "0";
+    Implementation: string;
+    SwarmSource: string;
+}
 
+
+/** Etherscan v2 API loader */
+export class EtherscanV2ABILoader implements ABILoader {
+    readonly name: string = "EtherscanV2ABILoader";
     apiKey?: string;
     baseURL: string;
 
-    constructor(config?: { apiKey?: string, baseURL?: string }) {
-        if (config === undefined) config = {};
+    constructor(config: { apiKey: string, chainId?: number }) {
         this.apiKey = config.apiKey;
-        this.baseURL = config.baseURL || "https://api.etherscan.io/api";
+        this.baseURL = `https://api.etherscan.io/v2/api?chainid=${config?.chainId ?? 1}`;
     }
-
 
     /** Etherscan helper for converting the encoded SourceCode result arg to a decoded ContractSources. */
     #toContractSources(result: { SourceCode: string }): ContractSources {
@@ -280,35 +293,24 @@ export class EtherscanABILoader implements ABILoader {
     }
 }
 
-export class EtherscanABILoaderError extends errors.LoaderError { };
+/**
+  * Alias to the EtherscanV2ABILoader
+  */
+export class EtherscanABILoader extends EtherscanV2ABILoader {};
 
-/// Etherscan Contract Source API response
-export type EtherscanContractResult = {
-    SourceCode: string;
-    ABI: string;
-    ContractName: string;
-    CompilerVersion: string;
-    OptimizationUsed: number;
-    Runs: number;
-    ConstructorArguments: string;
-    EVMVersion: string;
-    Library: string;
-    LicenseType: string;
-    Proxy: "1" | "0";
-    Implementation: string;
-    SwarmSource: string;
-}
+/**
+  * EtherscanV1ABILoader
+  * @deprecated v1 API is deprecated, use EtherscanV2ABILoader instead. This may be removed in a future release.
+  */
+export class EtherscanV1ABILoader extends EtherscanV2ABILoader {
+    readonly name: string = "EtherscanV1ABILoader";
 
-
-/** Etherscan v2 API loader */
-export class EtherscanV2ABILoader extends EtherscanABILoader {
-    readonly name: string = "EtherscanV2ABILoader";
-    constructor(config: { apiKey: string, chainId?: number }) {
-        // chainId is a required parameter in v2, as is an API key
-        super({ apiKey: config.apiKey, baseURL: `https://api.etherscan.io/v2/api?chainid=${config?.chainId ?? 1}` });
+    constructor(config?: { apiKey?: string, baseURL?: string }) {
+        if (config === undefined) config = {};
+        super({ apiKey: config.apiKey ?? "" });
+        this.baseURL = config.baseURL || "https://api.etherscan.io/api";
     }
-}
-
+};
 
 function isSourcifyNotFound(error: any): boolean {
     return (
