@@ -114,6 +114,22 @@ export function WithCachedCode(provider: AnyProvider, codeCache: Record<string, 
     return p;
 }
 
+// XXX: This is hacky, not sure it'll stay the same for release, may add more plumbing in providers to do this more elegantly.
+export function WithBlockNumber(provider: RPCProvider, blockNumber: BlockTagOrNumber): Provider {
+    const p = Object.create(provider); // use compatibleProvider as the prototype
+    p.getCode = async function getCode(address: string): Promise<string> {
+        return await provider.getCode(address, blockNumber);
+    };
+    p.getStorageAt = async function getStorageAt(address: string, slot: number | string): Promise<string> {
+        return await provider.getStorageAt(address, slot, blockNumber);
+    };
+    p.call = async function call(transaction: { to: string, data: string }): Promise<string> {
+        return await provider.call(transaction, blockNumber);
+    };
+    return p;
+}
+
+
 // RPCPRovider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
 // and instead have a discovery for the lowest-level RPC call function that we can use directly.
 // At least whenever possible. Higher-level functionality like getAddress is still tricky.
