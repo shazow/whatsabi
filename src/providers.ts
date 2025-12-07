@@ -18,15 +18,17 @@ export interface ENSProvider {
     getAddress(name: string): Promise<string>;
 }
 
-export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider {};
+export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider { };
 
 
 export interface AnyProvider { }; // TODO: Can we narrow this more?
 
+type BlockTagOrNumber = 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized' | number;
+
 
 interface EIP1193RequestArguments {
-  readonly method: string;
-  readonly params?: readonly unknown[] | object;
+    readonly method: string;
+    readonly params?: readonly unknown[] | object;
 }
 
 interface EIP1193 {
@@ -112,7 +114,6 @@ export function WithCachedCode(provider: AnyProvider, codeCache: Record<string, 
     return p;
 }
 
-
 // RPCPRovider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
 // and instead have a discovery for the lowest-level RPC call function that we can use directly.
 // At least whenever possible. Higher-level functionality like getAddress is still tricky.
@@ -124,35 +125,37 @@ class RPCProvider implements Provider, EIP1193 {
     }
 
     // Based on EIP-1193
-    request(req: {method: string, params?: object|Array<unknown>}): Promise<any> {
+    request(req: { method: string, params?: object | Array<unknown> }): Promise<any> {
         return this.provider.request(req);
     }
 
-    getStorageAt(address: string, slot: number | string): Promise<string> {
+    getStorageAt(address: string, slot: number | string, block: BlockTagOrNumber = "latest"): Promise<string> {
         if (typeof slot === "number") {
             slot = bytesToHex(slot);
         }
-        return this.request({method: "eth_getStorageAt", params: [address, slot, "latest"]});
+        return this.request({ method: "eth_getStorageAt", params: [address, slot, block] });
     }
 
-    call(transaction: { to: string, data: string }): Promise<string> {
-        return this.request({ method: "eth_call", params: [
-            {
-                from: "0x0000000000000000000000000000000000000001",
-                to: transaction.to,
-                data: transaction.data,
-            },
-            "latest"
-        ]});
+    call(transaction: { to: string, data: string }, block: BlockTagOrNumber): Promise<string> {
+        return this.request({
+            method: "eth_call", params: [
+                {
+                    from: "0x0000000000000000000000000000000000000001",
+                    to: transaction.to,
+                    data: transaction.data,
+                },
+                block,
+            ]
+        });
     }
 
-    getCode(address: string): Promise<string> {
-        return this.request({ method: "eth_getCode", params: [address, "latest"]});
+    getCode(address: string, block: BlockTagOrNumber = "latest"): Promise<string> {
+        return this.request({ method: "eth_getCode", params: [address, block] });
     }
 
     getAddress(name: string): Promise<string> {
         throw new MissingENSProviderError("Provider does not implement getAddress, required to resolve ENS", {
-            context: {name, provider: this.provider},
+            context: { name, provider: this.provider },
         });
     }
 }
@@ -196,7 +199,7 @@ type JSONRPCResponse = {
 };
 
 class Web3Provider extends RPCProvider {
-    request({method, params}: EIP1193RequestArguments): Promise<any> {
+    request({ method, params }: EIP1193RequestArguments): Promise<any> {
         // this.provider is the web3 instance, we need web3.provider
         const r = this.provider.currentProvider.request({ method, params, "jsonrpc": "2.0", id: "1" });
         return r.then((resp: JSONRPCResponse) => {
