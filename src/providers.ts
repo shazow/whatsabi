@@ -3,15 +3,15 @@ import * as errors from "./errors.js";
 
 
 export interface StorageProvider {
-    getStorageAt(address: string, slot: number | string): Promise<string>
+    getStorageAt(address: string, slot: number | string, block?: BlockTagOrNumber): Promise<string>
 }
 
 export interface CallProvider {
-    call(transaction: { to: string, data: string }): Promise<string>;
+    call(transaction: { to: string, data: string }, block?: BlockTagOrNumber): Promise<string>;
 }
 
 export interface CodeProvider {
-    getCode(address: string): Promise<string>;
+    getCode(address: string, block?: BlockTagOrNumber): Promise<string>;
 }
 
 export interface ENSProvider {
@@ -146,27 +146,38 @@ class RPCProvider implements Provider, EIP1193 {
     }
 
     getStorageAt(address: string, slot: number | string, block: BlockTagOrNumber = "latest"): Promise<string> {
-        if (typeof slot === "number") {
-            slot = bytesToHex(slot);
-        }
-        return this.request({ method: "eth_getStorageAt", params: [address, slot, block] });
+        return this.request({
+            method: "eth_getStorageAt",
+            params: [
+                address,
+                typeof slot === 'number' ? bytesToHex(slot) : slot,
+                typeof block === 'number' ? bytesToHex(block) : block,
+            ],
+        });
     }
 
     call(transaction: { to: string, data: string }, block: BlockTagOrNumber): Promise<string> {
         return this.request({
-            method: "eth_call", params: [
+            method: "eth_call",
+            params: [
                 {
                     from: "0x0000000000000000000000000000000000000001",
                     to: transaction.to,
                     data: transaction.data,
                 },
-                block,
-            ]
+                typeof block === 'number' ? bytesToHex(block) : block,
+            ],
         });
     }
 
     getCode(address: string, block: BlockTagOrNumber = "latest"): Promise<string> {
-        return this.request({ method: "eth_getCode", params: [address, block] });
+        return this.request({
+            method: "eth_getCode",
+            params: [
+                address,
+                typeof block === 'number' ? bytesToHex(block) : block,
+            ]
+        });
     }
 
     getAddress(name: string): Promise<string> {
