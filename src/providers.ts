@@ -114,7 +114,26 @@ export function WithCachedCode(provider: AnyProvider, codeCache: Record<string, 
     return p;
 }
 
-// XXX: This is hacky, not sure it'll stay the same for release, may add more plumbing in providers to do this more elegantly.
+/**
+ * Wrap an existing RPCProvider into one that will always use a specified
+ * blockTag for requests.
+ *
+ * This helper is to avoid plumbing the blockTag throughout the whatsabi stack,
+ * and because it's more ergonomic to use the same blockTag consistently across
+ * a given provider.
+ *
+ * @param provider - An existing RPCProvider
+ * @param blockNumber - Block tag or number to use for all requests
+ * @returns {Provider} - Provider that will use the specified blockTag for all requests.
+ * @example
+ * ```ts
+ * import { createPublicClient, http } from 'viem'
+ * import { mainnet } from 'viem/chains'
+ * const client = createPublicClient({ chain: mainnet, transport: http() })
+ * const blockNumber = await client.getBlockNumber() // or "latest", "earliest", etc.
+ * const blockProvider = whatsabi.providers.WithBlockNumber(client, blockNumber);
+ * const r = await whatsabi.autoload(address, { provider: blockProvider });
+ */
 export function WithBlockNumber(provider: RPCProvider, blockNumber: BlockTagOrNumber): Provider {
     const p = Object.create(provider); // use compatibleProvider as the prototype
     p.getCode = async function getCode(address: string): Promise<string> {
