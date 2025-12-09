@@ -24,7 +24,7 @@ export interface Provider extends StorageProvider, CallProvider, CodeProvider, E
 export interface AnyProvider { }; // TODO: Can we narrow this more?
 
 
-type BlockTagOrNumber = 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized' | number | bigint;
+export type BlockTagOrNumber = 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized' | number | bigint;
 
 function fromBlockTagOrNumber(block: BlockTagOrNumber): string {
     if (typeof block === 'number' || typeof block === 'bigint') {
@@ -157,7 +157,7 @@ export function WithBlockNumber(provider: Provider, blockNumber: BlockTagOrNumbe
 }
 
 
-// RPCPRovider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
+// RPCProvider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
 // and instead have a discovery for the lowest-level RPC call function that we can use directly.
 // At least whenever possible. Higher-level functionality like getAddress is still tricky.
 class RPCProvider implements Provider, EIP1193 {
@@ -183,7 +183,7 @@ class RPCProvider implements Provider, EIP1193 {
         });
     }
 
-    call(transaction: { to: string, data: string }, block: BlockTagOrNumber): Promise<string> {
+    call(transaction: { to: string, data: string }, block: BlockTagOrNumber = "latest"): Promise<string> {
         return this.request({
             method: "eth_call",
             params: [
