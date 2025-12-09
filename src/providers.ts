@@ -23,7 +23,15 @@ export interface Provider extends StorageProvider, CallProvider, CodeProvider, E
 
 export interface AnyProvider { }; // TODO: Can we narrow this more?
 
-type BlockTagOrNumber = 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized' | number;
+
+type BlockTagOrNumber = 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized' | number | bigint;
+
+function fromBlockTagOrNumber(block: BlockTagOrNumber): string {
+    if (typeof block === 'number' || typeof block === 'bigint') {
+        return bytesToHex(block);
+    }
+    return block;
+}
 
 
 interface EIP1193RequestArguments {
@@ -115,14 +123,14 @@ export function WithCachedCode(provider: AnyProvider, codeCache: Record<string, 
 }
 
 /**
- * Wrap an existing RPCProvider into one that will always use a specified
+ * Wrap an existing Provider into one that will always use a specified
  * blockTag for requests.
  *
  * This helper is to avoid plumbing the blockTag throughout the whatsabi stack,
  * and because it's more ergonomic to use the same blockTag consistently across
  * a given provider.
  *
- * @param provider - An existing RPCProvider
+ * @param provider - An existing Provider
  * @param blockNumber - Block tag or number to use for all requests
  * @returns {Provider} - Provider that will use the specified blockTag for all requests.
  * @example
@@ -134,7 +142,7 @@ export function WithCachedCode(provider: AnyProvider, codeCache: Record<string, 
  * const blockProvider = whatsabi.providers.WithBlockNumber(client, blockNumber);
  * const r = await whatsabi.autoload(address, { provider: blockProvider });
  */
-export function WithBlockNumber(provider: RPCProvider, blockNumber: BlockTagOrNumber): Provider {
+export function WithBlockNumber(provider: Provider, blockNumber: BlockTagOrNumber): Provider {
     const p = Object.create(provider); // use compatibleProvider as the prototype
     p.getCode = async function getCode(address: string): Promise<string> {
         return await provider.getCode(address, blockNumber);
@@ -170,7 +178,7 @@ class RPCProvider implements Provider, EIP1193 {
             params: [
                 address,
                 typeof slot === 'number' ? bytesToHex(slot) : slot,
-                typeof block === 'number' ? bytesToHex(block) : block,
+                fromBlockTagOrNumber(block),
             ],
         });
     }
@@ -184,7 +192,7 @@ class RPCProvider implements Provider, EIP1193 {
                     to: transaction.to,
                     data: transaction.data,
                 },
-                typeof block === 'number' ? bytesToHex(block) : block,
+                fromBlockTagOrNumber(block),
             ],
         });
     }
@@ -194,7 +202,7 @@ class RPCProvider implements Provider, EIP1193 {
             method: "eth_getCode",
             params: [
                 address,
-                typeof block === 'number' ? bytesToHex(block) : block,
+                fromBlockTagOrNumber(block),
             ]
         });
     }
