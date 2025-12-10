@@ -18,7 +18,8 @@ export interface ENSProvider {
     getAddress(name: string): Promise<string>;
 }
 
-export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider { };
+export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider {
+};
 
 
 export interface AnyProvider { }; // TODO: Can we narrow this more?
@@ -78,7 +79,7 @@ export function CompatibleProvider(provider: any): Provider {
         return new ViemProvider(provider);
     }
     if (typeof provider?.eth?.ens?.getAddress === "function") {
-        return new Web3Provider(provider);
+        return new Web3Provider(provider.eth);
     }
     if (typeof provider.request === "function") {
         // Might be a viem transport, or something else
@@ -266,7 +267,7 @@ class Web3Provider extends RPCProvider {
     }
 
     getAddress(name: string): Promise<string> {
-        return this.provider.eth.ens.getAddress(name)
+        return this.provider.ens.getAddress(name)
     }
 }
 
