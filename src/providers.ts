@@ -3,30 +3,41 @@ import * as errors from "./errors.js";
 
 
 export interface StorageProvider {
-    getStorageAt(address: string, slot: number | string): Promise<string>
+    getStorageAt(address: string, slot: number | string, block?: BlockTagOrNumber): Promise<string>
 }
 
 export interface CallProvider {
-    call(transaction: { to: string, data: string }): Promise<string>;
+    call(transaction: { to: string, data: string }, block?: BlockTagOrNumber): Promise<string>;
 }
 
 export interface CodeProvider {
-    getCode(address: string): Promise<string>;
+    getCode(address: string, block?: BlockTagOrNumber): Promise<string>;
 }
 
 export interface ENSProvider {
     getAddress(name: string): Promise<string>;
 }
 
-export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider {};
+export interface Provider extends StorageProvider, CallProvider, CodeProvider, ENSProvider {
+};
 
 
 export interface AnyProvider { }; // TODO: Can we narrow this more?
 
 
+export type BlockTagOrNumber = 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized' | number | bigint;
+
+function fromBlockTagOrNumber(block: BlockTagOrNumber): string {
+    if (typeof block === 'number' || typeof block === 'bigint') {
+        return bytesToHex(block);
+    }
+    return block;
+}
+
+
 interface EIP1193RequestArguments {
-  readonly method: string;
-  readonly params?: readonly unknown[] | object;
+    readonly method: string;
+    readonly params?: readonly unknown[] | object;
 }
 
 interface EIP1193 {
@@ -68,7 +79,7 @@ export function CompatibleProvider(provider: any): Provider {
         return new ViemProvider(provider);
     }
     if (typeof provider?.eth?.ens?.getAddress === "function") {
-        return new Web3Provider(provider);
+        return new Web3Provider(provider.eth);
     }
     if (typeof provider.request === "function") {
         // Might be a viem transport, or something else
@@ -112,8 +123,42 @@ export function WithCachedCode(provider: AnyProvider, codeCache: Record<string, 
     return p;
 }
 
+/**
+ * Wrap an existing Provider into one that will always use a specified
+ * blockTag for requests.
+ *
+ * This helper is to avoid plumbing the blockTag throughout the whatsabi stack,
+ * and because it's more ergonomic to use the same blockTag consistently across
+ * a given provider.
+ *
+ * @param provider - An existing Provider
+ * @param blockNumber - Block tag or number to use for all requests
+ * @returns {Provider} - Provider that will use the specified blockTag for all requests.
+ * @example
+ * ```ts
+ * import { createPublicClient, http } from 'viem'
+ * import { mainnet } from 'viem/chains'
+ * const client = createPublicClient({ chain: mainnet, transport: http() })
+ * const blockNumber = await client.getBlockNumber() // or "latest", "earliest", etc.
+ * const blockProvider = whatsabi.providers.WithBlockNumber(client, blockNumber);
+ * const r = await whatsabi.autoload(address, { provider: blockProvider });
+ */
+export function WithBlockNumber(provider: Provider, blockNumber: BlockTagOrNumber): Provider {
+    const p = Object.create(provider); // use compatibleProvider as the prototype
+    p.getCode = async function getCode(address: string): Promise<string> {
+        return await provider.getCode(address, blockNumber);
+    };
+    p.getStorageAt = async function getStorageAt(address: string, slot: number | string): Promise<string> {
+        return await provider.getStorageAt(address, slot, blockNumber);
+    };
+    p.call = async function call(transaction: { to: string, data: string }): Promise<string> {
+        return await provider.call(transaction, blockNumber);
+    };
+    return p;
+}
 
-// RPCPRovider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
+
+// RPCProvider thesis is: let's stop trying to adapt to every RPC wrapper library's high-level functions
 // and instead have a discovery for the lowest-level RPC call function that we can use directly.
 // At least whenever possible. Higher-level functionality like getAddress is still tricky.
 class RPCProvider implements Provider, EIP1193 {
@@ -124,35 +169,48 @@ class RPCProvider implements Provider, EIP1193 {
     }
 
     // Based on EIP-1193
-    request(req: {method: string, params?: object|Array<unknown>}): Promise<any> {
+    request(req: { method: string, params?: object | Array<unknown> }): Promise<any> {
         return this.provider.request(req);
     }
 
-    getStorageAt(address: string, slot: number | string): Promise<string> {
-        if (typeof slot === "number") {
-            slot = bytesToHex(slot);
-        }
-        return this.request({method: "eth_getStorageAt", params: [address, slot, "latest"]});
+    getStorageAt(address: string, slot: number | string, block: BlockTagOrNumber = "latest"): Promise<string> {
+        return this.request({
+            method: "eth_getStorageAt",
+            params: [
+                address,
+                typeof slot === 'number' ? bytesToHex(slot) : slot,
+                fromBlockTagOrNumber(block),
+            ],
+        });
     }
 
-    call(transaction: { to: string, data: string }): Promise<string> {
-        return this.request({ method: "eth_call", params: [
-            {
-                from: "0x0000000000000000000000000000000000000001",
-                to: transaction.to,
-                data: transaction.data,
-            },
-            "latest"
-        ]});
+    call(transaction: { to: string, data: string }, block: BlockTagOrNumber = "latest"): Promise<string> {
+        return this.request({
+            method: "eth_call",
+            params: [
+                {
+                    from: "0x0000000000000000000000000000000000000001",
+                    to: transaction.to,
+                    data: transaction.data,
+                },
+                fromBlockTagOrNumber(block),
+            ],
+        });
     }
 
-    getCode(address: string): Promise<string> {
-        return this.request({ method: "eth_getCode", params: [address, "latest"]});
+    getCode(address: string, block: BlockTagOrNumber = "latest"): Promise<string> {
+        return this.request({
+            method: "eth_getCode",
+            params: [
+                address,
+                fromBlockTagOrNumber(block),
+            ]
+        });
     }
 
     getAddress(name: string): Promise<string> {
         throw new MissingENSProviderError("Provider does not implement getAddress, required to resolve ENS", {
-            context: {name, provider: this.provider},
+            context: { name, provider: this.provider },
         });
     }
 }
@@ -196,7 +254,7 @@ type JSONRPCResponse = {
 };
 
 class Web3Provider extends RPCProvider {
-    request({method, params}: EIP1193RequestArguments): Promise<any> {
+    request({ method, params }: EIP1193RequestArguments): Promise<any> {
         // this.provider is the web3 instance, we need web3.provider
         const r = this.provider.currentProvider.request({ method, params, "jsonrpc": "2.0", id: "1" });
         return r.then((resp: JSONRPCResponse) => {
@@ -209,7 +267,7 @@ class Web3Provider extends RPCProvider {
     }
 
     getAddress(name: string): Promise<string> {
-        return this.provider.eth.ens.getAddress(name)
+        return this.provider.ens.getAddress(name)
     }
 }
 
