@@ -8,8 +8,8 @@ import { withCache } from "../src/internal/filecache.js";
 import { opcodes } from "../src/opcodes.js";
 import { CompatibleProvider } from "../src/providers.js";
 
-const { INFURA_API_KEY } = process.env;
-const provider = CompatibleProvider(INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : ethers.getDefaultProvider("homestead"));
+const { INFURA_API_KEY, PROVIDER_RPC_URL } = process.env;
+const provider = CompatibleProvider(INFURA_API_KEY ? (new ethers.InfuraProvider("homestead", INFURA_API_KEY)) : (PROVIDER_RPC_URL ? (new ethers.JsonRpcProvider(PROVIDER_RPC_URL)) : ethers.getDefaultProvider("homestead")));
 
 async function main() {
     const address = process.env["ADDRESS"] || process.argv[2];
