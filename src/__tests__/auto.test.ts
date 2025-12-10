@@ -19,7 +19,7 @@ test('autoload throws typed error', async () => {
 
 test('autoload sets hasCode to false if code is empty', async () => {
     const fakeProvider = (code: string) => ({
-      request: () => code,
+        request: () => code,
     });
     const address = "0x00000000219ab540356cBB839Cbe05303d7705Fa"
     await expect(autoload(address, { provider: fakeProvider("0x") })).resolves.toMatchObject({ hasCode: false });
@@ -80,7 +80,7 @@ online_test('autoload full', async ({ provider, env }) => {
         "type": "function"
     });
     expect(abi).toContainEqual({
-        "inputs": [ { "type": "uint256" }, { "type": "address[]" }, { "type": "bytes[]" } ],
+        "inputs": [{ "type": "uint256" }, { "type": "address[]" }, { "type": "bytes[]" }],
         "name": "batchCall",
         "selector": "0xec0ab6a7",
         "sig": "batchCall(uint256,address[],bytes[])",
@@ -161,3 +161,12 @@ cached_test('autoload ambiguous proxy', async ({ provider, env, withCache }) => 
     expect(result.followProxies).toBeFalsy();
 });
 
+
+online_test('autoload WithBlockNumber from getBlockNumber', async ({ provider }) => {
+    const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
+    const blockNumber = await provider.provider.getBlockNumber();
+    expect(blockNumber).toBeGreaterThan(100);
+    const blockProvider = whatsabi.providers.WithBlockNumber(provider, blockNumber);
+    const result = await whatsabi.autoload(address, { provider: blockProvider });
+    expect(result.abi.length).toBeGreaterThan(0);
+});
