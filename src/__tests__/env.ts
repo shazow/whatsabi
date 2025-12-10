@@ -1,7 +1,7 @@
 import { test, describe } from 'vitest';
 
 import { ethers } from "ethers";
-import { createPublicClient, createWalletClient, http } from 'viem';
+import { createPublicClient, createWalletClient, http, publicActions } from 'viem';
 import { Web3 } from "web3";
 
 import { withCache } from "../internal/filecache";
@@ -38,7 +38,7 @@ export function makeProvider(rpc_url?: string): Provider {
             const transport = http(rpc_url ?? DEFAULT_PUBLIC_RPC);
             if (env.PROVIDER.endsWith("publicClient")) return createPublicClient({ transport });
             if (env.PROVIDER.endsWith("transport")) return transport({});
-            return createWalletClient({ transport });
+            return createWalletClient({ transport }).extend(publicActions);
         }
 
         if (env.PROVIDER === "web3") {
