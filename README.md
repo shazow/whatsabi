@@ -185,6 +185,7 @@ console.log("Resolved to:", address);
 * [blockscout](https://www.blockscout.com/) - Open source block explorer
 * [curvegrid](https://www.curvegrid.com/) - Platform for building EVM applications
 * [tevm](https://tevm.sh/) - EVM toolkit for TypeScript
+* [JAW.id](https://jaw.id/) - Smart account infrastructure, transaction calldata decoding powered by WhatsABI
 
 ### Talks & Presentations
 
