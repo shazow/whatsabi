@@ -14,10 +14,9 @@
       };
     in {
       devShells.default = pkgs.mkShell {
-        buildInputs = with pkgs.nodePackages_latest; [
-          nodejs
-          pnpm
-
+        buildInputs = [
+          pkgs.nodejs_25
+          pkgs.pnpm
         ] ++ [
           pkgs.graphviz  # For debugging
           pkgs.gnumake
