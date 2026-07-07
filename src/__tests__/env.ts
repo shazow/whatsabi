@@ -10,6 +10,7 @@ import { CompatibleProvider, Provider } from "../providers.js";
 const env = {
     INFURA_API_KEY: process.env.INFURA_API_KEY,
     ETHERSCAN_API_KEY: process.env.ETHERSCAN_API_KEY,
+    BLOCKSCOUT_API_KEY: process.env.BLOCKSCOUT_API_KEY,
 
     PROVIDER: process.env.PROVIDER,
     PROVIDER_RPC_URL: process.env.PROVIDER_RPC_URL,

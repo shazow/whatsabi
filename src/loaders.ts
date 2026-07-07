@@ -480,10 +480,16 @@ export class BlockscoutABILoader implements ABILoader {
     apiKey?: string;
     baseURL: string;
 
-    constructor(config?: { apiKey?: string; baseURL?: string }) {
+    constructor(config?: { apiKey?: string; baseURL?: string; chainId?: number }) {
         if (config === undefined) config = {};
         this.apiKey = config.apiKey;
-        this.baseURL = config.baseURL || "https://eth.blockscout.com/api";
+        // A chainId routes through the multichain gateway, which requires an
+        // apiKey (or an x402 payment); the server enforces this. An explicit
+        // baseURL wins over chainId.
+        this.baseURL = config.baseURL ||
+            (config.chainId !== undefined
+                ? `https://api.blockscout.com/${config.chainId}/api`
+                : "https://eth.blockscout.com/api");
     }
 
     /** Blockscout helper for converting the result arg to a decoded ContractSources. */

@@ -63,6 +63,16 @@ describe('loaders: ABILoader', () => {
     expect(selectors).toContain(sig);
   })
 
+  online_test('BlockscoutABILoader_chainId', async ({ env }) => {
+    const loader = new BlockscoutABILoader({
+      apiKey: env["BLOCKSCOUT_API_KEY"],
+      chainId: 8453,
+    });
+    const abi = await loader.loadABI("0x4200000000000000000000000000000000000006"); // WETH9 predeploy on Base
+    const selectors = Object.values(selectorsFromABI(abi));
+    expect(selectors).toContain("deposit()");
+  })
+
   online_test('MultiABILoader', async ({ env }) => {
     // A contract that is verified on etherscan but not sourcify
     const address = "0xa9a57f7d2A54C1E172a7dC546fEE6e03afdD28E2";
@@ -283,6 +293,21 @@ describe('loaders: helpers', () => {
     expect(
       SourcifyABILoader.stripPathPrefix("/contracts/full_match/1/0x1F98431c8aD98523631AE4a59f267346ea31F984/metadata.json")
     ).toEqual("metadata.json");
+  });
+
+  test('BlockscoutABILoader baseURL from chainId', () => {
+    // chainId routes through the multichain gateway, like EtherscanV2ABILoader
+    expect(
+      new BlockscoutABILoader({ apiKey: "key", chainId: 8453 }).baseURL
+    ).toEqual("https://api.blockscout.com/8453/api");
+
+    // No config keeps the historical default
+    expect(new BlockscoutABILoader().baseURL).toEqual("https://eth.blockscout.com/api");
+
+    // An explicit baseURL wins over chainId
+    expect(
+      new BlockscoutABILoader({ baseURL: "https://base.blockscout.com/api", chainId: 8453 }).baseURL
+    ).toEqual("https://base.blockscout.com/api");
   });
 });
 
