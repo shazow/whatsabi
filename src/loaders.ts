@@ -113,6 +113,7 @@ export class MultiABILoader implements ABILoader {
     }
 
     async getContract(address: string): Promise<ContractResult> {
+        const failures: { loader: ABILoader, error: any }[] = [];
         for (const loader of this.loaders) {
             try {
                 const r = await loader.getContract(address);
@@ -121,18 +122,28 @@ export class MultiABILoader implements ABILoader {
                     return r;
                 }
             } catch (err: any) {
+                // A 404 is an ordinary miss (contract not indexed by this
+                // loader); anything else is a loader failure. Keep walking the
+                // chain either way, so one degraded loader can't mask a
+                // healthy loader behind it.
                 if (err.cause?.status === 404) continue;
-
-                throw new MultiABILoaderError("MultiABILoader getContract error: " + err.message, {
-                    context: { loader, address },
-                    cause: err,
-                });
+                failures.push({ loader, error: err });
             }
+        }
+        if (failures.length > 0) {
+            // No loader produced a result and at least one failed, so we
+            // can't distinguish "unverified" from "unavailable". Surface the
+            // failures rather than returning a false miss.
+            throw new MultiABILoaderError("MultiABILoader getContract errors: " + failures.map(f => f.loader.name + ": " + f.error.message).join("; "), {
+                context: { failures, address, loader: failures[0].loader },
+                cause: failures[0].error,
+            });
         }
         return emptyContractResult;
     }
 
     async loadABI(address: string): Promise<any[]> {
+        const failures: { loader: ABILoader, error: any }[] = [];
         for (const loader of this.loaders) {
             try {
                 const r = await loader.loadABI(address);
@@ -143,13 +154,16 @@ export class MultiABILoader implements ABILoader {
                     return r;
                 }
             } catch (err: any) {
+                // Same walk semantics as getContract above.
                 if (err.cause?.status === 404) continue;
-
-                throw new MultiABILoaderError("MultiABILoader loadABI error: " + err.message, {
-                    context: { loader, address },
-                    cause: err,
-                });
+                failures.push({ loader, error: err });
             }
+        }
+        if (failures.length > 0) {
+            throw new MultiABILoaderError("MultiABILoader loadABI errors: " + failures.map(f => f.loader.name + ": " + f.error.message).join("; "), {
+                context: { failures, address, loader: failures[0].loader },
+                cause: failures[0].error,
+            });
         }
         return [];
     }

@@ -9,6 +9,7 @@ import {
   BlockscoutABILoader,
   AnyABILoader,
   MultiABILoader,
+  MultiABILoaderError,
 
   OpenChainSignatureLookup,
   SamczunSignatureLookup,
@@ -307,5 +308,80 @@ describe('loaders: helpers', () => {
     expect(
       new BlockscoutABILoader({ baseURL: "https://base.blockscout.com/api", chainId: 8453 }).baseURL
     ).toEqual("https://base.blockscout.com/api");
+  });
+});
+
+
+describe('loaders: MultiABILoader with degraded loaders', () => {
+  const address = "0xc0Da02939E1441F497fd74F78cE7Decb17B66529";
+  const verifiedABI = [
+    { type: "event", name: "NewImplementation" },
+    { type: "function", name: "implementation" },
+  ];
+
+  const failingLoader = (status?: number): ABILoader => ({
+    name: "FailingLoader",
+    getContract: async () => {
+      throw Object.assign(new Error(`upstream failure${status ? " " + status : ""}`), status ? { cause: { status } } : {});
+    },
+    loadABI: async () => {
+      throw Object.assign(new Error(`upstream failure${status ? " " + status : ""}`), status ? { cause: { status } } : {});
+    },
+  });
+
+  const okLoader: ABILoader = {
+    name: "OkLoader",
+    getContract: async () => ({ abi: verifiedABI, name: "Verified", ok: true }),
+    loadABI: async () => verifiedABI,
+  };
+
+  test('continues to the next loader when one fails', async () => {
+    const loader = new MultiABILoader([failingLoader(503), okLoader]);
+
+    expect(await loader.loadABI(address)).toEqual(verifiedABI);
+
+    const r = await loader.getContract(address);
+    expect(r.abi).toEqual(verifiedABI);
+    expect(r.name).toEqual("Verified");
+    expect(r.ok).toBeTruthy();
+  });
+
+  test('still treats a 404 as an ordinary miss', async () => {
+    const loader = new MultiABILoader([failingLoader(404), okLoader]);
+
+    expect(await loader.loadABI(address)).toEqual(verifiedABI);
+    expect((await loader.getContract(address)).name).toEqual("Verified");
+  });
+
+  test('throws an aggregate error when no loader can answer', async () => {
+    const loader = new MultiABILoader([failingLoader(503), failingLoader()]);
+
+    await expect(loader.loadABI(address)).rejects.toThrow(MultiABILoaderError);
+    const err: MultiABILoaderError = await loader.getContract(address).then(
+      () => { throw new Error("expected getContract to reject") },
+      (e) => e,
+    );
+    expect(err).toBeInstanceOf(MultiABILoaderError);
+    expect(err.context?.failures).toHaveLength(2);
+    // Kept for compatibility with the pre-aggregate error shape.
+    expect(err.context?.loader?.name).toEqual("FailingLoader");
+  });
+
+  test('throws rather than reporting unverified when a loader was unreachable', async () => {
+    // A clean miss from one loader cannot prove "unverified" while another
+    // loader was down: the contract might only be indexed by the broken one.
+    const loader = new MultiABILoader([failingLoader(503), failingLoader(404)]);
+
+    await expect(loader.loadABI(address)).rejects.toThrow(MultiABILoaderError);
+    await expect(loader.getContract(address)).rejects.toThrow(MultiABILoaderError);
+  });
+
+  test('returns the empty result when every loader misses', async () => {
+    const loader = new MultiABILoader([failingLoader(404), failingLoader(404)]);
+
+    expect(await loader.loadABI(address)).toEqual([]);
+    const r = await loader.getContract(address);
+    expect(r.abi).toEqual([]);
+    expect(r.ok).toBeFalsy();
   });
 });
