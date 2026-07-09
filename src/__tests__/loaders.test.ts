@@ -1,4 +1,4 @@
-import { expect, describe, test as vitestTest, vi, afterEach } from 'vitest';
+import { expect, describe, vi, afterEach } from 'vitest';
 
 import {
   defaultABILoader,
@@ -74,7 +74,18 @@ describe('loaders: ABILoader', () => {
       apiKey: env["BLOCKSCOUT_API_KEY"],
       chainId: 8453,
     });
-    const abi = await loader.loadABI("0x4200000000000000000000000000000000000006"); // WETH9 predeploy on Base
+    const abiPromise = loader.loadABI("0x4200000000000000000000000000000000000006"); // WETH9 predeploy on Base
+    if (!env["BLOCKSCOUT_API_KEY"]) {
+      const error = await abiPromise.then(
+        () => undefined,
+        (error) => error,
+      );
+      expect(error).toBeInstanceOf(BlockscoutABILoaderError);
+      expect(error.context).toMatchObject({ status: 402 });
+      return;
+    }
+
+    const abi = await abiPromise;
     const selectors = Object.values(selectorsFromABI(abi));
     expect(selectors).toContain("deposit()");
   })
@@ -215,7 +226,7 @@ describe('loaders: ABILoader', () => {
 });
 
 describe('loaders: SourcifyABILoader v2', () => {
-  vitestTest('loadABI uses the Sourcify v2 contract endpoint', async () => {
+  test('loadABI uses the Sourcify v2 contract endpoint', async () => {
     const abi = [{ type: "function", name: "balanceOf" }];
     const fetch = vi.fn(async (url: string) => {
       const parsedURL = new URL(url);
@@ -235,7 +246,7 @@ describe('loaders: SourcifyABILoader v2', () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
-  vitestTest('getContract maps the Sourcify v2 contract response', async () => {
+  test('getContract maps the Sourcify v2 contract response', async () => {
     const abi = [{ type: "function", name: "transfer" }];
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       const parsedURL = new URL(url);
@@ -277,7 +288,29 @@ describe('loaders: SourcifyABILoader v2', () => {
 });
 
 describe('loaders: BlockscoutABILoader', () => {
-  vitestTest.each(['getContract', 'loadABI'] as const)(
+  test('treats 404 responses as ordinary misses', async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(
+      JSON.stringify({ message: "Not found" }),
+      {
+        status: 404,
+        statusText: "Not Found",
+        headers: { "Content-Type": "application/json" },
+      },
+    )));
+
+    const loader = new BlockscoutABILoader({
+      baseURL: "https://eth.blockscout.test/api",
+    });
+    const address = "0x0000000000000000000000000000000000000001";
+
+    await expect(loader.loadABI(address)).resolves.toStrictEqual([]);
+    await expect(loader.getContract(address)).resolves.toMatchObject({
+      abi: [],
+      ok: false,
+    });
+  });
+
+  test.each(['getContract', 'loadABI'] as const)(
     '%s throws on unsuccessful HTTP responses',
     async (method) => {
       const address = "0x0000000000000000000000000000000000000001";

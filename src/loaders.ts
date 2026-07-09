@@ -491,6 +491,7 @@ export class BlockscoutABILoader implements ABILoader {
             const r = await fetch(url);
             const result = (await r.json()) as BlockscoutContractResult;
 
+            if (r.status === 404) return emptyContractResult;
             if (!r.ok) {
                 throw new BlockscoutABILoaderError(
                     `BlockscoutABILoader getContract response error: ${r.status} ${r.statusText}: ${JSON.stringify(result)}`,
@@ -554,6 +555,7 @@ export class BlockscoutABILoader implements ABILoader {
         try {
             const r = await fetch(url);
             const result = (await r.json()) as BlockscoutContractResult;
+            if (r.status === 404) return [];
             if (!r.ok) {
                 throw new BlockscoutABILoaderError(
                     `BlockscoutABILoader loadABI response error: ${r.status} ${r.statusText}: ${JSON.stringify(result)}`,
