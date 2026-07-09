@@ -7,6 +7,7 @@ import {
   SourcifyABILoader,
   EtherscanV2ABILoader,
   BlockscoutABILoader,
+  BlockscoutABILoaderError,
   AnyABILoader,
   MultiABILoader,
   MultiABILoaderError,
@@ -273,6 +274,43 @@ describe('loaders: SourcifyABILoader v2', () => {
     });
     await expect(result.getSources?.()).resolves.toStrictEqual([{ path: "Token.sol", content: "contract Token {}" }]);
   });
+});
+
+describe('loaders: BlockscoutABILoader', () => {
+  vitestTest.each(['getContract', 'loadABI'] as const)(
+    '%s throws on unsuccessful HTTP responses',
+    async (method) => {
+      const address = "0x0000000000000000000000000000000000000001";
+      const responseBody = {
+        error: "Proceed with API key or make a X402 payment to continue",
+      };
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(
+        JSON.stringify(responseBody),
+        {
+          status: 402,
+          statusText: "Payment Required",
+          headers: { "Content-Type": "application/json" },
+        },
+      )));
+
+      const loader = new BlockscoutABILoader({
+        baseURL: "https://api.blockscout.test/8453/api",
+      });
+      const error = await loader[method](address).then(
+        () => undefined,
+        (error) => error,
+      );
+
+      expect(error).toBeInstanceOf(BlockscoutABILoaderError);
+      expect(error.message).toContain("402 Payment Required");
+      expect(error.message).toContain(responseBody.error);
+      expect(error.context).toMatchObject({
+        address,
+        status: 402,
+        response: responseBody,
+      });
+    },
+  );
 });
 
 describe_cached("loaders: ABILoader suite", async ({ env }) => {

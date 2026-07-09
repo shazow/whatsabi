@@ -491,6 +491,15 @@ export class BlockscoutABILoader implements ABILoader {
             const r = await fetch(url);
             const result = (await r.json()) as BlockscoutContractResult;
 
+            if (!r.ok) {
+                throw new BlockscoutABILoaderError(
+                    `BlockscoutABILoader getContract response error: ${r.status} ${r.statusText}: ${JSON.stringify(result)}`,
+                    {
+                        context: { url, address, status: r.status, response: result },
+                    }
+                );
+            }
+
             if (
                 !result.abi ||
                 !result.name ||
@@ -527,6 +536,7 @@ export class BlockscoutABILoader implements ABILoader {
                 loaderResult: result,
             };
         } catch (err: any) {
+            if (err instanceof BlockscoutABILoaderError) throw err;
             throw new BlockscoutABILoaderError(
                 "BlockscoutABILoader getContract error: " + err.message,
                 {
@@ -544,11 +554,20 @@ export class BlockscoutABILoader implements ABILoader {
         try {
             const r = await fetch(url);
             const result = (await r.json()) as BlockscoutContractResult;
+            if (!r.ok) {
+                throw new BlockscoutABILoaderError(
+                    `BlockscoutABILoader loadABI response error: ${r.status} ${r.statusText}: ${JSON.stringify(result)}`,
+                    {
+                        context: { url, address, status: r.status, response: result },
+                    }
+                );
+            }
             if (!result.abi) {
                 return [];
             }
             return result.abi;
         } catch (err: any) {
+            if (err instanceof BlockscoutABILoaderError) throw err;
             throw new BlockscoutABILoaderError(
                 "BlockscoutABILoader loadABI error: " + err.message,
                 {
