@@ -60,7 +60,7 @@ export type ContractResult = {
      *
      * @experimental
      */
-    loaderResult?: EtherscanContractResult | SourcifyContractMetadata | any;
+    loaderResult?: EtherscanContractResult | SourcifyContractMetadata | SourcifyContractResult | any;
 }
 
 /**
@@ -348,103 +348,53 @@ export class SourcifyABILoader implements ABILoader {
         return path.replace(/^\/contracts\/(full|partial)_match\/\d*\/\w*\/(sources\/)?/, "");
     }
 
-    async #loadContract(url: string): Promise<ContractResult> {
+    async #loadContract(address: string): Promise<ContractResult> {
+        const url = new URL(`https://sourcify.dev/server/v2/contract/${this.chainId}/${address}`);
+        url.searchParams.set("fields", "abi,compilation,sources");
+
         try {
-            const r = await fetchJSON(url);
-            const files: Array<{ name: string, path: string, content: string }> = r.files ?? r;
-
-            // Metadata is usually the first one
-            const metadata = files.find((f) => f.name === "metadata.json")
-            if (metadata === undefined) throw new SourcifyABILoaderError("metadata.json not found");
-
-            // Note: Sometimes metadata.json contains sources, but not always. So we can't rely on just the metadata.json
-            const m = JSON.parse(metadata.content) as SourcifyContractMetadata;
-
-            // Sourcify includes a title from the Natspec comments
-            let name = m.output.devdoc?.title;
-            if (!name && m.settings.compilationTarget) {
-                // Try to use the compilation target name as a fallback
-                const targetNames = Object.values(m.settings.compilationTarget);
-                if (targetNames.length > 0) {
-                    name = targetNames[0];
-                }
-            }
+            const result = await fetchJSON(url.toString()) as SourcifyContractResult;
+            const sources = result.sources ?? {};
+            const settings = result.compilation?.compilerSettings;
 
             return {
-                abi: m.output.abi,
-                name: name ?? null,
-                evmVersion: m.settings.evmVersion,
-                compilerVersion: m.compiler.version,
-                runs: m.settings.optimizer.runs,
-
-                // TODO: Paths will have a sourcify prefix, do we want to strip it to help normalize? It doesn't break anything keeping the prefix, so not sure.
-                // E.g. /contracts/full_match/1/0x1F98431c8aD98523631AE4a59f267346ea31F984/sources/contracts/interfaces/IERC20Minimal.sol
-                // Can use stripPathPrefix helper to do this, but maybe we want something like getSources({ normalize: true })?
-                getSources: async () => files.map(({ path, content }) => { return { path, content } }),
-
-                ok: true,
+                abi: result.abi,
+                name: result.compilation?.name ?? null,
+                evmVersion: settings?.evmVersion,
+                compilerVersion: result.compilation?.compilerVersion,
+                runs: settings?.optimizer?.runs,
+                getSources: async () => Object.entries(sources).map(([path, source]) => { return { path, content: source.content } }),
+                ok: result.match === "match" || result.match === "exact_match",
                 loader: this,
-                loaderResult: m,
+                loaderResult: result,
             };
         } catch (err: any) {
             if (isSourcifyNotFound(err)) return emptyContractResult;
             throw new SourcifyABILoaderError("SourcifyABILoader load contract error: " + err.message, {
-                context: { url },
+                context: { address, url: url.toString() },
                 cause: err,
             });
         }
     }
 
     async getContract(address: string): Promise<ContractResult> {
-        {
-            // Full match index includes verification settings that matches exactly
-            const url = "https://sourcify.dev/server/files/" + this.chainId + "/" + address;
-            const r = await this.#loadContract(url);
-            if (r.ok) return r;
-        }
-
-        {
-            // Partial match index is for verified contracts whose settings didn't match exactly
-            const url = "https://sourcify.dev/server/files/any/" + this.chainId + "/" + address;
-            const r = await this.#loadContract(url);
-            if (r.ok) return r;
-        }
-
-        return emptyContractResult;
+        return this.#loadContract(address);
     }
 
     async loadABI(address: string): Promise<any[]> {
-        {
-            // Full match index includes verification settings that matches exactly
-            const url = "https://sourcify.dev/server/repository/contracts/full_match/" + this.chainId + "/" + address + "/metadata.json";
-            try {
-                return (await fetchJSON(url)).output.abi;
-            } catch (err: any) {
-                if (!isSourcifyNotFound(err)) {
-                    throw new SourcifyABILoaderError("SourcifyABILoader loadABI error: " + err.message, {
-                        context: { address, url },
-                        cause: err,
-                    });
-                }
-            }
-        }
+        const url = new URL(`https://sourcify.dev/server/v2/contract/${this.chainId}/${address}`);
+        url.searchParams.set("fields", "abi");
 
-        {
-            // Partial match index is for verified contracts whose settings didn't match exactly
-            const url = "https://sourcify.dev/server/repository/contracts/partial_match/" + this.chainId + "/" + address + "/metadata.json";
-            try {
-                return (await fetchJSON(url)).output.abi;
-            } catch (err: any) {
-                if (!isSourcifyNotFound(err)) {
-                    throw new SourcifyABILoaderError("SourcifyABILoader loadABI error: " + err.message, {
-                        context: { address, url },
-                        cause: err,
-                    });
-                }
-            }
+        try {
+            const result = await fetchJSON(url.toString()) as SourcifyContractResult;
+            return result.abi;
+        } catch (err: any) {
+            if (isSourcifyNotFound(err)) return [];
+            throw new SourcifyABILoaderError("SourcifyABILoader loadABI error: " + err.message, {
+                context: { address, url: url.toString() },
+                cause: err,
+            });
         }
-
-        return [];
     }
 }
 
@@ -471,6 +421,22 @@ export interface SourcifyContractMetadata {
     };
     sources: Record<string, any>;
     version: number;
+}
+
+/// Sourcify Contract result from API v2 response
+export interface SourcifyContractResult {
+    abi: any[];
+    compilation?: {
+        compilerVersion?: string;
+        compilerSettings?: {
+            evmVersion?: string;
+            optimizer?: { runs?: number };
+        };
+        name?: string;
+        fullyQualifiedName?: string;
+    };
+    sources?: Record<string, { content: string }>;
+    match?: "match" | "exact_match" | string;
 }
 
 /** Blockscout API loader: https://docs.blockscout.com/ */

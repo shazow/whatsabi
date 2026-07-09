@@ -1,4 +1,4 @@
-import { expect, describe } from 'vitest';
+import { expect, describe, test as vitestTest, vi, afterEach } from 'vitest';
 
 import {
   defaultABILoader,
@@ -24,6 +24,11 @@ import { selectorsFromABI } from "../index";
 import { describe_cached, online_test, test } from "./env";
 
 const SLOW_ETHERSCAN_TIMEOUT = 30000;
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('loaders: ABILoader', () => {
   online_test('defaultABILoader', async () => {
@@ -94,8 +99,7 @@ describe('loaders: ABILoader', () => {
     expect(selectors).toContain(sig);
     expect(result.name).toStrictEqual("UniswapV2Router02")
     expect(result.loader?.name).toStrictEqual("SourcifyABILoader");
-    expect(result.loaderResult?.output?.userdoc).toBeDefined();
-    expect(result.loaderResult?.output?.devdoc).toBeDefined();
+    expect(result.loaderResult?.compilation).toBeDefined();
   })
 
   online_test('SourcifyABILoader_getContract_UniswapV3Factory', async () => {
@@ -104,7 +108,7 @@ describe('loaders: ABILoader', () => {
     const selectors = Object.values(selectorsFromABI(abi));
     const sig = "owner()";
     expect(selectors).toContain(sig);
-    expect(name).toEqual("Canonical Uniswap V3 factory");
+    expect(name).toEqual("UniswapV3Factory");
   })
 
   online_test('EtherscanV2ABILoader_getContract', async ({ env }) => {
@@ -174,7 +178,7 @@ describe('loaders: ABILoader', () => {
     const sig = "owner()";
     const selectors = Object.values(selectorsFromABI(abi));
     expect(selectors).toContain(sig);
-    expect(name).toEqual("Canonical Uniswap V3 factory");
+    expect(name).toEqual("UniswapV3Factory");
   }, SLOW_ETHERSCAN_TIMEOUT);
 
   online_test('MultiABILoader_SourcifyOnly_getContract_UniswapV3Factory', async () => {
@@ -186,10 +190,9 @@ describe('loaders: ABILoader', () => {
     const sig = "owner()";
     const selectors = Object.values(selectorsFromABI(result.abi));
     expect(selectors).toContain(sig);
-    expect(result.name).toEqual("Canonical Uniswap V3 factory");
+    expect(result.name).toEqual("UniswapV3Factory");
     expect(result.loader?.name).toStrictEqual(SourcifyABILoader.name);
-    expect(result.loaderResult?.output?.userdoc).toBeDefined();
-    expect(result.loaderResult?.output?.devdoc).toBeDefined();
+    expect(result.loaderResult?.compilation).toBeDefined();
   }, SLOW_ETHERSCAN_TIMEOUT);
 
   online_test('MultiABILoader_EtherscanOnly_getContract_UniswapV3Factory', async ({ env }) => {
@@ -208,6 +211,68 @@ describe('loaders: ABILoader', () => {
       sources?.find(s => s.path?.endsWith("contracts/libraries/UnsafeMath.sol"))?.content
     ).contains("pragma solidity");
   }, SLOW_ETHERSCAN_TIMEOUT);
+});
+
+describe('loaders: SourcifyABILoader v2', () => {
+  vitestTest('loadABI uses the Sourcify v2 contract endpoint', async () => {
+    const abi = [{ type: "function", name: "balanceOf" }];
+    const fetch = vi.fn(async (url: string) => {
+      const parsedURL = new URL(url);
+      expect(parsedURL.pathname).toBe("/server/v2/contract/8453/0x0000000000000000000000000000000000000001");
+      expect(parsedURL.searchParams.get("fields")).toBe("abi");
+      expect(url).not.toContain("/repository/contracts/");
+      return {
+        ok: true,
+        json: async () => ({ abi }),
+      };
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    const loader = new SourcifyABILoader({ chainId: 8453 });
+
+    await expect(loader.loadABI("0x0000000000000000000000000000000000000001")).resolves.toStrictEqual(abi);
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  vitestTest('getContract maps the Sourcify v2 contract response', async () => {
+    const abi = [{ type: "function", name: "transfer" }];
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const parsedURL = new URL(url);
+      expect(parsedURL.pathname).toBe("/server/v2/contract/8453/0x0000000000000000000000000000000000000001");
+      expect(parsedURL.searchParams.get("fields")).toBe("abi,compilation,sources");
+      return {
+        ok: true,
+        json: async () => ({
+          abi,
+          compilation: {
+            name: "Token",
+            compilerVersion: "0.8.30+commit.73712a01",
+            compilerSettings: {
+              evmVersion: "paris",
+              optimizer: { runs: 200 },
+            },
+          },
+          sources: {
+            "Token.sol": { content: "contract Token {}" },
+          },
+          match: "match",
+        }),
+      };
+    }));
+
+    const loader = new SourcifyABILoader({ chainId: 8453 });
+    const result = await loader.getContract("0x0000000000000000000000000000000000000001");
+
+    expect(result).toMatchObject({
+      abi,
+      name: "Token",
+      ok: true,
+      evmVersion: "paris",
+      compilerVersion: "0.8.30+commit.73712a01",
+      runs: 200,
+    });
+    await expect(result.getSources?.()).resolves.toStrictEqual([{ path: "Token.sol", content: "contract Token {}" }]);
+  });
 });
 
 describe_cached("loaders: ABILoader suite", async ({ env }) => {
