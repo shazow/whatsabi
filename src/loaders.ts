@@ -327,11 +327,12 @@ export class EtherscanV1ABILoader extends EtherscanV2ABILoader {
 };
 
 function isSourcifyNotFound(error: any): boolean {
-    return (
-        // Sourcify returns strict CORS only if there is no result -_-
-        error.message === "Failed to fetch" ||
-        error.status === 404
-    );
+    // Note: The v1 API returned strict CORS on a miss, so "Failed to fetch"
+    // used to imply not-found. The v2 API serves proper CORS headers and a
+    // real 404, so a network-level failure is a failure again: treating it as
+    // a miss would let MultiABILoader report "unverified" while Sourcify was
+    // merely unreachable.
+    return error.status === 404;
 }
 
 // https://sourcify.dev/
@@ -344,26 +345,46 @@ export class SourcifyABILoader implements ABILoader {
         this.chainId = config?.chainId ?? 1;
     }
 
+    /** @deprecated Source paths from the API v2 are no longer prefixed, so stripping is unnecessary for new results. */
     static stripPathPrefix(path: string): string {
         return path.replace(/^\/contracts\/(full|partial)_match\/\d*\/\w*\/(sources\/)?/, "");
     }
 
-    async #loadContract(address: string): Promise<ContractResult> {
+    #contractURL(address: string, fields: string): URL {
         const url = new URL(`https://sourcify.dev/server/v2/contract/${this.chainId}/${address}`);
-        url.searchParams.set("fields", "abi,compilation,sources");
+        url.searchParams.set("fields", fields);
+        return url;
+    }
+
+    async #loadSources(address: string): Promise<ContractSources> {
+        const url = this.#contractURL(address, "sources");
 
         try {
             const result = await fetchJSON(url.toString()) as SourcifyContractResult;
-            const sources = result.sources ?? {};
+            return Object.entries(result.sources ?? {}).map(([path, source]) => { return { path, content: source.content } });
+        } catch (err: any) {
+            throw new SourcifyABILoaderError("SourcifyABILoader getSources error: " + err.message, {
+                context: { address, url: url.toString() },
+                cause: err,
+            });
+        }
+    }
+
+    async #loadContract(address: string): Promise<ContractResult> {
+        const url = this.#contractURL(address, "abi,compilation,metadata");
+
+        try {
+            const result = await fetchJSON(url.toString()) as SourcifyContractResult;
             const settings = result.compilation?.compilerSettings;
 
             return {
-                abi: result.abi,
+                abi: result.abi ?? [],
                 name: result.compilation?.name ?? null,
                 evmVersion: settings?.evmVersion,
                 compilerVersion: result.compilation?.compilerVersion,
                 runs: settings?.optimizer?.runs,
-                getSources: async () => Object.entries(sources).map(([path, source]) => { return { path, content: source.content } }),
+                // Sources can be large, so they're fetched separately and only on demand
+                getSources: () => this.#loadSources(address),
                 ok: result.match === "match" || result.match === "exact_match",
                 loader: this,
                 loaderResult: result,
@@ -382,12 +403,11 @@ export class SourcifyABILoader implements ABILoader {
     }
 
     async loadABI(address: string): Promise<any[]> {
-        const url = new URL(`https://sourcify.dev/server/v2/contract/${this.chainId}/${address}`);
-        url.searchParams.set("fields", "abi");
+        const url = this.#contractURL(address, "abi");
 
         try {
             const result = await fetchJSON(url.toString()) as SourcifyContractResult;
-            return result.abi;
+            return result.abi ?? [];
         } catch (err: any) {
             if (isSourcifyNotFound(err)) return [];
             throw new SourcifyABILoaderError("SourcifyABILoader loadABI error: " + err.message, {
@@ -435,6 +455,8 @@ export interface SourcifyContractResult {
         name?: string;
         fullyQualifiedName?: string;
     };
+    /// Solc/Vyper standard metadata, carrying the Natspec devdoc/userdoc
+    metadata?: SourcifyContractMetadata;
     sources?: Record<string, { content: string }>;
     match?: "match" | "exact_match" | string;
 }

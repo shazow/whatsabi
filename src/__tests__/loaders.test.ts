@@ -5,6 +5,7 @@ import {
   defaultSignatureLookup,
 
   SourcifyABILoader,
+  SourcifyABILoaderError,
   EtherscanV2ABILoader,
   BlockscoutABILoader,
   BlockscoutABILoaderError,
@@ -112,6 +113,11 @@ describe('loaders: ABILoader', () => {
     expect(result.name).toStrictEqual("UniswapV2Router02")
     expect(result.loader?.name).toStrictEqual("SourcifyABILoader");
     expect(result.loaderResult?.compilation).toBeDefined();
+    expect(result.loaderResult?.metadata?.output?.userdoc).toBeDefined();
+    expect(result.loaderResult?.metadata?.output?.devdoc).toBeDefined();
+
+    const sources = result.getSources && await result.getSources();
+    expect(sources && sources[0].content).toContain("pragma solidity");
   })
 
   online_test('SourcifyABILoader_getContract_UniswapV3Factory', async () => {
@@ -248,10 +254,25 @@ describe('loaders: SourcifyABILoader v2', () => {
 
   test('getContract maps the Sourcify v2 contract response', async () => {
     const abi = [{ type: "function", name: "transfer" }];
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    const metadata = { output: { devdoc: { title: "A token" }, userdoc: {} } };
+    const fetch = vi.fn(async (url: string) => {
       const parsedURL = new URL(url);
       expect(parsedURL.pathname).toBe("/server/v2/contract/8453/0x0000000000000000000000000000000000000001");
-      expect(parsedURL.searchParams.get("fields")).toBe("abi,compilation,sources");
+
+      // Sources are large, so they're only fetched when getSources() is called
+      if (parsedURL.searchParams.get("fields") === "sources") {
+        return {
+          ok: true,
+          json: async () => ({
+            sources: {
+              "Token.sol": { content: "contract Token {}" },
+            },
+            match: "match",
+          }),
+        };
+      }
+
+      expect(parsedURL.searchParams.get("fields")).toBe("abi,compilation,metadata");
       return {
         ok: true,
         json: async () => ({
@@ -264,13 +285,12 @@ describe('loaders: SourcifyABILoader v2', () => {
               optimizer: { runs: 200 },
             },
           },
-          sources: {
-            "Token.sol": { content: "contract Token {}" },
-          },
+          metadata,
           match: "match",
         }),
       };
-    }));
+    });
+    vi.stubGlobal("fetch", fetch);
 
     const loader = new SourcifyABILoader({ chainId: 8453 });
     const result = await loader.getContract("0x0000000000000000000000000000000000000001");
@@ -283,7 +303,40 @@ describe('loaders: SourcifyABILoader v2', () => {
       compilerVersion: "0.8.30+commit.73712a01",
       runs: 200,
     });
+    expect(result.loaderResult?.metadata).toStrictEqual(metadata);
+    expect(fetch).toHaveBeenCalledOnce();
+
     await expect(result.getSources?.()).resolves.toStrictEqual([{ path: "Token.sol", content: "contract Token {}" }]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  test('treats a 404 as unverified', async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+    })));
+
+    const loader = new SourcifyABILoader({ chainId: 8453 });
+    const address = "0x0000000000000000000000000000000000000001";
+
+    await expect(loader.loadABI(address)).resolves.toStrictEqual([]);
+    const r = await loader.getContract(address);
+    expect(r.ok).toBeFalsy();
+    expect(r.abi).toStrictEqual([]);
+  });
+
+  test('propagates network failures instead of reporting unverified', async () => {
+    // The v1 API returned strict CORS on a miss, so "Failed to fetch" used to
+    // read as not-found; with v2 it's a real failure and must surface, or
+    // MultiABILoader would report "unverified" while Sourcify was unreachable.
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch") }));
+
+    const loader = new SourcifyABILoader({ chainId: 8453 });
+    const address = "0x0000000000000000000000000000000000000001";
+
+    await expect(loader.loadABI(address)).rejects.toThrow(SourcifyABILoaderError);
+    await expect(loader.getContract(address)).rejects.toThrow(SourcifyABILoaderError);
   });
 });
 
