@@ -31,6 +31,7 @@ publish: clean
 	pnpm run build:types
 	pnpm pack
 	size-limit
+	@echo "Run: pnpm login; pnpm publish"
 
 run-examples:
 	./examples/autoload.ts $(ADDRESS)
