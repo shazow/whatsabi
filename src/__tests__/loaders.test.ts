@@ -288,13 +288,16 @@ describe('loaders: SourcifyABILoader v2', () => {
 });
 
 describe('loaders: BlockscoutABILoader', () => {
-  test('treats 404 responses as ordinary misses', async () => {
+  test.each([
+    ["JSON", JSON.stringify({ message: "Not found" }), "application/json"],
+    ["non-JSON", "<html>Not found</html>", "text/html"],
+  ])('treats %s 404 responses as ordinary misses', async (_, body, contentType) => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(
-      JSON.stringify({ message: "Not found" }),
+      body,
       {
         status: 404,
         statusText: "Not Found",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": contentType },
       },
     )));
 
@@ -309,6 +312,61 @@ describe('loaders: BlockscoutABILoader', () => {
       ok: false,
     });
   });
+
+  test('returns an ABI when optional contract metadata is missing', async () => {
+    const abi = [{ type: "function", name: "deposit", inputs: [] }];
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(
+      JSON.stringify({ abi }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    )));
+
+    const loader = new BlockscoutABILoader({
+      baseURL: "https://eth.blockscout.test/api",
+    });
+    const address = "0x0000000000000000000000000000000000000001";
+
+    await expect(loader.loadABI(address)).resolves.toStrictEqual(abi);
+    await expect(loader.getContract(address)).resolves.toMatchObject({
+      abi,
+      name: null,
+      ok: true,
+    });
+  });
+
+  test.each(['getContract', 'loadABI'] as const)(
+    '%s preserves non-JSON error responses',
+    async (method) => {
+      const responseBody = "<html>Service unavailable</html>";
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(
+        responseBody,
+        {
+          status: 503,
+          statusText: "Service Unavailable",
+          headers: { "Content-Type": "text/html" },
+        },
+      )));
+
+      const loader = new BlockscoutABILoader({
+        baseURL: "https://eth.blockscout.test/api",
+      });
+      const address = "0x0000000000000000000000000000000000000001";
+      const error = await loader[method](address).then(
+        () => undefined,
+        (error) => error,
+      );
+
+      expect(error).toBeInstanceOf(BlockscoutABILoaderError);
+      expect(error.message).toContain("503 Service Unavailable");
+      expect(error.context).toMatchObject({
+        address,
+        status: 503,
+        response: responseBody,
+      });
+    },
+  );
 
   test.each(['getContract', 'loadABI'] as const)(
     '%s throws on unsuccessful HTTP responses',

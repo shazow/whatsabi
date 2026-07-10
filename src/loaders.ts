@@ -483,46 +483,92 @@ export class BlockscoutABILoader implements ABILoader {
         return sources;
     }
 
-    async getContract(address: string): Promise<ContractResult> {
+    async #loadContract(address: string): Promise<ContractResult> {
         let url = this.baseURL + `/v2/smart-contracts/${address}`;
         if (this.apiKey) url += "?apikey=" + this.apiKey;
 
         try {
-            const r = await fetch(url);
-            const result = (await r.json()) as BlockscoutContractResult;
+            const response = await fetch(url);
+            if (response.status === 404) return emptyContractResult;
 
-            if (r.status === 404) return emptyContractResult;
-            if (!r.ok) {
+            const responseText = await response.text();
+            let responseBody: unknown = responseText;
+            try {
+                responseBody = JSON.parse(responseText);
+            } catch (err: any) {
+                if (response.ok) {
+                    throw new BlockscoutABILoaderError(
+                        "BlockscoutABILoader load contract returned invalid JSON",
+                        {
+                            context: {
+                                url,
+                                address,
+                                status: response.status,
+                                response: responseText,
+                            },
+                            cause: err,
+                        }
+                    );
+                }
+            }
+
+            const status = [response.status, response.statusText]
+                .filter(Boolean)
+                .join(" ");
+            if (!response.ok) {
+                const responseDescription = typeof responseBody === "string"
+                    ? responseBody
+                    : JSON.stringify(responseBody);
                 throw new BlockscoutABILoaderError(
-                    `BlockscoutABILoader getContract response error: ${r.status} ${r.statusText}: ${JSON.stringify(result)}`,
+                    `BlockscoutABILoader load contract response error: ${status}: ${responseDescription}`,
                     {
-                        context: { url, address, status: r.status, response: result },
+                        context: {
+                            url,
+                            address,
+                            status: response.status,
+                            response: responseBody,
+                        },
                     }
                 );
             }
 
             if (
-                !result.abi ||
-                !result.name ||
-                !result.compiler_version ||
-                !result.source_code
+                !responseBody ||
+                typeof responseBody !== "object" ||
+                Array.isArray(responseBody)
             ) {
-                return emptyContractResult;
+                throw new BlockscoutABILoaderError(
+                    "BlockscoutABILoader load contract returned invalid JSON",
+                    {
+                        context: {
+                            url,
+                            address,
+                            status: response.status,
+                            response: responseBody,
+                        },
+                    }
+                );
             }
 
+            const result = responseBody as BlockscoutContractResult;
+            if (!result.abi) return emptyContractResult;
+
+            // Blockscout can return an ABI without optional source or compiler
+            // metadata; ContractResult models those fields as optional, so a
+            // usable ABI is enough to consider the contract found.
             return {
                 abi: result.abi,
-                name: result.name,
-                evmVersion: result.evm_version || "",
+                name: result.name ?? null,
+                evmVersion: result.evm_version,
                 compilerVersion: result.compiler_version,
-                runs: result.optimization_runs || 200,
+                runs: result.optimization_runs ?? undefined,
 
                 getSources: async () => {
                     try {
                         return this.#toContractSources(result);
                     } catch (err: any) {
                         throw new BlockscoutABILoaderError(
-                            "BlockscoutABILoader getContract getSources error: " +
+                            "BlockscoutABILoader load contract getSources error: " +
                             err.message,
                             {
                                 context: { url, address },
@@ -539,7 +585,7 @@ export class BlockscoutABILoader implements ABILoader {
         } catch (err: any) {
             if (err instanceof BlockscoutABILoaderError) throw err;
             throw new BlockscoutABILoaderError(
-                "BlockscoutABILoader getContract error: " + err.message,
+                "BlockscoutABILoader load contract error: " + err.message,
                 {
                     context: { url, address },
                     cause: err,
@@ -548,36 +594,12 @@ export class BlockscoutABILoader implements ABILoader {
         }
     }
 
-    async loadABI(address: string): Promise<any[]> {
-        let url = this.baseURL + `/v2/smart-contracts/${address}`;
-        if (this.apiKey) url += "?apikey=" + this.apiKey;
+    async getContract(address: string): Promise<ContractResult> {
+        return this.#loadContract(address);
+    }
 
-        try {
-            const r = await fetch(url);
-            const result = (await r.json()) as BlockscoutContractResult;
-            if (r.status === 404) return [];
-            if (!r.ok) {
-                throw new BlockscoutABILoaderError(
-                    `BlockscoutABILoader loadABI response error: ${r.status} ${r.statusText}: ${JSON.stringify(result)}`,
-                    {
-                        context: { url, address, status: r.status, response: result },
-                    }
-                );
-            }
-            if (!result.abi) {
-                return [];
-            }
-            return result.abi;
-        } catch (err: any) {
-            if (err instanceof BlockscoutABILoaderError) throw err;
-            throw new BlockscoutABILoaderError(
-                "BlockscoutABILoader loadABI error: " + err.message,
-                {
-                    context: { url, address },
-                    cause: err,
-                }
-            );
-        }
+    async loadABI(address: string): Promise<any[]> {
+        return (await this.#loadContract(address)).abi;
     }
 }
 
