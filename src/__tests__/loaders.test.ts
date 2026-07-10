@@ -1,4 +1,4 @@
-import { expect, describe, test as vitestTest, vi, afterEach } from 'vitest';
+import { expect, describe, vi, afterEach } from 'vitest';
 
 import {
   defaultABILoader,
@@ -7,6 +7,7 @@ import {
   SourcifyABILoader,
   EtherscanV2ABILoader,
   BlockscoutABILoader,
+  BlockscoutABILoaderError,
   AnyABILoader,
   MultiABILoader,
   MultiABILoaderError,
@@ -73,7 +74,18 @@ describe('loaders: ABILoader', () => {
       apiKey: env["BLOCKSCOUT_API_KEY"],
       chainId: 8453,
     });
-    const abi = await loader.loadABI("0x4200000000000000000000000000000000000006"); // WETH9 predeploy on Base
+    const abiPromise = loader.loadABI("0x4200000000000000000000000000000000000006"); // WETH9 predeploy on Base
+    if (!env["BLOCKSCOUT_API_KEY"]) {
+      const error = await abiPromise.then(
+        () => undefined,
+        (error) => error,
+      );
+      expect(error).toBeInstanceOf(BlockscoutABILoaderError);
+      expect(error.context).toMatchObject({ status: 402 });
+      return;
+    }
+
+    const abi = await abiPromise;
     const selectors = Object.values(selectorsFromABI(abi));
     expect(selectors).toContain("deposit()");
   })
@@ -214,7 +226,7 @@ describe('loaders: ABILoader', () => {
 });
 
 describe('loaders: SourcifyABILoader v2', () => {
-  vitestTest('loadABI uses the Sourcify v2 contract endpoint', async () => {
+  test('loadABI uses the Sourcify v2 contract endpoint', async () => {
     const abi = [{ type: "function", name: "balanceOf" }];
     const fetch = vi.fn(async (url: string) => {
       const parsedURL = new URL(url);
@@ -234,7 +246,7 @@ describe('loaders: SourcifyABILoader v2', () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
-  vitestTest('getContract maps the Sourcify v2 contract response', async () => {
+  test('getContract maps the Sourcify v2 contract response', async () => {
     const abi = [{ type: "function", name: "transfer" }];
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       const parsedURL = new URL(url);
@@ -273,6 +285,123 @@ describe('loaders: SourcifyABILoader v2', () => {
     });
     await expect(result.getSources?.()).resolves.toStrictEqual([{ path: "Token.sol", content: "contract Token {}" }]);
   });
+});
+
+describe('loaders: BlockscoutABILoader', () => {
+  test.each([
+    ["JSON", JSON.stringify({ message: "Not found" }), "application/json"],
+    ["non-JSON", "<html>Not found</html>", "text/html"],
+  ])('treats %s 404 responses as ordinary misses', async (_, body, contentType) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(
+      body,
+      {
+        status: 404,
+        statusText: "Not Found",
+        headers: { "Content-Type": contentType },
+      },
+    )));
+
+    const loader = new BlockscoutABILoader({
+      baseURL: "https://eth.blockscout.test/api",
+    });
+    const address = "0x0000000000000000000000000000000000000001";
+
+    await expect(loader.loadABI(address)).resolves.toStrictEqual([]);
+    await expect(loader.getContract(address)).resolves.toMatchObject({
+      abi: [],
+      ok: false,
+    });
+  });
+
+  test('returns an ABI when optional contract metadata is missing', async () => {
+    const abi = [{ type: "function", name: "deposit", inputs: [] }];
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(
+      JSON.stringify({ abi }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      },
+    )));
+
+    const loader = new BlockscoutABILoader({
+      baseURL: "https://eth.blockscout.test/api",
+    });
+    const address = "0x0000000000000000000000000000000000000001";
+
+    await expect(loader.loadABI(address)).resolves.toStrictEqual(abi);
+    await expect(loader.getContract(address)).resolves.toMatchObject({
+      abi,
+      name: null,
+      ok: true,
+    });
+  });
+
+  test.each(['getContract', 'loadABI'] as const)(
+    '%s preserves non-JSON error responses',
+    async (method) => {
+      const responseBody = "<html>Service unavailable</html>";
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(
+        responseBody,
+        {
+          status: 503,
+          statusText: "Service Unavailable",
+          headers: { "Content-Type": "text/html" },
+        },
+      )));
+
+      const loader = new BlockscoutABILoader({
+        baseURL: "https://eth.blockscout.test/api",
+      });
+      const address = "0x0000000000000000000000000000000000000001";
+      const error = await loader[method](address).then(
+        () => undefined,
+        (error) => error,
+      );
+
+      expect(error).toBeInstanceOf(BlockscoutABILoaderError);
+      expect(error.message).toContain("503 Service Unavailable");
+      expect(error.context).toMatchObject({
+        address,
+        status: 503,
+        response: responseBody,
+      });
+    },
+  );
+
+  test.each(['getContract', 'loadABI'] as const)(
+    '%s throws on unsuccessful HTTP responses',
+    async (method) => {
+      const address = "0x0000000000000000000000000000000000000001";
+      const responseBody = {
+        error: "Proceed with API key or make a X402 payment to continue",
+      };
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(
+        JSON.stringify(responseBody),
+        {
+          status: 402,
+          statusText: "Payment Required",
+          headers: { "Content-Type": "application/json" },
+        },
+      )));
+
+      const loader = new BlockscoutABILoader({
+        baseURL: "https://api.blockscout.test/8453/api",
+      });
+      const error = await loader[method](address).then(
+        () => undefined,
+        (error) => error,
+      );
+
+      expect(error).toBeInstanceOf(BlockscoutABILoaderError);
+      expect(error.message).toContain("402 Payment Required");
+      expect(error.message).toContain(responseBody.error);
+      expect(error.context).toMatchObject({
+        address,
+        status: 402,
+        response: responseBody,
+      });
+    },
+  );
 });
 
 describe_cached("loaders: ABILoader suite", async ({ env }) => {

@@ -15,7 +15,7 @@
     in {
       devShells.default = pkgs.mkShell {
         buildInputs = [
-          pkgs.nodejs_25
+          pkgs.nodejs_26
           pkgs.pnpm
         ] ++ [
           pkgs.graphviz  # For debugging
