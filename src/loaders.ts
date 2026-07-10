@@ -310,7 +310,7 @@ export class EtherscanV2ABILoader implements ABILoader {
 /**
   * Alias to the EtherscanV2ABILoader
   */
-export class EtherscanABILoader extends EtherscanV2ABILoader {};
+export class EtherscanABILoader extends EtherscanV2ABILoader { };
 
 /**
   * EtherscanV1ABILoader
@@ -844,7 +844,13 @@ export class OpenChainSignatureLookupError extends errors.LoaderError { };
 
 export class SamczunSignatureLookup extends OpenChainSignatureLookup { }
 
-const defaultEnv = typeof process !== "undefined" ? process.env : {};
+const defaultEnv = (
+    globalThis as {
+        process?: {
+            env?: Record<string, string | undefined>;
+        };
+    }
+).process?.env ?? {};
 
 export const defaultABILoader: ABILoader = new MultiABILoader([new SourcifyABILoader(), new EtherscanV2ABILoader({ apiKey: defaultEnv?.ETHERSCAN_API_KEY! })]);
 export const defaultSignatureLookup: SignatureLookup = new MultiSignatureLookup([new OpenChainSignatureLookup(), new FourByteSignatureLookup()]);
