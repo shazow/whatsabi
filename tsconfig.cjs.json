@@ -7,7 +7,7 @@
     "verbatimModuleSyntax": false,
     "removeComments": true,
     "module": "commonjs",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "outDir": "./lib.cjs"
   }
 }
