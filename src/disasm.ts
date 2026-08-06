@@ -529,7 +529,17 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
     // https://playground.sourcify.dev/
     if (!isHalt(finalByte) || code.bytecode.slice(-2)[0] === 0) {
         const cborLength = valueToOffset(code.bytecode.slice(-2));
-        endBoundary = -(cborLength + 2); // +4 for the length bytes
+        const metadataLength = cborLength + 2; // +2 for the length bytes, which are not counted in cborLength
+        const blobStart = code.bytecode.length - metadataLength;
+
+        // The trailing 2 bytes are only a CBOR length if the blob they imply fits
+        // inside the data segment and starts with a CBOR map header (solc emits
+        // 0xa1/0xa2/0xa3). If we were handed creation bytecode then the tail is
+        // constructor arguments and this number is meaningless, in which case we'd
+        // rather not trim at all than trim garbage.
+        const looksLikeCBOR = blobStart >= boundaryPos && (code.bytecode[blobStart] & 0xe0) === 0xa0;
+        if (looksLikeCBOR) endBoundary = -metadataLength;
+
         const cborData = code.bytecode.slice(endBoundary).slice(0, -2);
 
         if (cborData.length === 51) {

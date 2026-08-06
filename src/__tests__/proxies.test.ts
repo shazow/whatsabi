@@ -75,6 +75,69 @@ describe('proxy detection', () => {
     });
 });
 
+describe('proxy detection in the data segment', () => {
+    // These are hand-built bytecodes for exercising the scan that looks for known
+    // proxy slots in the data that lives after the end of the program:
+    //
+    //   600080fd        PUSH1 0x00 DUP1 REVERT   <- program, ends in a halt
+    //   <data segment>                           <- everything after the halt
+    //
+    // We only reach that scan when no proxy was found in the program itself, so
+    // the program here is deliberately trivial.
+    const HALTING_PROGRAM = "600080fd";
+
+    // Filler so that the data segment is long enough to be scanned even when the
+    // end boundary is computed too aggressively.
+    const FILLER = "11".repeat(32);
+
+    // A solc-style CBOR metadata blob followed by its 2-byte big-endian length,
+    // which is what solc appends to runtime bytecode:
+    //   {"ipfs": <34-byte multihash>, "solc": <3 bytes>}
+    // The blob itself is 51 bytes here, same as the real-world contract that
+    // prompted this test, so the trailing length bytes are 0x0033.
+    function cborMetadata(digest: string): string {
+        const blob =
+            "a2" +                       // map(2)
+            "64" + "69706673" +          // "ipfs"
+            "5822" + "1220" + digest +   // bytes(34): sha2-256 multihash
+            "64" + "736f6c63" +          // "solc"
+            "43" + "000606";             // bytes(3): 0.6.6
+        const length = blob.length / 2;
+        return blob + length.toString(16).padStart(4, "0");
+    }
+
+    const EIP1967_IMPL = proxies.slots.EIP1967_IMPL.slice(2);
+
+    test('Slot ending flush against the CBOR metadata', async () => {
+        // The slot value is the last thing before the metadata blob, so any
+        // over-trimming of the metadata clips the tail of the slot and hides it.
+        const bytecode = "0x" + HALTING_PROGRAM + FILLER + EIP1967_IMPL + cborMetadata("aa".repeat(32));
+
+        const program = disasm(bytecode);
+        expect(program.proxies.map(p => p.name)).toEqual(["EIP1967Proxy"]);
+    });
+
+    test('Slot inside the CBOR metadata is not a match', async () => {
+        // Same shape, except the slot value only appears within the metadata blob.
+        // Metadata is compiler output, not program data, so it stays out of the scan.
+        const bytecode = "0x" + HALTING_PROGRAM + FILLER + FILLER + cborMetadata(EIP1967_IMPL);
+
+        const program = disasm(bytecode);
+        expect(program.proxies).toEqual([]);
+    });
+
+    test('Trailing bytes that are not a CBOR length', async () => {
+        // Creation bytecode ends with constructor arguments, not with a metadata
+        // length. Here the final 2 bytes (0x99a7) would be read as a 39335-byte
+        // blob, which is longer than the whole bytecode.
+        const constructorArgs = "000000000000000000000000490e379c9cff64944be82b849f8fd5972c7999a7";
+        const bytecode = "0x" + HALTING_PROGRAM + FILLER + EIP1967_IMPL + cborMetadata("aa".repeat(32)) + constructorArgs;
+
+        const program = disasm(bytecode);
+        expect(program.proxies.map(p => p.name)).toEqual(["EIP1967Proxy"]);
+    });
+});
+
 describe('known proxy resolving', () => {
     online_test('Safe: Proxy Factory 1.1.1', async ({ provider }) => {
         const address = "0x655a9e6b044d6b62f393f9990ec3ea877e966e18";
