@@ -138,6 +138,38 @@ describe('proxy detection in the data segment', () => {
     });
 });
 
+describe('metadata extraction', () => {
+    const HALTING_PROGRAM = "600080fd";
+    const FILLER = "11".repeat(32);
+
+    test('solc {ipfs, solc} metadata is extracted', async () => {
+        const digest = "ab".repeat(32);
+        const metadata =
+            "a2" +                       // map(2)
+            "64" + "69706673" +          // "ipfs"
+            "5822" + "1220" + digest +   // bytes(34): sha2-256 multihash
+            "64" + "736f6c63" +          // "solc"
+            "43" + "000606" +            // bytes(3): 0.6.6
+            "0033";                      // 51-byte blob length
+        const bytecode = "0x" + HALTING_PROGRAM + FILLER + metadata;
+
+        const program = disasm(bytecode);
+        expect(program.metadata).toEqual({
+            ipfs: "0x1220" + digest,
+            solc: "0x000606",
+        });
+    });
+
+    test('no metadata extracted from constructor arguments', async () => {
+        // Creation bytecode tail is constructor arguments, not CBOR metadata.
+        const constructorArgs = "000000000000000000000000490e379c9cff64944be82b849f8fd5972c7999a7";
+        const bytecode = "0x" + HALTING_PROGRAM + FILLER + constructorArgs;
+
+        const program = disasm(bytecode);
+        expect(program.metadata).toBeUndefined();
+    });
+});
+
 describe('known proxy resolving', () => {
     online_test('Safe: Proxy Factory 1.1.1', async ({ provider }) => {
         const address = "0x655a9e6b044d6b62f393f9990ec3ea877e966e18";
