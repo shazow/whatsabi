@@ -538,15 +538,16 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
         // constructor arguments and this number is meaningless, in which case we'd
         // rather not trim at all than trim garbage.
         const looksLikeCBOR = blobStart >= boundaryPos && (code.bytecode[blobStart] & 0xe0) === 0xa0;
-        if (looksLikeCBOR) endBoundary = -metadataLength;
+        if (looksLikeCBOR) {
+            endBoundary = -metadataLength;
 
-        const cborData = code.bytecode.slice(endBoundary).slice(0, -2);
-
-        if (cborData.length === 51) {
-            // We're going to cheat if we suspect it's {ipfs, solc}
-            p.metadata = {
-                ipfs: bytesToHex(cborData.slice(8, 42)),  // 2 bytes map + 6 bytes "ipfs" for 34 bytes value
-                solc: bytesToHex(cborData.slice(48, 51)),  // 2 bytes map + 6 bytes "solc" for 3 bytes value
+            const cborData = code.bytecode.slice(blobStart, -2);
+            if (cborData.length === 51) {
+                // We're going to cheat if we suspect it's {ipfs, solc}
+                p.metadata = {
+                    ipfs: bytesToHex(cborData.slice(8, 42)),  // 2 bytes map + 6 bytes "ipfs" for 34 bytes value
+                    solc: bytesToHex(cborData.slice(48, 51)),  // 2 bytes map + 6 bytes "solc" for 3 bytes value
+                }
             }
         }
     }
