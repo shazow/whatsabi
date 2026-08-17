@@ -6,7 +6,7 @@ import { hexToBytes, bytesToHex } from "./utils.js";
 
 import { opcodes, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes.js";
 
-import { slotResolvers, SequenceWalletProxyResolver, FixedProxyResolver } from "./proxies.js";
+import { slotResolvers, slotPreimages, SequenceWalletProxyResolver, FixedProxyResolver } from "./proxies.js";
 
 
 function valueToOffset(value: Uint8Array): number {
@@ -563,6 +563,13 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             // Look for known slots in extra data segment that could be CODECOPY'd
             for (const [slot, resolver] of Object.entries(slotResolvers)) {
                 if (auxData.lastIndexOf(slot.slice(2)) === -1) continue;
+                p.proxies.push(resolver);
+            }
+
+            // Some proxies hash their slot pre-image at runtime rather than embedding
+            // the slot value, so the string itself is what lands in the data segment.
+            for (const [preimage, resolver] of Object.entries(slotPreimages)) {
+                if (auxData.lastIndexOf(preimage.slice(2)) === -1) continue;
                 p.proxies.push(resolver);
             }
         }
