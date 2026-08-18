@@ -4,6 +4,7 @@ import { cached_test, online_test, makeProvider } from './env';
 
 import { disasm } from '../disasm';
 import { addSlotOffset, readArray, joinSlot } from "../slots.js";
+import { bytesToHex, keccak256 } from '../utils';
 import * as proxies from '../proxies';
 
 import { ZEPPELINOS_USDC, WANDERWING } from './__fixtures__/proxies'
@@ -135,6 +136,34 @@ describe('proxy detection in the data segment', () => {
 
         const program = disasm(bytecode);
         expect(program.proxies.map(p => p.name)).toEqual(["EIP1967Proxy"]);
+    });
+
+    // Polygon's UpgradableProxy hashes this string at runtime instead of embedding
+    // the slot value, so the data segment carries the string and not the hash.
+    const MATIC_SLOT_STRING = "matic.network.proxy.implementation";
+    const MATIC_PREIMAGE = bytesToHex(new TextEncoder().encode(MATIC_SLOT_STRING)).slice(2);
+
+    test('Slot pre-image in the data segment is a match', async () => {
+        const bytecode = "0x" + HALTING_PROGRAM + FILLER + MATIC_PREIMAGE + cborMetadata("aa".repeat(32));
+
+        const program = disasm(bytecode);
+        expect(program.proxies.map(p => p.name)).toEqual(["MaticProxy"]);
+    });
+
+    test('Matic slot value in the data segment is a match', async () => {
+        // A solc new enough to fold the keccak256 into a constant emits the slot
+        // value itself, which the ordinary slot scan picks up without the pre-image.
+        const bytecode = "0x" + HALTING_PROGRAM + FILLER + proxies.slots.MATIC_IMPL.slice(2) + cborMetadata("aa".repeat(32));
+
+        const program = disasm(bytecode);
+        expect(program.proxies.map(p => p.name)).toEqual(["MaticProxy"]);
+    });
+
+    test('Matic pre-image and slot constants agree', async () => {
+        // Both constants are opaque hex in the source. Pin them to the string they
+        // are derived from, so a typo fails here instead of silently never matching.
+        expect(Object.keys(proxies.slotPreimages)).toContain("0x" + MATIC_PREIMAGE);
+        expect(keccak256(new TextEncoder().encode(MATIC_SLOT_STRING))).toEqual(proxies.slots.MATIC_IMPL);
     });
 });
 
@@ -279,6 +308,29 @@ describe('contract proxy resolving', () => {
         const got = await resolver.resolve(provider, address);
 
         const wantImplementation = "0x9c13e225ae007731caa49fd17a41379ab1a489f4";
+        expect(got).toEqual(wantImplementation);
+    });
+
+    cached_test('Matic Proxy: DAI on Polygon', async ({ withCache }) => {
+        // Polygon PoS bridged tokens use Polygon's own UpgradableProxy. The slot is
+        // keccak256("matic.network.proxy.implementation"), computed at runtime by
+        // solc 0.6.6, so only the pre-image scan finds it.
+        const provider = makeProvider("https://polygon-bor-rpc.publicnode.com");
+        const address = "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063";
+        const code = await withCache(
+            `polygon-${address}_code`,
+            async () => {
+                return await provider.getCode(address)
+            },
+        );
+
+        const program = disasm(code);
+        expect(program.proxies.map(p => p.name)).toEqual(["MaticProxy"]);
+
+        const resolver = program.proxies[0];
+        const got = await resolver.resolve(provider, address);
+
+        const wantImplementation = "0x490e379c9cff64944be82b849f8fd5972c7999a7";
         expect(got).toEqual(wantImplementation);
     });
 });

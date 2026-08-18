@@ -280,6 +280,17 @@ export class PROXIABLEProxyResolver extends BaseProxyResolver implements ProxyRe
     }
 }
 
+// https://github.com/maticnetwork/pos-portal/blob/master/contracts/common/Proxy/UpgradableProxy.sol
+// Used by the Polygon PoS bridge child tokens. Implementation pointer is stored
+// in a Matic-namespaced slot rather than the EIP-1967 one.
+export class MaticProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "MaticProxy";
+
+    async resolve(provider: StorageProvider, address: string): Promise<string> {
+        return addressFromPadded(await provider.getStorageAt(address, slots.MATIC_IMPL));
+    }
+}
+
 // https://github.com/0xsequence/wallet-contracts/blob/master/contracts/Wallet.sol
 // Implementation pointer is stored in slot keyed on the deployed address.
 export class SequenceWalletProxyResolver extends BaseProxyResolver implements ProxyResolver {
@@ -348,6 +359,11 @@ export const slots : Record<string, string> = {
     // Same as above but some implementations don't do -1
     DIAMOND_STORAGE_1: "0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131c",
 
+    // Polygon (Matic) UpgradableProxy, used by the PoS bridge child tokens
+    // https://github.com/maticnetwork/pos-portal/blob/master/contracts/common/Proxy/UpgradableProxy.sol
+    // keccak256("matic.network.proxy.implementation")
+    MATIC_IMPL: "0xbaab7dbf64751104133af04abc7d9979f0fda3b059a322a8333f533d3f32bf7f",
+
     // EIP-1167 minimal proxy standard
     // Parsed in disasm
 }
@@ -361,6 +377,7 @@ export const slotResolvers : Record<string, ProxyResolver> = {
     [slots.GNOSIS_SAFE_SELECTOR]: new GnosisSafeProxyResolver("GnosisSafeProxy"),
     [slots.DIAMOND_STORAGE]: new DiamondProxyResolver("DiamondProxy"),
     [slots.DIAMOND_STORAGE_1]: new DiamondProxyResolver("DiamondProxy", slots.DIAMOND_STORAGE_1),
+    [slots.MATIC_IMPL]: new MaticProxyResolver("MaticProxy"),
 
     // Not sure why, there's a compiler optimization that adds 1 or 2 to the normal slot?
     // Would love to understand this, if people have ideas
@@ -368,4 +385,29 @@ export const slotResolvers : Record<string, ProxyResolver> = {
 
     // Off-by-one slot version of EIP1967, some examples in the wild who choose to do the -1 at runtime (See issue #178)
     "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbd": new EIP1967ProxyResolver("EIP1967Proxy"),
+};
+
+
+/**
+ * Slot pre-images to look for in the data segment, mapped to the resolver for
+ * the slot they hash to.
+ *
+ * Normally a proxy embeds its slot as a PUSH32 constant, and we match that value
+ * directly via {@link slotResolvers}. Some proxies instead keep the pre-image
+ * string in their data segment and hash it at runtime, so the slot value never
+ * appears in the bytecode at all and there is nothing for that scan to match.
+ *
+ * This happens when the source writes the slot as an expression rather than as a
+ * hex literal, and the compiler does not fold it. Polygon's UpgradableProxy is
+ * one such contract: it declares the slot as
+ * `keccak256("matic.network.proxy.implementation")` and solc 0.6.6 inlines that
+ * expression at each use site, so the string ships and the hash is computed on
+ * every call.
+ *
+ * Keys are the hex encoding of the ASCII pre-image, so that the data segment
+ * scan in disasm can match them the same way it matches slot values.
+ */
+export const slotPreimages : Record<string, ProxyResolver> = {
+    // "matic.network.proxy.implementation" -> slots.MATIC_IMPL
+    "0x6d617469632e6e6574776f726b2e70726f78792e696d706c656d656e746174696f6e": slotResolvers[slots.MATIC_IMPL],
 };
