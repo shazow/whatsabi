@@ -7,7 +7,7 @@ import { addSlotOffset, readArray, joinSlot } from "../slots.js";
 import { bytesToHex, keccak256 } from '../utils';
 import * as proxies from '../proxies';
 
-import { ZEPPELINOS_USDC, WANDERWING } from './__fixtures__/proxies'
+import { ZEPPELINOS_USDC, WANDERWING, LIVEPEER_MANAGER_PROXY } from './__fixtures__/proxies'
 
 // TODO: Test for proxy factories to not match
 
@@ -164,6 +164,58 @@ describe('proxy detection in the data segment', () => {
         // are derived from, so a typo fails here instead of silently never matching.
         expect(Object.keys(proxies.slotPreimages)).toContain("0x" + MATIC_PREIMAGE);
         expect(keccak256(new TextEncoder().encode(MATIC_SLOT_STRING))).toEqual(proxies.slots.MATIC_IMPL);
+    });
+
+    test('Livepeer ManagerProxy', async () => {
+        // No namespaced slot to match on: the implementation pointer lives in a
+        // registry contract, so detection keys on the dispatch table instead.
+        const program = disasm("0x" + LIVEPEER_MANAGER_PROXY);
+
+        expect(Object.keys(program.selectors).sort()).toEqual(proxies.livepeerManagerProxySelectors.sort());
+        expect(program.proxies.map(p => p.name)).toEqual(["LivepeerManagerProxy"]);
+    });
+
+    test('Livepeer ManagerProxy: resolves regardless of storage word prefixing', async () => {
+        // Providers differ on whether getStorageAt prefixes the word. Sourcify's own
+        // test doubles return it unprefixed, so both forms have to resolve the same.
+        //
+        // Assert the calldata, not just the address that comes back. The target id's
+        // first byte is significant, so a resolver that blindly drops two characters
+        // from an unprefixed word asks the registry about a key that does not exist,
+        // and a call double that ignores its argument cannot see that happen.
+        const resolver = new proxies.LivepeerManagerProxyResolver();
+        const controller = "000000000000000000000000d8e8328501e9645d16cf49539efc04f734606ee4";
+        // keccak256("BondingManagerTarget")
+        const targetContractId = "fc6f6f33d2bb065ac61cbdd4dbe4b7adf6f3e7e6c6a3d1fe297cbf9a187092e4";
+        const implementation = "000000000000000000000000be197fcbfe74de8f10460ea61644b006cc0f0bd2";
+
+        for (const prefix of ["0x", ""]) {
+            const stub = {
+                getStorageAt: async (_address: string, slot: number | string) =>
+                    prefix + (Number(slot) === 0 ? controller : targetContractId),
+                call: async (tx: { to: string, data: string }) => {
+                    expect(tx.to).toEqual("0xd8e8328501e9645d16cf49539efc04f734606ee4");
+                    expect(tx.data).toEqual("0xe16c7d98" + targetContractId);
+                    return prefix + implementation;
+                },
+            };
+
+            const got = await resolver.resolve(stub, "0x35Bcf3c30594191d53231E4FF333E8A770453e40");
+            expect(got).toEqual("0xbe197fcbfe74de8f10460ea61644b006cc0f0bd2");
+        }
+    });
+
+    test('Livepeer ManagerProxy: a short storage response resolves to nothing', async () => {
+        // A provider that answers "0x" rather than a zero word would otherwise produce
+        // a malformed address that still reads as non-zero to the caller.
+        const resolver = new proxies.LivepeerManagerProxyResolver();
+        const stub = {
+            getStorageAt: async () => "0x",
+            call: async () => "0x",
+        };
+
+        const got = await resolver.resolve(stub, "0x35Bcf3c30594191d53231E4FF333E8A770453e40");
+        expect(got).toEqual("0x0000000000000000000000000000000000000000");
     });
 });
 
@@ -332,6 +384,38 @@ describe('contract proxy resolving', () => {
 
         const wantImplementation = "0x490e379c9cff64944be82b849f8fd5972c7999a7";
         expect(got).toEqual(wantImplementation);
+    });
+
+    cached_test('Livepeer ManagerProxy: BondingManager on Arbitrum', async ({ withCache }) => {
+        const provider = makeProvider("https://arb1.arbitrum.io/rpc");
+        const address = "0x35Bcf3c30594191d53231E4FF333E8A770453e40";
+        const code = await withCache(
+            `arbitrum-${address}_code`,
+            async () => {
+                return await provider.getCode(address)
+            },
+        );
+
+        const program = disasm(code);
+        expect(program.proxies.map(p => p.name)).toEqual(["LivepeerManagerProxy"]);
+
+        const resolver = program.proxies[0];
+        const got = await resolver.resolve(provider, address);
+
+        const wantImplementation = "0xbe197fcbfe74de8f10460ea61644b006cc0f0bd2";
+        expect(got).toEqual(wantImplementation);
+
+        // The target inherits controller(), setController(address) and
+        // targetContractId() from the same base contract, so it carries all three
+        // selectors too. Matching a subset would call every Livepeer manager
+        // implementation a proxy, so check the implementation stays unmatched.
+        const implCode = await withCache(
+            `arbitrum-${wantImplementation}_code`,
+            async () => {
+                return await provider.getCode(wantImplementation)
+            },
+        );
+        expect(disasm(implCode).proxies).toEqual([]);
     });
 });
 

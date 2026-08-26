@@ -6,7 +6,7 @@ import { hexToBytes, bytesToHex } from "./utils.js";
 
 import { opcodes, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes.js";
 
-import { slotResolvers, slotPreimages, SequenceWalletProxyResolver, FixedProxyResolver } from "./proxies.js";
+import { slotResolvers, slotPreimages, SequenceWalletProxyResolver, FixedProxyResolver, LivepeerManagerProxyResolver, livepeerManagerProxySelectors } from "./proxies.js";
 
 
 function valueToOffset(value: Uint8Array): number {
@@ -572,6 +572,28 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
                 if (auxData.lastIndexOf(preimage.slice(2)) === -1) continue;
                 p.proxies.push(resolver);
             }
+        }
+    }
+
+    if (p.proxies.length === 0) {
+        // Livepeer's ManagerProxy keeps its implementation pointer in a registry
+        // contract rather than a namespaced slot, so there is no constant anywhere in
+        // the bytecode for the scans above to match. What identifies it is the
+        // dispatch table: the proxy's whole external surface is those three functions
+        // and everything else falls through to the delegatecall.
+        //
+        // This runs last, after both constant scans, so a contract that does carry a
+        // known slot is always resolved from that evidence rather than from a shape.
+        //
+        // Match the exact set, not a subset. Livepeer's target contracts inherit the
+        // same three functions, so a subset match would label every implementation a
+        // proxy as well.
+        const selectors = Object.keys(p.selectors);
+        if (
+            selectors.length === livepeerManagerProxySelectors.length &&
+            livepeerManagerProxySelectors.every((s) => s in p.selectors)
+        ) {
+            p.proxies.push(new LivepeerManagerProxyResolver());
         }
     }
 
