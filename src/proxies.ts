@@ -301,6 +301,46 @@ export class SequenceWalletProxyResolver extends BaseProxyResolver implements Pr
     }
 }
 
+// https://github.com/livepeer/protocol/blob/master/contracts/ManagerProxy.sol
+// Livepeer's managers sit behind a proxy that has no namespaced slot to match on.
+// It stores the Controller in slot 0 and the target's registry key in slot 1, and
+// its fallback delegates to controller.getContract(targetContractId).
+export class LivepeerManagerProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "LivepeerManagerProxy";
+
+    async resolve(provider: StorageProvider & CallProvider, address: string): Promise<string> {
+        const controller = addressFromWord(await provider.getStorageAt(address, 0));
+        if (controller === _zeroAddress) return _zeroAddress;
+
+        const targetContractId = wordFrom(await provider.getStorageAt(address, 1));
+        const data = "0xe16c7d98" + targetContractId; // getContract(bytes32)
+
+        return addressFromWord(await provider.call({ to: controller, data }));
+    }
+}
+
+// Providers differ on whether they prefix a storage word, and some drop leading
+// zeros. Normalise to a bare 32 byte word before reading an address out of it or
+// putting it into calldata: an unprefixed word whose first byte is significant
+// loses that byte to a naive slice(2), which silently asks the registry about the
+// wrong key.
+function wordFrom(data: string): string {
+    return (data.startsWith("0x") ? data.slice(2) : data).padStart(64, "0");
+}
+
+function addressFromWord(data: string): string {
+    return addressFromPadded(wordFrom(data));
+}
+
+// The full external surface of a Livepeer ManagerProxy: controller(),
+// setController(address) and targetContractId(). Everything else reaches the
+// target through the fallback.
+export const livepeerManagerProxySelectors = [
+    "0xf77c4791", // controller()
+    "0x92eefe9b", // setController(address)
+    "0x51720b41", // targetContractId()
+];
+
 // FixedProxyResolver is used when we already know the resolved address
 // No additional resolving required
 // Example: EIP-1167
