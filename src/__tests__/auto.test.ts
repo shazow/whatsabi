@@ -53,6 +53,25 @@ test('autoload stops following a proxy cycle', async () => {
     expect(result.address).toBe(address);
 });
 
+test('autoload does not follow a zero-address proxy resolution', async () => {
+    const address = "0x2222222222222222222222222222222222222222";
+    const bytecode = "0x7f" + slots.EIP1967_IMPL.slice(2) + "00";
+    const provider = {
+        request: ({ method, params }: { method: string, params: string[] }) =>
+            method === "eth_getCode" && params[0] === address ? bytecode : "0x" + "00".repeat(32),
+    };
+
+    const result = await autoload(address, {
+        provider,
+        abiLoader: false,
+        signatureLookup: false,
+        followProxies: true,
+        onError: () => {},
+    });
+
+    expect(result.address).toBe(address);
+});
+
 online_test('autoload selectors', async ({ provider }) => {
     const address = "0x4A137FD5e7a256eF08A7De531A17D0BE0cc7B6b6"; // Random unverified contract
     const { abi } = await autoload(address, {

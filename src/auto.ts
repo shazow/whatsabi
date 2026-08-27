@@ -16,6 +16,7 @@ import { MultiABILoader } from "./loaders.js";
 /// Magic number we use to determine whether a proxy is reasonably a destination contract or not.
 /// If it has many SSTORE's then it's probably doing something other than proxying.
 const PROXY_SSTORE_COUNT_MAX = 4;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 function isAddress(address: string) {
     return address.length === 42 && address.startsWith("0x") && Number(address) >= 0;
@@ -238,7 +239,7 @@ async function _autoload(address: string, config: AutoloadConfig, visitedAddress
             for (const resolver of result.proxies) {
                 onProgress("followProxies", { resolver: resolver, address });
                 const resolved = await resolver.resolve(provider, address, selector);
-                if (resolved !== undefined) {
+                if (resolved !== undefined && resolved !== ZERO_ADDRESS) {
                     if (proxyPath.has(resolved.toLowerCase())) {
                         onError("followProxies", new errors.AutoloadError(`Proxy cycle detected while resolving ${address}`, {
                             context: { address, resolved },
