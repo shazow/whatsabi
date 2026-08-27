@@ -312,7 +312,7 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
                 if (checkJumpTable && Object.keys(p.selectors).length > 0) {
                     checkJumpTable = false;
                 }
-                if (resumeJumpTable.delete(pos)) {
+                if (resumeJumpTable.delete(pos - runtimeOffset)) {
                     // Continuation of a previous jump table?
                     // Selector branch trees start by pushing CALLDATALOAD or it was pushed before.
                     checkJumpTable = code.at(pos + 1) === opcodes.DUP1 || code.at(pos + 1) === opcodes.CALLDATALOAD;
@@ -337,7 +337,7 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
                 code.at(pos + 2) === opcodes.DUP1 &&
                 code.at(pos + 3) === opcodes.ISZERO
             ) {
-                p.notPayable[pos] = step;
+                p.notPayable[pos - runtimeOffset] = step;
                 // TODO: Optimization: Could seek ahead 3 pos/count safely
             }
 
@@ -361,7 +361,7 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
             // Detect simple JUMP/JUMPI helper subroutines
             if ((inst === opcodes.JUMP || inst === opcodes.JUMPI) && isPush(code.at(-2))) {
                 const jumpOffset = valueToOffset(code.valueAt(-2));
-                currentFunction.jumps.push(jumpOffset - runtimeOffset);
+                currentFunction.jumps.push(jumpOffset);
                 maxJumpDest = Math.max(maxJumpDest, jumpOffset);
             }
 

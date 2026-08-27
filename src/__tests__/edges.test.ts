@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 
 import { cached_test, describe_cached } from "./env";
 import { selectorsFromBytecode } from '../index';
-import { disasm } from '../disasm';
+import { abiFromBytecode, disasm } from '../disasm';
 
 //const address = "0xbadc0defafcf6d4239bdf0b66da4d7bd36fcf05a";
 //const missingSelector = "0x69277b67";
@@ -22,6 +22,18 @@ test('code with deploy init', () => {
   r.sort();
 
   expect(r).toEqual(["0x29e46078", "0x4e148ce1", "0x68e5c066", "0xa87d942c"]);
+})
+
+test('creation bytecode keeps runtime-relative offsets', () => {
+  const wrap = (runtime: string) => {
+    const length = (runtime.length / 2).toString(16).padStart(2, "0");
+    return `60${length}600c60003960${length}6000f3${runtime}`;
+  };
+  const mutabilityRuntime = "60003560e01c63abcdef0114601357600080fd5b348015601d575f80fd5b6021565b5f5f5500";
+  const branchedRuntime = "806380000000106015578063aaaaaaaa14602957005b8063bbbbbbbb14602b5700" + "00".repeat(8) + "5b005b00";
+
+  expect(abiFromBytecode(wrap(mutabilityRuntime))).toEqual(abiFromBytecode(mutabilityRuntime));
+  expect(selectorsFromBytecode(wrap(branchedRuntime))).toEqual(selectorsFromBytecode(branchedRuntime));
 })
 
 test('code with non payable guard before router', () => {
