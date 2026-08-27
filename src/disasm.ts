@@ -589,7 +589,9 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
         // same three functions, so a subset match would label every implementation a
         // proxy as well.
         const selectors = Object.keys(p.selectors);
+        const hasDelegateCall = Object.values(p.dests).some((fn) => fn.opTags.has(opcodes.DELEGATECALL));
         if (
+            hasDelegateCall &&
             selectors.length === livepeerManagerProxySelectors.length &&
             livepeerManagerProxySelectors.every((s) => s in p.selectors)
         ) {
