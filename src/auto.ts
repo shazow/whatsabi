@@ -156,6 +156,10 @@ export type AutoloadConfig = {
  * ```
  */
 export async function autoload(address: string, config: AutoloadConfig): Promise<AutoloadResult> {
+    return await _autoload(address, config, new Set());
+}
+
+async function _autoload(address: string, config: AutoloadConfig, visitedAddresses: ReadonlySet<string>): Promise<AutoloadResult> {
     if (config === undefined) {
         throw new errors.AutoloadError("config is undefined, must include 'provider'");
     }
@@ -189,6 +193,9 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
             }
         }
     }
+
+    const proxyPath = new Set(visitedAddresses);
+    proxyPath.add(address.toLowerCase());
 
     // Load code, we need to disasm to find proxies
     onProgress("getCode", { address });
@@ -231,7 +238,15 @@ export async function autoload(address: string, config: AutoloadConfig): Promise
             for (const resolver of result.proxies) {
                 onProgress("followProxies", { resolver: resolver, address });
                 const resolved = await resolver.resolve(provider, address, selector);
-                if (resolved !== undefined) return await autoload(resolved, config);
+                if (resolved !== undefined) {
+                    if (proxyPath.has(resolved.toLowerCase())) {
+                        onError("followProxies", new errors.AutoloadError(`Proxy cycle detected while resolving ${address}`, {
+                            context: { address, resolved },
+                        }));
+                        return result;
+                    }
+                    return await _autoload(resolved, config, proxyPath);
+                }
             }
             onError("followProxies", new Error("failed to resolve proxy"));
             return result;

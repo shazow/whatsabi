@@ -2,6 +2,7 @@ import { expect } from "vitest";
 
 import { whatsabi } from "../index";
 import { autoload } from "../auto";
+import { slots } from "../proxies";
 
 import { test, online_test, cached_test, makeProvider } from "./env";
 
@@ -24,6 +25,32 @@ test('autoload sets hasCode to false if code is empty', async () => {
     const address = "0x00000000219ab540356cBB839Cbe05303d7705Fa"
     await expect(autoload(address, { provider: fakeProvider("0x") })).resolves.toMatchObject({ hasCode: false });
     await expect(autoload(address, { provider: fakeProvider("0x1234") })).resolves.toMatchObject({ hasCode: true });
+});
+
+test('autoload stops following a proxy cycle', async () => {
+    const address = "0x1111111111111111111111111111111111111111";
+    const bytecode = "0x7f" + slots.EIP1967_IMPL.slice(2) + "00";
+    let fetchedCode = false;
+    const provider = {
+        getCode: async () => {
+            expect(fetchedCode).toBe(false);
+            fetchedCode = true;
+            return bytecode;
+        },
+        getStorageAt: async () => "0x" + "00".repeat(12) + address.slice(2),
+        call: async () => "0x",
+        getAddress: async (name: string) => name,
+    };
+
+    const result = await autoload(address, {
+        provider,
+        abiLoader: false,
+        signatureLookup: false,
+        followProxies: true,
+        onError: () => {},
+    });
+
+    expect(result.address).toBe(address);
 });
 
 online_test('autoload selectors', async ({ provider }) => {
