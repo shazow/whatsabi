@@ -461,6 +461,37 @@ describe('loaders: BlockscoutABILoader', () => {
       });
     },
   );
+
+  test.each(['getContract', 'loadABI'] as const)(
+    '%s retries rate-limited requests',
+    async (method) => {
+      const abi = [{ type: "function", name: "deposit", inputs: [] }];
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(new Response(
+          JSON.stringify({ error: "Too Many Requests" }),
+          {
+            status: 429,
+            headers: { "Content-Type": "application/json", "Retry-After": "0" },
+          },
+        ))
+        .mockResolvedValueOnce(new Response(
+          JSON.stringify({ abi }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const loader = new BlockscoutABILoader({
+        baseURL: "https://eth.blockscout.test/api",
+      });
+      const address = "0x0000000000000000000000000000000000000001";
+
+      await expect(loader[method](address)).resolves.toBeDefined();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    },
+  );
 });
 
 describe_cached("loaders: ABILoader suite", async ({ env }) => {
