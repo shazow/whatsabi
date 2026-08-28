@@ -363,7 +363,7 @@ async function _autoload(address: string, config: AutoloadConfig, visitedAddress
                     a.sig = r[0];
 
                     // Extract as much metadata as it can from the signature
-                    Object.assign(a, AbiEvent.from("function " + a.sig));
+                    Object.assign(a, AbiEvent.from("event " + a.sig, { prepare: false }));
                 }
                 if (r.length > 1) a.sigAlts = r.slice(1);
             }));
