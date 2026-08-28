@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@noble/hashes':
-        specifier: ^2.2.0
-        version: 2.4.0
       ox:
         specifier: ^1.7.2
         version: 1.7.2(typescript@6.0.3)

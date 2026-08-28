@@ -42,9 +42,6 @@
   "dependencies": {
     "ox": "^1.7.2"
   },
-  "peerDependencies": {
-    "@noble/hashes": "^2.2.0"
-  },
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
     "@size-limit/preset-small-lib": "^8.2.6",
@@ -67,6 +64,7 @@
     ".": {
       "types": "./lib.types/index.d.ts",
       "import": "./lib.esm/index.js",
+      "require": "./lib.cjs/index.js",
       "default": "./lib.cjs/index.js"
     }
   }

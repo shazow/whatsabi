@@ -49,9 +49,10 @@
  * const facets = await diamondResolver.facets(provider, address); // All possible address -> selector[] mappings
  * ```
  */
+import * as Address from 'ox/Address';
+
 import type { StorageProvider, CallProvider } from "./providers.js";
 import { addSlotOffset, readArray, joinSlot } from "./slots.js";
-import { addressWithChecksum } from "./utils.js";
 
 export interface ProxyResolver {
     readonly name: string;
@@ -247,7 +248,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
             const facet = addressFromPadded(f);
             const facetSelectorsSlot = joinSlot([facet, slot]);
             const selectors = await readArray(provider, address, facetSelectorsSlot, selectorWidth, this.readArrayLimit);
-            facetSelectors[addressWithChecksum(facet)] = selectors.map(s => "0x" + s);
+            facetSelectors[Address.checksum(facet)] = selectors.map(s => "0x" + s);
 
             if (--limit === 0) break;
         }

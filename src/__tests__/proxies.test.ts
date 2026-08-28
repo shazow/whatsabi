@@ -1,10 +1,12 @@
 import { expect, describe, test } from 'vitest';
 
+import * as Hash from 'ox/Hash';
+
 import { cached_test, online_test, makeProvider } from './env';
 
 import { disasm } from '../disasm';
 import { addSlotOffset, readArray, joinSlot } from "../slots.js";
-import { bytesToHex, keccak256 } from '../utils';
+import { bytesToHex } from '../utils';
 import * as proxies from '../proxies';
 
 import { ZEPPELINOS_USDC, WANDERWING, LIVEPEER_MANAGER_PROXY } from './__fixtures__/proxies'
@@ -176,7 +178,7 @@ describe('proxy detection in the data segment', () => {
         // Both constants are opaque hex in the source. Pin them to the string they
         // are derived from, so a typo fails here instead of silently never matching.
         expect(Object.keys(proxies.slotPreimages)).toContain("0x" + MATIC_PREIMAGE);
-        expect(keccak256(new TextEncoder().encode(MATIC_SLOT_STRING))).toEqual(proxies.slots.MATIC_IMPL);
+        expect(Hash.keccak256(new TextEncoder().encode(MATIC_SLOT_STRING), { as: "Hex" })).toEqual(proxies.slots.MATIC_IMPL);
     });
 
     test('Livepeer ManagerProxy', async () => {

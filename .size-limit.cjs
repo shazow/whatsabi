@@ -2,7 +2,7 @@ module.exports = [
   {
     path: "lib.esm/index.js",
     import: "{ whatsabi }",
-    limit: "20 kb"
+    limit: "21 kb"
   },
   {
     path: "lib.cjs/index.js",

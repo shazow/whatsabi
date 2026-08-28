@@ -27,6 +27,40 @@ test('autoload sets hasCode to false if code is empty', async () => {
     await expect(autoload(address, { provider: fakeProvider("0x1234") })).resolves.toMatchObject({ hasCode: true });
 });
 
+test('autoload enriches event signatures as events', async () => {
+    const address = "0x00000000219ab540356cBB839Cbe05303d7705Fa";
+    const hash = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+    const provider = {
+        request: () => "0x7f" + hash.slice(2) + "a100",
+    };
+    const signatureLookup = {
+        loadFunctions: async () => [],
+        loadEvents: async (candidate: string) => {
+            expect(candidate).toBe(hash);
+            return ["Transfer(address,address,uint256)"];
+        },
+    };
+
+    const result = await autoload(address, {
+        provider,
+        abiLoader: false,
+        signatureLookup,
+        enableExperimentalMetadata: true,
+    });
+
+    expect(result.abi).toContainEqual({
+        type: "event",
+        hash,
+        name: "Transfer",
+        sig: "Transfer(address,address,uint256)",
+        inputs: [
+            { type: "address" },
+            { type: "address" },
+            { type: "uint256" },
+        ],
+    });
+});
+
 test('autoload stops following a proxy cycle', async () => {
     const address = "0x1111111111111111111111111111111111111111";
     const bytecode = "0x7f" + slots.EIP1967_IMPL.slice(2) + "00";
