@@ -66,7 +66,7 @@ const _zeroAddress = "0x0000000000000000000000000000000000000000";
 
 // Convert 32 byte hex to a 20 byte hex address
 function addressFromPadded(data:string): string {
-    return "0x" + data.slice(data.length - 40);
+    return "0x" + wordFrom(data).slice(-40);
 }
 
 
@@ -187,7 +187,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
             try {
                 const addr = addressFromPadded(await provider.call({
                     to: address,
-                    data: facetSelector + selector,
+                    data: facetSelector + selector.padEnd(64, "0"),
                 }));
                 if (addr !== _zeroAddress) return addr;
             } catch (e: any) {
@@ -297,7 +297,9 @@ export class SequenceWalletProxyResolver extends BaseProxyResolver implements Pr
     override name = "SequenceWalletProxy";
 
     async resolve(provider: StorageProvider, address: string): Promise<string> {
-        return addressFromPadded(await provider.getStorageAt(address, address.toLowerCase().slice(2)));
+        // JSON-RPC quantities require a 0x prefix and no leading zeros.
+        const slot = "0x" + BigInt(address).toString(16);
+        return addressFromPadded(await provider.getStorageAt(address, slot));
     }
 }
 

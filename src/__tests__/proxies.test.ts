@@ -53,6 +53,19 @@ describe('proxy detection', () => {
         expect(program.proxies[0]).toBeInstanceOf(proxies.SequenceWalletProxyResolver);
     });
 
+    test('SequenceWallet Proxy: uses a prefixed address-keyed slot', async () => {
+        const address = "0x00Cd000000000000000000000000000000001234";
+        const resolver = new proxies.SequenceWalletProxyResolver();
+        const provider = {
+            getStorageAt: async (_address: string, slot: number | string) => {
+                expect(slot).toBe("0xcd000000000000000000000000000000001234");
+                return "0x" + "00".repeat(32);
+            },
+        };
+
+        await resolver.resolve(provider, address);
+    });
+
     test('Gnosis Safe Proxy Factory', async () => {
         // https://eips.ethereum.org/EIPS/eip-1167
         const bytecode = "0x608060405273ffffffffffffffffffffffffffffffffffffffff600054167fa619486e0000000000000000000000000000000000000000000000000000000060003514156050578060005260206000f35b3660008037600080366000845af43d6000803e60008114156070573d6000fd5b3d6000f3fea265627a7a72315820d8a00dc4fe6bf675a9d7416fc2d00bb3433362aa8186b750f76c4027269667ff64736f6c634300050e0032";
@@ -252,6 +265,26 @@ describe('metadata extraction', () => {
 });
 
 describe('known proxy resolving', () => {
+    test('Diamond Proxy: ABI-pads selector arguments and ignores empty responses', async () => {
+        const selector = "0x12345678";
+        const calldata: string[] = [];
+        const provider = {
+            getStorageAt: async () => "0x" + "00".repeat(32),
+            call: async (tx: { data: string }) => {
+                calldata.push(tx.data);
+                return calldata.length === 1 ? "0x" : "0x" + "00".repeat(12) + "11".repeat(20);
+            },
+        };
+
+        const got = await new proxies.DiamondProxyResolver("DiamondProxy").resolve(provider, "0x" + "22".repeat(20), selector);
+
+        expect(calldata).toEqual([
+            "0xcdffacc6" + selector.slice(2).padEnd(64, "0"),
+            "0x0d741577" + selector.slice(2).padEnd(64, "0"),
+        ]);
+        expect(got).toBe("0x" + "11".repeat(20));
+    });
+
     online_test('Safe: Proxy Factory 1.1.1', async ({ provider }) => {
         const address = "0x655a9e6b044d6b62f393f9990ec3ea877e966e18";
         // Need to call masterCopy() or getStorageAt for 0th slot
