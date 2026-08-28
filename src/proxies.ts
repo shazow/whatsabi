@@ -187,7 +187,7 @@ export class DiamondProxyResolver extends BaseProxyResolver implements ProxyReso
             try {
                 const addr = addressFromPadded(await provider.call({
                     to: address,
-                    data: facetSelector + selector,
+                    data: facetSelector + selector.padEnd(64, "0"),
                 }));
                 if (addr !== _zeroAddress) return addr;
             } catch (e: any) {

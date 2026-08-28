@@ -265,6 +265,22 @@ describe('metadata extraction', () => {
 });
 
 describe('known proxy resolving', () => {
+    test('Diamond Proxy: ABI-pads the loupe selector argument', async () => {
+        const selector = "0x12345678";
+        let calldata = "";
+        const provider = {
+            getStorageAt: async () => "0x" + "00".repeat(32),
+            call: async (tx: { data: string }) => {
+                calldata = tx.data;
+                return "0x" + "00".repeat(12) + "11".repeat(20);
+            },
+        };
+
+        await new proxies.DiamondProxyResolver("DiamondProxy").resolve(provider, "0x" + "22".repeat(20), selector);
+
+        expect(calldata).toBe("0xcdffacc6" + selector.slice(2).padEnd(64, "0"));
+    });
+
     online_test('Safe: Proxy Factory 1.1.1', async ({ provider }) => {
         const address = "0x655a9e6b044d6b62f393f9990ec3ea877e966e18";
         // Need to call masterCopy() or getStorageAt for 0th slot
