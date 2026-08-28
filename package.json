@@ -1,6 +1,6 @@
 {
   "name": "@shazow/whatsabi",
-  "version": "0.28.0",
+  "version": "0.29.0",
   "description": "Resolve proxies and get an ABI from Ethereum bytecode, even if it's unverified",
   "type": "module",
   "scripts": {
@@ -21,6 +21,9 @@
   ],
   "author": "Andrey Petrov <shazow.net>",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "files": [
     "lib.esm/",
     "lib.cjs/",
@@ -37,10 +40,10 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "ox": "^0.14.33"
+    "ox": "^1.7.2"
   },
   "peerDependencies": {
-    "@noble/hashes": "^2.0.1"
+    "@noble/hashes": "^2.2.0"
   },
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
@@ -52,11 +55,11 @@
     "typedoc": "^0.28.20",
     "typedoc-plugin-missing-exports": "^4.1.4",
     "typescript": "^6.0.3",
-    "viem": "^2.55.17",
+    "viem": "^2.56.0",
     "vitest": "^0.34.6",
     "web3": "^4.16.0"
   },
-  "packageManager": "pnpm",
+  "packageManager": "pnpm@11.22.0",
   "main": "./lib.cjs/index.js",
   "module": "./lib.esm/index.js",
   "types": "./lib.types/index.d.ts",
