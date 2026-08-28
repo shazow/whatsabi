@@ -37,10 +37,10 @@
   },
   "homepage": "https://github.com/shazow/whatsabi#readme",
   "dependencies": {
-    "ox": "^0.14.33"
+    "ox": "^1.7.2"
   },
   "peerDependencies": {
-    "@noble/hashes": "^2.0.1"
+    "@noble/hashes": "^2.2.0"
   },
   "devDependencies": {
     "@size-limit/esbuild-why": "^8.2.6",
