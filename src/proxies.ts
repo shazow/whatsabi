@@ -66,7 +66,7 @@ const _zeroAddress = "0x0000000000000000000000000000000000000000";
 
 // Convert 32 byte hex to a 20 byte hex address
 function addressFromPadded(data:string): string {
-    return "0x" + data.slice(data.length - 40);
+    return "0x" + wordFrom(data).slice(-40);
 }
 
 

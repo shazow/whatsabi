@@ -265,20 +265,24 @@ describe('metadata extraction', () => {
 });
 
 describe('known proxy resolving', () => {
-    test('Diamond Proxy: ABI-pads the loupe selector argument', async () => {
+    test('Diamond Proxy: ABI-pads selector arguments and ignores empty responses', async () => {
         const selector = "0x12345678";
-        let calldata = "";
+        const calldata: string[] = [];
         const provider = {
             getStorageAt: async () => "0x" + "00".repeat(32),
             call: async (tx: { data: string }) => {
-                calldata = tx.data;
-                return "0x" + "00".repeat(12) + "11".repeat(20);
+                calldata.push(tx.data);
+                return calldata.length === 1 ? "0x" : "0x" + "00".repeat(12) + "11".repeat(20);
             },
         };
 
-        await new proxies.DiamondProxyResolver("DiamondProxy").resolve(provider, "0x" + "22".repeat(20), selector);
+        const got = await new proxies.DiamondProxyResolver("DiamondProxy").resolve(provider, "0x" + "22".repeat(20), selector);
 
-        expect(calldata).toBe("0xcdffacc6" + selector.slice(2).padEnd(64, "0"));
+        expect(calldata).toEqual([
+            "0xcdffacc6" + selector.slice(2).padEnd(64, "0"),
+            "0x0d741577" + selector.slice(2).padEnd(64, "0"),
+        ]);
+        expect(got).toBe("0x" + "11".repeat(20));
     });
 
     online_test('Safe: Proxy Factory 1.1.1', async ({ provider }) => {
