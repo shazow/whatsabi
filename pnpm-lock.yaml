@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@noble/hashes':
         specifier: ^2.2.0
-        version: 2.3.0
+        version: 2.4.0
       ox:
         specifier: ^1.7.2
         version: 1.7.2(typescript@6.0.3)
@@ -2701,7 +2701,7 @@ snapshots:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 2.4.0
       '@noble/curves': 2.4.0
-      '@noble/hashes': 2.3.0
+      '@noble/hashes': 2.4.0
       '@noble/post-quantum': 0.6.1
       '@scure/bip32': 2.3.0
       '@scure/bip39': 2.3.0
