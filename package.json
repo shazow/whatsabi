@@ -52,7 +52,7 @@
     "typedoc": "^0.28.20",
     "typedoc-plugin-missing-exports": "^4.1.4",
     "typescript": "^6.0.3",
-    "viem": "^2.55.17",
+    "viem": "^2.56.0",
     "vitest": "^0.34.6",
     "web3": "^4.16.0"
   },
