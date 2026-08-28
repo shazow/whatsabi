@@ -63,6 +63,8 @@ describe('loaders: ABILoader', () => {
   online_test('BlockscoutABILoader', async ({ env }) => {
     const loader = new BlockscoutABILoader({
       apiKey: env["BLOCKSCOUT_API_KEY"],
+      // A key routes through the multichain gateway; keyless keeps the legacy instance API
+      chainId: env["BLOCKSCOUT_API_KEY"] ? 1 : undefined,
     });
     const abi = await loader.loadABI("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
     const selectors = Object.values(selectorsFromABI(abi));
@@ -161,6 +163,8 @@ describe('loaders: ABILoader', () => {
   online_test('BlockscoutABILoader_getContract', async ({ env }) => {
     const loader = new BlockscoutABILoader({
       apiKey: env["BLOCKSCOUT_API_KEY"],
+      // A key routes through the multichain gateway; keyless keeps the legacy instance API
+      chainId: env["BLOCKSCOUT_API_KEY"] ? 1 : undefined,
     });
     const result = await loader.getContract("0x7a250d5630b4cf539739df2c5dacb4c659f2488d");
     const selectors = Object.values(selectorsFromABI(result.abi));
@@ -178,6 +182,8 @@ describe('loaders: ABILoader', () => {
   online_test('BlockscoutABILoader_getContract_UniswapV3Factory', async ({ env }) => {
     const loader = new BlockscoutABILoader({
       apiKey: env["BLOCKSCOUT_API_KEY"],
+      // A key routes through the multichain gateway; keyless keeps the legacy instance API
+      chainId: env["BLOCKSCOUT_API_KEY"] ? 1 : undefined,
     });
     const { abi, name } = await loader.getContract("0x1F98431c8aD98523631AE4a59f267346ea31F984");
     const selectors = Object.values(selectorsFromABI(abi));
@@ -485,7 +491,7 @@ describe_cached("loaders: ABILoader suite", async ({ env }) => {
   const loaders = [
     new SourcifyABILoader(),
     new EtherscanV2ABILoader({ apiKey: env["ETHERSCAN_API_KEY"] }),
-    new BlockscoutABILoader({ apiKey: env["BLOCKSCOUT_API_KEY"] }),
+    new BlockscoutABILoader({ apiKey: env["BLOCKSCOUT_API_KEY"], chainId: env["BLOCKSCOUT_API_KEY"] ? 1 : undefined }),
     new AnyABILoader(),
   ];
 

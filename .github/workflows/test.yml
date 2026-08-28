@@ -32,3 +32,4 @@ jobs:
           ONLINE: 1
           INFURA_API_KEY: ${{ secrets.INFURA_API_KEY }}
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+          BLOCKSCOUT_API_KEY: ${{ secrets.BLOCKSCOUT_API_KEY }}
