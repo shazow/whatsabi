@@ -6,7 +6,7 @@ import { hexToBytes, bytesToHex } from "./utils.js";
 
 import { opcodes, pushWidth, isPush, isLog, isHalt, isCompare } from "./opcodes.js";
 
-import { slotResolvers, slotPreimages, SequenceWalletProxyResolver, FixedProxyResolver, LivepeerManagerProxyResolver, livepeerManagerProxySelectors } from "./proxies.js";
+import { slotResolvers, slotPreimages, SequenceWalletProxyResolver, FixedProxyResolver, LivepeerManagerProxyResolver, livepeerManagerProxySelectors, AragonAppProxyResolver, aragonAppProxyImplementationSelector } from "./proxies.js";
 
 
 function valueToOffset(value: Uint8Array): number {
@@ -605,6 +605,17 @@ export function disasm(bytecode: string, config?: {onlyJumpTable: boolean}): Pro
         // Hopefully we can improve this later.
         // See: https://github.com/shazow/whatsabi/issues/171
         p.proxies = p.init.proxies;
+    }
+
+    if (
+        !(aragonAppProxyImplementationSelector in p.selectors) &&
+        p.proxies.some((r) => r instanceof AragonAppProxyResolver)
+    ) {
+        // The Aragon kernel slot is read by the apps behind the proxy as well as by
+        // the proxy itself, so on its own it would label every aragonOS app
+        // implementation a proxy. The proxy exposes ERC-897 implementation() and the
+        // app does not, so keep the match only when the dispatch table has it.
+        p.proxies = p.proxies.filter((r) => !(r instanceof AragonAppProxyResolver));
     }
 
     return p;

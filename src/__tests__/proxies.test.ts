@@ -9,7 +9,7 @@ import { addSlotOffset, readArray, joinSlot } from "../slots.js";
 import { bytesToHex } from '../utils';
 import * as proxies from '../proxies';
 
-import { ZEPPELINOS_USDC, WANDERWING, LIVEPEER_MANAGER_PROXY } from './__fixtures__/proxies'
+import { ZEPPELINOS_USDC, WANDERWING, LIVEPEER_MANAGER_PROXY, ARAGON_APP_PROXY } from './__fixtures__/proxies'
 
 // TODO: Test for proxy factories to not match
 
@@ -217,6 +217,48 @@ describe('proxy detection in the data segment', () => {
 
             const got = await resolver.resolve(stub, "0x35Bcf3c30594191d53231E4FF333E8A770453e40");
             expect(got).toEqual("0xbe197fcbfe74de8f10460ea61644b006cc0f0bd2");
+        }
+    });
+
+    test('Aragon AppProxyUpgradeable', async () => {
+        const program = disasm("0x" + ARAGON_APP_PROXY);
+
+        expect(proxies.aragonAppProxyImplementationSelector in program.selectors).toBe(true);
+        expect(program.proxies.map(p => p.name)).toEqual(["AragonAppProxy"]);
+    });
+
+    test('Aragon AppProxy: kernel slot without implementation() is not a proxy', async () => {
+        // An aragonOS app implementation reads the same kernel slot as its proxy but
+        // has no implementation() in its dispatch table. Take the proxy's bytecode
+        // and swap the implementation() selector in the jump table for one it does
+        // not otherwise have, so only the dispatch table changes.
+        const selector = proxies.aragonAppProxyImplementationSelector.slice(2);
+        const before = disasm("0x" + ARAGON_APP_PROXY);
+        expect(before.proxies.map(p => p.name)).toEqual(["AragonAppProxy"]);
+
+        const swapped = ARAGON_APP_PROXY.replace("63" + selector, "63deadbeef");
+        expect(swapped).not.toEqual(ARAGON_APP_PROXY);
+        const after = disasm("0x" + swapped);
+        expect(selector in after.selectors).toBe(false);
+        expect(after.proxies).toEqual([]);
+    });
+
+    test('Aragon AppProxy: resolves with one implementation() call to the proxy', async () => {
+        const resolver = new proxies.AragonAppProxyResolver();
+        const address = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
+        const implementation = "000000000000000000000000028271e30a695c0527a0c50ca30603fed004cdb0";
+
+        for (const prefix of ["0x", ""]) {
+            const stub = {
+                call: async (tx: { to: string, data: string }) => {
+                    expect(tx.to).toEqual(address);
+                    expect(tx.data).toEqual("0x5c60da1b");
+                    return prefix + implementation;
+                },
+            };
+
+            const got = await resolver.resolve(stub, address);
+            expect(got).toEqual("0x028271e30a695c0527a0c50ca30603fed004cdb0");
         }
     });
 
@@ -446,6 +488,35 @@ describe('contract proxy resolving', () => {
         // implementation a proxy, so check the implementation stays unmatched.
         const implCode = await withCache(
             `arbitrum-${wantImplementation}_code`,
+            async () => {
+                return await provider.getCode(wantImplementation)
+            },
+        );
+        expect(disasm(implCode).proxies).toEqual([]);
+    });
+
+    cached_test('Aragon AppProxyUpgradeable: Lido stETH on mainnet', async ({ provider, withCache }) => {
+        const address = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
+        const code = await withCache(
+            `${address}_code`,
+            async () => {
+                return await provider.getCode(address)
+            },
+        );
+
+        const program = disasm(code);
+        expect(program.proxies.map(p => p.name)).toEqual(["AragonAppProxy"]);
+
+        const resolver = program.proxies[0];
+        const got = await resolver.resolve(provider, address);
+
+        const wantImplementation = "0x028271e30a695c0527a0c50ca30603fed004cdb0";
+        expect(got).toEqual(wantImplementation);
+
+        // The app behind the proxy reads the same kernel slot, so check that the
+        // implementation stays unmatched.
+        const implCode = await withCache(
+            `${wantImplementation}_code`,
             async () => {
                 return await provider.getCode(wantImplementation)
             },
