@@ -344,6 +344,25 @@ export const livepeerManagerProxySelectors = [
     "0x51720b41", // targetContractId()
 ];
 
+// https://github.com/aragon/aragonOS/blob/v4.4.0/contracts/apps/AppProxyBase.sol
+// aragonOS apps sit behind AppProxyUpgradeable or AppProxyPinned. The proxy keeps
+// the kernel address and the app id in Aragon-namespaced slots and asks the kernel
+// for the app's base contract (AppProxyPinned pins that answer at construction).
+// Both variants implement ERC-897, so one implementation() call on the proxy
+// returns the right address for either.
+export class AragonAppProxyResolver extends BaseProxyResolver implements ProxyResolver {
+    override name = "AragonAppProxy";
+
+    async resolve(provider: CallProvider, address: string): Promise<string> {
+        return addressFromWord(await provider.call({ to: address, data: aragonAppProxyImplementationSelector }));
+    }
+}
+
+// ERC-897 implementation(). The apps behind an Aragon proxy (AragonApp) read the
+// same kernel slot as the proxy, so the slot alone cannot tell the two apart; the
+// proxy's dispatch table carries this selector and the app's does not.
+export const aragonAppProxyImplementationSelector = "0x5c60da1b";
+
 // FixedProxyResolver is used when we already know the resolved address
 // No additional resolving required
 // Example: EIP-1167
@@ -407,6 +426,13 @@ export const slots : Record<string, string> = {
     // keccak256("matic.network.proxy.implementation")
     MATIC_IMPL: "0xbaab7dbf64751104133af04abc7d9979f0fda3b059a322a8333f533d3f32bf7f",
 
+    // aragonOS AppProxyUpgradeable / AppProxyPinned
+    // https://github.com/aragon/aragonOS/blob/v4.4.0/contracts/apps/AppStorage.sol
+    // keccak256("aragonOS.appStorage.kernel")
+    // The app id sits next to it in keccak256("aragonOS.appStorage.appId"), but the
+    // kernel slot is enough to key on.
+    ARAGON_KERNEL: "0x4172f0f7d2289153072b0a6ca36959e0cbe2efc3afe50fc81636caa96338137b",
+
     // EIP-1167 minimal proxy standard
     // Parsed in disasm
 }
@@ -421,6 +447,7 @@ export const slotResolvers : Record<string, ProxyResolver> = {
     [slots.DIAMOND_STORAGE]: new DiamondProxyResolver("DiamondProxy"),
     [slots.DIAMOND_STORAGE_1]: new DiamondProxyResolver("DiamondProxy", slots.DIAMOND_STORAGE_1),
     [slots.MATIC_IMPL]: new MaticProxyResolver("MaticProxy"),
+    [slots.ARAGON_KERNEL]: new AragonAppProxyResolver("AragonAppProxy"),
 
     // Not sure why, there's a compiler optimization that adds 1 or 2 to the normal slot?
     // Would love to understand this, if people have ideas
