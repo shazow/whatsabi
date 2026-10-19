@@ -73,11 +73,13 @@ describe('loaders: ABILoader', () => {
   })
 
   online_test('BlockscoutABILoader_chainId', async ({ env }) => {
+    // Avoid "featured" chains like Base (8453): the gateway gates them behind
+    // paid plans and responds 402 to free-tier keys.
     const loader = new BlockscoutABILoader({
       apiKey: env["BLOCKSCOUT_API_KEY"],
-      chainId: 8453,
+      chainId: 100,
     });
-    const abiPromise = loader.loadABI("0x4200000000000000000000000000000000000006"); // WETH9 predeploy on Base
+    const abiPromise = loader.loadABI("0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"); // WXDAI on Gnosis
     if (!env["BLOCKSCOUT_API_KEY"]) {
       const error = await abiPromise.then(
         () => undefined,
