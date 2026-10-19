@@ -28,6 +28,7 @@ import { describe_cached, online_test, test } from "./env";
 const SLOW_ETHERSCAN_TIMEOUT = 30000;
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -345,6 +346,122 @@ describe('loaders: SourcifyABILoader v2', () => {
 
     await expect(loader.loadABI(address)).rejects.toThrow(SourcifyABILoaderError);
     await expect(loader.getContract(address)).rejects.toThrow(SourcifyABILoaderError);
+  });
+});
+
+describe('loaders: EtherscanV2ABILoader rate limits', () => {
+  const address = "0x0000000000000000000000000000000000000001";
+  const abi = [{ type: "function", name: "deposit", inputs: [] }];
+
+  function jsonResponse(body: unknown): Response {
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  function successBody(method: 'getContract' | 'loadABI') {
+    if (method === "loadABI") {
+      return { status: "1", message: "OK", result: JSON.stringify(abi) };
+    }
+    return {
+      status: "1",
+      message: "OK",
+      result: [{
+        ABI: JSON.stringify(abi),
+        ContractName: "Token",
+        SourceCode: "contract Token {}",
+        CompilerVersion: "0.8.0",
+        EVMVersion: "london",
+        Runs: "200",
+      }],
+    };
+  }
+
+  test.each(['getContract', 'loadABI'] as const)(
+    '%s retries an Etherscan rate-limit response',
+    async (method) => {
+      vi.useFakeTimers();
+      const rateLimited = {
+        status: "0",
+        message: "NOTOK",
+        result: "Max rate limit reached, please use API Key for higher rate limit",
+      };
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce(jsonResponse(rateLimited))
+        .mockResolvedValueOnce(jsonResponse(successBody(method)));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const loader = new EtherscanV2ABILoader({ apiKey: "test" });
+      const pending = loader[method](address);
+      await vi.runAllTimersAsync();
+      const result = await pending;
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      if (method === "loadABI") {
+        expect(result).toEqual(abi);
+      } else {
+        expect(result).toMatchObject({ abi, name: "Token", ok: true });
+      }
+    },
+  );
+
+  test.each(['getContract', 'loadABI'] as const)(
+    '%s does not retry an unverified contract',
+    async (method) => {
+      const fetchMock = vi.fn(async () => jsonResponse({
+        status: "0",
+        message: "NOTOK",
+        result: "Contract source code not verified",
+      }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const loader = new EtherscanV2ABILoader({ apiKey: "test" });
+      const result = await loader[method](address);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      if (method === "loadABI") {
+        expect(result).toEqual([]);
+      } else {
+        expect(result).toMatchObject({ ok: false, abi: [] });
+      }
+    },
+  );
+
+  test('loadABI gives up after repeated Etherscan rate limits', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async () => jsonResponse({
+      status: "0",
+      message: "NOTOK",
+      result: "Max rate limit reached",
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const loader = new EtherscanV2ABILoader({ apiKey: "test" });
+    const settled = loader.loadABI(address).then(
+      () => { throw new Error("expected loadABI to reject"); },
+      (error) => error,
+    );
+    await vi.runAllTimersAsync();
+    const error = await settled;
+
+    expect(error.message).toContain("Max rate limit reached");
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  test('getContract does not retry when the ABI field says the source is unverified', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({
+      status: "1",
+      message: "OK",
+      result: [{ ABI: "Contract source code not verified" }],
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const loader = new EtherscanV2ABILoader({ apiKey: "test" });
+    const result = await loader.getContract(address);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ ok: false, abi: [] });
   });
 });
 
