@@ -472,8 +472,9 @@ export class BlockscoutABILoader implements ABILoader {
         if (config === undefined) config = {};
         this.apiKey = config.apiKey;
         // A chainId routes through the multichain gateway, which requires an
-        // apiKey (or an x402 payment); the server enforces this. An explicit
-        // baseURL wins over chainId.
+        // apiKey (or an x402 payment); the server enforces this. Some
+        // "featured" chains (e.g. Base) also require a paid plan and respond
+        // with 402 to free-tier keys. An explicit baseURL wins over chainId.
         this.baseURL = config.baseURL ||
             (config.chainId !== undefined
                 ? `https://api.blockscout.com/${config.chainId}/api`
