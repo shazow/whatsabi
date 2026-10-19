@@ -24,7 +24,7 @@
  * ]);
  * ```
  */
-import { fetchJSON } from "./utils.js";
+import { fetchJSON, fetchWithRetry } from "./utils.js";
 import * as errors from "./errors.js";
 
 export type ContractResult = {
@@ -173,6 +173,25 @@ export class MultiABILoaderError extends errors.LoaderError { };
 
 export class EtherscanABILoaderError extends errors.LoaderError { };
 
+const ETHERSCAN_RATE_LIMIT = /rate limit/i;
+// Initial request plus the same 3 retries fetchWithRetry uses for HTTP 429.
+const ETHERSCAN_MAX_ATTEMPTS = 4;
+
+function isEtherscanRateLimited(body: any): boolean {
+    return body?.status === "0" && typeof body?.result === "string" && ETHERSCAN_RATE_LIMIT.test(body.result);
+}
+
+// Etherscan signals throttling as HTTP 200 + status "0" and a result string,
+// which the 429 retry in fetchJSON does not see. "Contract source code not
+// verified" does not match and is returned to the caller as a normal miss.
+async function fetchEtherscanJSON(url: string): Promise<any> {
+    for (let attempt = 1; ; attempt++) {
+        const body = await fetchJSON(url);
+        if (!isEtherscanRateLimited(body) || attempt >= ETHERSCAN_MAX_ATTEMPTS) return body;
+        await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+    }
+}
+
 /// Etherscan Contract Source API response
 export type EtherscanContractResult = {
     SourceCode: string;
@@ -234,7 +253,7 @@ export class EtherscanV2ABILoader implements ABILoader {
         Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
         try {
-            const r = await fetchJSON(url.toString());
+            const r = await fetchEtherscanJSON(url.toString());
             if (r.status === "0") {
                 if (r.result === "Contract source code not verified") return emptyContractResult;
                 throw new Error(r.result);    // This gets wrapped below
@@ -289,7 +308,7 @@ export class EtherscanV2ABILoader implements ABILoader {
         Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
         try {
-            const r = await fetchJSON(url.toString());
+            const r = await fetchEtherscanJSON(url.toString());
 
             if (r.status === "0") {
                 if (r.result === "Contract source code not verified") return [];
@@ -511,15 +530,8 @@ export class BlockscoutABILoader implements ABILoader {
         if (this.apiKey) url += "?apikey=" + this.apiKey;
 
         try {
-            let response = await fetch(url);
-            // The gateway rate-limits per key; back off and retry a few times
-            // before giving up, respecting a sane Retry-After when present.
-            for (let attempt = 1; response.status === 429 && attempt <= 3; attempt++) {
-                const retryAfter = Number(response.headers.get("retry-after"));
-                const seconds = (retryAfter >= 0 && retryAfter <= 10) ? retryAfter : attempt;
-                await new Promise(resolve => setTimeout(resolve, seconds * 1000));
-                response = await fetch(url);
-            }
+            // The gateway rate-limits per key; fetchWithRetry backs off on 429.
+            const response = await fetchWithRetry(url);
             if (response.status === 404) return emptyContractResult;
 
             const responseText = await response.text();

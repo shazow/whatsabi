@@ -45,8 +45,34 @@ export class FetchError extends Error {
   }
 }
 
+// HTTP 429 retries. Honor Retry-After when it is a small delay (0-10s);
+// otherwise wait attempt seconds (1s, 2s, 3s). A missing header is not 0:
+// Number(null) === 0, which would retry immediately.
+const RATE_LIMIT_RETRIES = 3;
+const MAX_RETRY_AFTER_SECONDS = 10;
+
+function rateLimitDelayMs(retryAfter: string | null, attempt: number): number {
+  if (retryAfter != null && retryAfter.trim() !== "") {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0 && seconds <= MAX_RETRY_AFTER_SECONDS) {
+      return seconds * 1000;
+    }
+  }
+  return attempt * 1000;
+}
+
+export async function fetchWithRetry(url: string, init?: RequestInit): Promise<Response> {
+  let response = await fetch(url, init);
+  for (let attempt = 1; response.status === 429 && attempt <= RATE_LIMIT_RETRIES; attempt++) {
+    const delayMs = rateLimitDelayMs(response.headers.get("retry-after"), attempt);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    response = await fetch(url, init);
+  }
+  return response;
+}
+
 export async function fetchJSON(url: string): Promise<any> {
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     headers: {
       "Content-Type": "application/json",
     },
