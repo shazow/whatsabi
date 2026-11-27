@@ -286,7 +286,7 @@ async function _autoload(address: string, config: AutoloadConfig, visitedAddress
                     // We assume that a verified contract ABI contains all of the relevant resolved proxy functions
                     // so we don't need to mess with resolving facets and can return immediately.
                     result.contractResult = contractResult;
-                    result.abi = contractResult.abi;
+                    result.abi = withSelectors(contractResult.abi);
                     result.abiLoadedFrom = contractResult.loader;
                     return result;
                 }
@@ -298,7 +298,7 @@ async function _autoload(address: string, config: AutoloadConfig, visitedAddress
                 const abis = Object.fromEntries(results.map((abi, i) => {
                     return [addresses[i], abi];
                 }));
-                result.abi = pruneFacets(facets, abis);
+                result.abi = withSelectors(pruneFacets(facets, abis));
                 if (result.abi.length > 0) {
                     result.abiLoadedFrom = abiLoadedFrom;
                     return result;
@@ -391,6 +391,18 @@ async function _autoload(address: string, config: AutoloadConfig, visitedAddress
     }
 
     return result;
+}
+
+// Loaded ABIs are standard JSON ABIs, which don't include the selector/hash fields that ABI requires.
+// Entries are copied so the loader's objects (and contractResult.abi) stay unmodified.
+function withSelectors(abi: any[]): ABI {
+    return abi.map(a => {
+        if (!a.name) return a;
+        const item = { ...a, inputs: a.inputs ?? [] }; // inputs may be omitted when empty
+        if (a.type === "function" && a.selector === undefined) return { ...a, selector: AbiFunction.getSelector(item) };
+        if (a.type === "event" && a.hash === undefined) return { ...a, hash: AbiEvent.getSelector(item) };
+        return a;
+    });
 }
 
 function stripUnreliableABI(abi: ABI): ABI {

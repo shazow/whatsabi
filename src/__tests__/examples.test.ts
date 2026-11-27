@@ -82,7 +82,7 @@ online_test('README autoload', async ({ provider }) => {
         });
         expect(result.abi).toContainEqual(
             // 'function name() pure returns (string contractName)'
-            { "inputs": [], "name": "name", "outputs": [{ "internalType": "string", "name": "contractName", "type": "string" }], "stateMutability": "pure", "type": "function" }
+            { "inputs": [], "name": "name", "outputs": [{ "internalType": "string", "name": "contractName", "type": "string" }], "stateMutability": "pure", "type": "function", "selector": "0x06fdde03" }
         );
 
         if (result.followProxies) {
