@@ -61,6 +61,71 @@ test('autoload enriches event signatures as events', async () => {
     });
 });
 
+test('autoload includes selectors and hashes in loaded ABIs', async () => {
+    const address = "0x00000000219ab540356cBB839Cbe05303d7705Fa";
+    const abi = [
+        {
+            type: "function",
+            name: "transfer",
+            inputs: [{ type: "address", name: "to" }, { type: "uint256", name: "amount" }],
+            outputs: [{ type: "bool", name: "" }],
+            stateMutability: "nonpayable",
+        },
+        {
+            type: "event",
+            name: "Transfer",
+            inputs: [
+                { type: "address", name: "from", indexed: true },
+                { type: "address", name: "to", indexed: true },
+                { type: "uint256", name: "value", indexed: false },
+            ],
+            anonymous: false,
+        },
+        // Some ABIs omit empty inputs
+        { type: "function", name: "totalSupply", outputs: [{ type: "uint256", name: "" }], stateMutability: "view" },
+        { type: "event", name: "Paused", anonymous: false },
+    ];
+    const abiLoader = {
+        name: "TestABILoader",
+        loadABI: async () => abi,
+        getContract: async () => ({ abi, name: "Token", ok: true }),
+    };
+
+    for (const loadContractResult of [false, true]) {
+        const result = await autoload(address, {
+            provider: { request: () => "0x1234" },
+            abiLoader,
+            signatureLookup: false,
+            loadContractResult,
+        });
+
+        expect(result.abi).toContainEqual(expect.objectContaining({
+            type: "function",
+            name: "transfer",
+            selector: "0xa9059cbb",
+        }));
+        expect(result.abi).toContainEqual(expect.objectContaining({
+            type: "event",
+            name: "Transfer",
+            hash: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        }));
+        expect(result.abi).toContainEqual(expect.objectContaining({
+            type: "function",
+            name: "totalSupply",
+            selector: "0x18160ddd",
+        }));
+        expect(result.abi).toContainEqual(expect.objectContaining({
+            type: "event",
+            name: "Paused",
+            hash: "0x9e87fac88ff661f02d44f95383c817fece4bce600a3dab7a54406878b965e752",
+        }));
+    }
+
+    // The loader's own objects are left as-is
+    expect(abi[0]).not.toHaveProperty("selector");
+    expect(abi[1]).not.toHaveProperty("hash");
+});
+
 test('autoload stops following a proxy cycle', async () => {
     const address = "0x1111111111111111111111111111111111111111";
     const bytecode = "0x7f" + slots.EIP1967_IMPL.slice(2) + "00";
